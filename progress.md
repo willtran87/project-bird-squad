@@ -18,6 +18,13 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Review fixed exact-copy advice when an owned Preened duplicate shares an
   offered base card's identity. Superseded CI `42427628611` was cancelled;
   complete final-revision release qualification remains pending.
+- Diagnostic `42428071928` then found crowded enemy statuses overlapping the
+  taller forecast and an outdated empty-deck advice expectation. The forecast
+  now retains its original 52-pixel lane; the confirmation hint clears the full
+  combat cast. Corrected local checks: 13/13 catalog/cast/choices and 27/27
+  across browsers. Final shared-client selection/play captures are clean.
+- Final native samples still show mixed timing; a 1.8-second cold-entry outlier
+  did not repeat in a diagnostic pair. Its cause is unverified, not fixed.
   See `docs/game/clearer-choices.md` and `docs/project/performance-notes.md`.
 - No human sessions are available; preparation remains the accepted deliverable.
 

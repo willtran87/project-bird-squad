@@ -428,7 +428,7 @@ export function renderBattleSelectionPreview(
     // Keep the meter overlay; reserve the row below vitals for enemy statuses.
   }
 
-  const y = preview.fields ? 398 : 412;
+  const y = 412;
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
   // History and the current decision share one quiet lane above the hand.
   // A card decision temporarily takes precedence over history and the Roost
@@ -439,40 +439,49 @@ export function renderBattleSelectionPreview(
   container.once(Phaser.GameObjects.Events.DESTROY, () => {
     logObjects.forEach((child, index) => { if (child.active) child.setVisible(previousVisibility[index]); });
   });
-  container.add(scene.add.rectangle(gameWidth / 2, y, 600, preview.fields ? 80 : 52, 0x07101a, 0.97)
+  container.add(scene.add.rectangle(gameWidth / 2, y, 600, 52, 0x07101a, 0.97)
     .setStrokeStyle(1, context.cyan, 0.72)
     .setName('combat-outcome-preview'));
-  const titleY = y - (preview.fields ? 26 : 13);
-  const title = scene.add.text(gameWidth / 2 - 284, titleY, '', {
-    fontFamily,
-    fontSize: '19px',
-    fontStyle: boldFontStyle,
-    color: '#ffe7a8',
-    fixedWidth: 368,
-    wordWrap: { width: 368, useAdvancedWrap: true },
-    resolution: 2,
-    align: 'left',
-    maxLines: 1,
-  }).setOrigin(0, 0.5).setName('combat-selection-card-target');
-  container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
-  container.add(scene.add.rectangle(gameWidth / 2 + 190, titleY, 188, 24, 0x102534, 0.98)
+  const titleY = y - 13;
+  // The selected hand card and enemy already identify the action. Keep the
+  // real forecast to two rows, below the crowded enemy-status lane.
+  if (!preview.fields) {
+    const title = scene.add.text(gameWidth / 2 - 284, titleY, '', {
+      fontFamily,
+      fontSize: '19px',
+      fontStyle: boldFontStyle,
+      color: '#ffe7a8',
+      fixedWidth: 368,
+      wordWrap: { width: 368, useAdvancedWrap: true },
+      resolution: 2,
+      align: 'left',
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setName('combat-selection-card-target');
+    container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
+  }
+  // Confirmation sits beside the hand, immediately above Full rules. It must
+  // not occupy the enemy status row when the forecast has critical warnings.
+  const commandX = preview.fields ? 90 : gameWidth / 2 + 190;
+  const commandY = preview.fields ? 450 : titleY;
+  container.add(scene.add.rectangle(commandX, commandY, preview.fields ? 128 : 188, preview.fields ? 48 : 24, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame'));
-  container.add(scene.add.text(gameWidth / 2 + 190, titleY, 'CONFIRM TO PLAY', {
+  container.add(scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
     fontFamily,
     fontSize: '19px',
     resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
+    ...(preview.fields ? { wordWrap: { width: 120 }, align: 'center' } : {}),
   }).setOrigin(0.5).setName('combat-selection-command'));
   if (preview.fields) {
     const { cost, impact, protection, notice, critical } = preview.fields;
     for (const [index, value] of [cost, impact, protection].entries()) {
-      container.add(scene.add.text(gameWidth / 2 - 190 + index * 190, y, value, {
+      container.add(scene.add.text(gameWidth / 2 - 190 + index * 190, y - 13, value, {
         fontFamily, fontSize: '19px', fontStyle: boldFontStyle, color: '#dffbff', resolution: 2,
       }).setOrigin(0.5).setName(['combat-selection-summary', 'combat-selection-impact', 'combat-selection-protection'][index]));
     }
-    container.add(scene.add.text(gameWidth / 2, y + 26, notice, {
+    container.add(scene.add.text(gameWidth / 2, y + 13, notice, {
       fontFamily, fontSize: '19px', color: critical ? '#ffe08a' : '#a6c7d6', resolution: 2,
     }).setOrigin(0.5).setName('combat-selection-notice').setData('critical', critical));
   } else {

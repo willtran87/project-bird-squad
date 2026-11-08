@@ -49,6 +49,7 @@ async function battle(page: Page) {
 }
 test('Clear choices critical forecasts stay complete and separate at every supported size', async ({page},info) => {
   await battle(page); const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies.forEach((e:any)=>{e.block=7;e.weak=2;});b.renderAll();});
   for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
     await page.setViewportSize(size);await settleCanvas(page);
     for(const scenario of ['ordinary','lethal','phase-choice']) {
@@ -66,13 +67,17 @@ test('Clear choices critical forecasts stay complete and separate at every suppo
         const p=b.selectionOutcomePreview,box=p.getByName('combat-outcome-preview').getBounds();
         const values=['combat-selection-summary','combat-selection-impact','combat-selection-protection','combat-selection-notice'].map(name=>{
           const t=p.getByName(name),r=t.getBounds();return {name,text:t.text,left:r.left,right:r.right,top:r.top,bottom:r.bottom,fits:r.left>=box.left&&r.right<=box.right&&r.top>=box.top&&r.bottom<=box.bottom};});
-        return {values,details:view.details,fields:view.fields,bottom:box.bottom};
+        const enemyClear=b.root.list.filter((o:any)=>['combat-enemy-vitals','combat-enemy-status-panel','combat-boss-phase-badge','combat-objective-target','combat-elite-badge'].includes(o.name))
+          .every((o:any)=>{const r=o.getBounds();return r.right<=box.left||r.left>=box.right||r.bottom<=box.top||r.top>=box.bottom;});
+        return {values,details:view.details,fields:view.fields,bottom:box.bottom,top:box.top,enemyClear};
       },scenario);
       expect(result.values.every(v=>v.fits)).toBe(true);
       expect(result.values[0].right).toBeLessThan(result.values[1].left);
       expect(result.values[1].right).toBeLessThan(result.values[2].left);
       expect(result.fields.cost).toBe('Wingbeats 3 → 2');expect(result.fields.protection).toBe('Cover 0 → 4');
       expect(result.bottom).toBeLessThan(444);
+      expect(result.top).toBeGreaterThanOrEqual(386);
+      expect(result.enemyClear).toBe(true);
       if(scenario==='lethal')expect(result.fields.impact).toContain('DEFEATED');
       if(scenario==='phase-choice') {expect(result.fields.notice).toContain('PHASE II');expect(result.fields.notice).toContain('ATTACK DISRUPTED');expect(result.fields.notice).toContain('later effects pending');expect(result.details).toContain('Attack 20');}
       await settleCanvas(page);

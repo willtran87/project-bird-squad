@@ -52,10 +52,12 @@ test('entire combat cast retains proportional art and stage-owned contact shadow
         b.encounterObjective = undefined;
         b.enemies = ids.map(id => ({ ...b.groundingFixture, id, name: id.replaceAll('_', ' '),
           runtime: { ...b.groundingFixture.runtime, id, type: 'normal' } }));
-        b.selectedEnemyId = ids[0]; b.renderAll();
+        b.selectedEnemyId = ids[0]; b.selectedInstanceId = b.hand[0]?.instanceId; b.renderAll();
         const clear = (a: any, z: any) => a.right <= z.left || a.left >= z.right || a.bottom <= z.top || a.top >= z.bottom;
         const panels = b.root.list.filter((o: any) => o.name === 'combat-enemy-vitals'
           || (o.name === 'encounter-objective' && o.type === 'Rectangle'));
+        const confirm = b.selectionOutcomePreview?.getByName('combat-selection-command-frame');
+        if (confirm) panels.push(confirm);
         const groups = b.root.list.filter((o: any) => ['combat-enemy-art', 'combat-leader-art'].includes(o.name));
         return groups.map((group: any) => {
           const enemy = group.name === 'combat-enemy-art';

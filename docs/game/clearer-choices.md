@@ -9,8 +9,10 @@ Implementation and qualification are in progress; this is not a release claim.
 
 - Cost, enemy/utility outcome and Cover occupy separate forecast fields. Defeat,
   phase change, attack disruption and unresolved choice warnings remain visible.
-  Complete ordered outcomes remain in Full rules. The preview stays above the
-  hand, and secondary feedback yields while a card is selected.
+  Complete ordered outcomes remain in Full rules. The two-row preview keeps
+  its original 52-pixel lane above the hand, below enemy statuses. Confirmation
+  sits beside the hand above Full rules. The selected card and target retain
+  their existing identity labels; secondary feedback yields during selection.
 - Reward advice uses normal/upgraded rules, owned cards, actual Resonance
   thresholds, guaranteed producers and a stated three-Wingbeat base budget.
   Conditional refunds cannot fund a recommendation. Molt-changing producers
@@ -39,12 +41,13 @@ The new HUD measures about 11.4 KiB; its separate lazy-module ceiling changes
 from 10 to 12 KiB to accommodate the forecast fields and critical warning row.
 The combined boot ceiling stays 700 KiB (final candidate 696.5 KiB).
 Artwork, text resolution and motion quality are unchanged. Three alternating
-runs per build (108 selections, 27 plays and nine entries each) reduced sampled
+runs plus a diagnostic pair (144 selections, 36 plays and 12 entries per build) reduced sampled
 selection work from seven simulations/five full card views to two/zero.
-Native timings were mixed: baseline selection medians were 40.3–42.3 ms versus
-31.7–60.6 ms; play medians were 332.7–342.0 versus 322.3–361.8 ms. No frame-rate
+Native timings were mixed: baseline selection medians were 30.5–34.3 ms versus
+30.4–45.1 ms; play medians were 330.4–352.3 versus 316.5–371.4 ms. No frame-rate
 or interaction-latency improvement is established. See performance notes for
-the complete samples. This is reduced redundant work, with explicit UI cost.
+the complete samples, including a non-repeated 1.8-second cold-entry outlier
+whose cause remains unverified. This is reduced redundant work, with explicit UI cost.
 
 ## Strategy audit
 
@@ -104,3 +107,18 @@ Readers now carry the exact inspected card; both reward and Preen tests include
 an owned duplicate with different rules. Initial CI run `42427628611` was
 cancelled as superseded and is not qualifying evidence. Final qualification
 must cover this fix.
+
+The next diagnostic run (`42428071928`) exposed an actual crowded-status
+overlap from the initial 80-pixel forecast, plus an old empty-deck copy
+expectation. The forecast now uses the original 52-pixel lane with a separate
+confirmation hint; the semantic no-invented-pairing assertion is retained with
+the new wording. Crowded statuses are now included in the new browser coverage,
+and the whole-cast geometry check includes the confirmation hint. This failed
+diagnostic run is not release qualification.
+
+Corrected local qualification passed 13 cases covering all four authored
+encounter catalogs, the entire combat cast and new choices, plus 27 browser
+checks across Chromium, Firefox and WebKit. Crowded status/critical-warning
+screens were inspected at supported sizes. The unmodified shared game client
+selected and played First Flight, with clean forecast dismissal and no captured
+errors. Final exact-revision release qualification remains required.
