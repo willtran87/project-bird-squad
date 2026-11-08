@@ -327,7 +327,7 @@ function observedFlightSection(scene: any) {
 function candidateSections(scene: any, view: CardHoverDetailView) {
   const id = view.cardId ?? view.marketCardId;
   const deck: Card[] = scene.allDeckCards?.() ?? (scene.runState ? cardsFromSave(scene.runState.deck) : []);
-  const card = deck.find(c => c.id === id) ?? cardLibrary[id ?? ''];
+  const card = view.card ?? deck.find(c => c.id === id) ?? cardLibrary[id ?? ''];
   if (!card) return [];
   const combats = [...(scene.runState?.combatResults ?? scene.runCombatResults ?? [])];
   if (scene.cardContributions?.length) combats.push({ cardContributions: scene.cardContributions });
@@ -2016,6 +2016,7 @@ export function syncRewardCardInspection(scene: any, chrome: {
   // A reward describes the next flight decision, not the finished turn's Molt
   // stance or temporary energy discount. Never borrow effective combat costs.
   const view: CardHoverDetailView = {
+    card,
     cardId: card.id,
     name: displayName(card), bird: card.bird, label: cardLabel(card),
     zone: scene.mode === 'upgradeReward' ? 'Combat Preen inspection' : 'Combat reward inspection',

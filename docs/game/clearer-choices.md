@@ -37,7 +37,7 @@ changed resources, targets and rules are read again on the next refresh.
 
 The new HUD measures about 11.4 KiB; its separate lazy-module ceiling changes
 from 10 to 12 KiB to accommodate the forecast fields and critical warning row.
-The combined boot ceiling stays 700 KiB (candidate currently 696.4 KiB).
+The combined boot ceiling stays 700 KiB (final candidate 696.5 KiB).
 Artwork, text resolution and motion quality are unchanged. Three alternating
 runs per build (108 selections, 27 plays and nine entries each) reduced sampled
 selection work from seven simulations/five full card views to two/zero.
@@ -61,6 +61,31 @@ The scores describe the policy, not intrinsic card strength. They cannot prove
 human understanding, enjoyment or universally optimal balance. No speculative
 card or reward rebalance is included.
 
+Local audit: all nine terminal-state checks passed with ordinary earned decks.
+Results below are raw totals; differing run lengths prevent direct rate or
+power comparisons. Canonical Preens are tested, not player-selected branches.
+
+| Seed | Plan | Outcome / fights | Blocked | Resonance spent | Molt plays | Cleanup Roosts |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| 1 | Shelter | Complete / 10 | 542 | 30 | 21 | 4 |
+| 1 | Tempo | Defeat / 2 | 42 | 3 | 6 | 0 |
+| 1 | Molt | Complete / 10 | 327 | 21 | 13 | 5 |
+| 2 | Shelter | Complete / 11 | 479 | 35 | 16 | 4 |
+| 2 | Tempo | Complete / 11 | 95 | 13 | 4 | 3 |
+| 2 | Molt | Complete / 11 | 192 | 4 | 16 | 1 |
+| 3 | Shelter | Defeat / 2 | 47 | 0 | 3 | 0 |
+| 3 | Tempo | Defeat / 2 | 16 | 0 | 1 | 0 |
+| 3 | Molt | Defeat / 2 | 30 | 0 | 8 | 0 |
+
+Shelter selected Nests-heavy rewards and blocked more in each shared seed;
+the other policies made different legal reward/purchase choices. All policies
+lost early on seed 3. Tempo did not consistently spend more Resonance than
+Shelter, and Molt did not consistently produce more Molt plays. The audit
+therefore verifies differentiated decisions and records their limitations;
+it does not establish exclusive identities, balanced win rates or a needed
+card nerf/buff. Reports: local `.artifacts/choices-strategy-summary.json` and
+the nine `mechanical-run.json` files; CI retains exact-revision campaign reports.
+
 ## Acceptance
 
 Check all authored normal/upgraded/Molt forecasts; verify readable fields and
@@ -71,3 +96,11 @@ engines, existing controller/input ownership, and the complete release gates.
 No new human sessions are available. The existing handoff now includes forecast
 comprehension and pairing-condition observations; preparation remains the
 accepted deliverable, and existing device/AT waivers remain explicit.
+
+The initial 24 new cross-browser and 18 affected regression checks passed,
+as did 33 unit/policy checks. Review then found a duplicate-identity reader
+edge case: an owned Preened copy could replace the offered base copy's advice.
+Readers now carry the exact inspected card; both reward and Preen tests include
+an owned duplicate with different rules. Initial CI run `42427628611` was
+cancelled as superseded and is not qualifying evidence. Final qualification
+must cover this fix.

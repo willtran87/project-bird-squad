@@ -11,8 +11,13 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   remain bounded. 33 unit/policy tests and content/assets/docs checks passed.
 - Three alternating native-clock samples per build show mixed timing, not an
   FPS gain. Selection calls fall from seven simulations/five full views to
-  two/zero. Pages boot is 696.4/700 KiB; lazy HUD cap is explicitly 12 KiB.
-- Nine strategy campaigns and complete release qualification remain pending.
+  two/zero. Pages boot is 696.5/700 KiB; lazy HUD cap is explicitly 12 KiB.
+- Nine strategy campaigns and 18 affected regressions passed. Five campaigns
+  completed; four ended in measured defeat. The audit does not justify balance
+  claims or speculative card changes.
+- Review fixed exact-copy advice when an owned Preened duplicate shares an
+  offered base card's identity. Superseded CI `42427628611` was cancelled;
+  complete final-revision release qualification remains pending.
   See `docs/game/clearer-choices.md` and `docs/project/performance-notes.md`.
 - No human sessions are available; preparation remains the accepted deliverable.
 

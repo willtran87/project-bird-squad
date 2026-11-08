@@ -8673,6 +8673,7 @@ class RouteScene extends Phaser.Scene {
       : anchorX;
     const contract = activeCardContract(card, false);
     this.cardHoverDetailRequest = {
+      card,
       cardId: card.id,
       marketCardId: marketCard ? card.id : undefined,
       name: displayName(card),

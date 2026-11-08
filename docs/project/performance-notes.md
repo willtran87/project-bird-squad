@@ -2,7 +2,7 @@
 
 ## November 7 2026 — Clearer choices
 
-Pages boot is 696.4 KiB against the unchanged 700 KiB cap, versus 694.1 KiB
+Pages boot is 696.5 KiB against the unchanged 700 KiB cap, versus 694.1 KiB
 at baseline `6ebcb887`. The separate battle HUD grows to 11.4 KiB for three
 forecast fields and a persistent critical-warning row; its lazy-module cap
 changes from 10 to 12 KiB. This is an explicit feature cost, not a size win.

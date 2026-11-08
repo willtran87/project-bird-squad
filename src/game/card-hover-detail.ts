@@ -5,6 +5,7 @@ import { renderMarketCardDossier, renderRouteInspectionReader } from './reward-c
 import { renderDeckPortrait } from './deck-portrait';
 import { quietButton } from './quiet-ui';
 import type { RuntimeImageAsset } from './runtime-images';
+import type { Card } from '../main';
 export {
   renderMarketServices,
   renderMarketCatalogLabel,
@@ -43,6 +44,7 @@ export {
 } from './reward-card-inspection';
 
 export interface CardHoverDetailView {
+  card?: Card;
   cardId?: string;
   drawComparison?: string;
   marketCardId?: string;

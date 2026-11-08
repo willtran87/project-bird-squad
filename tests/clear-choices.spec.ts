@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { decisionBrief } from '../src/game/decision-brief';
+import { decisionBrief, primaryBenefit } from '../src/game/decision-brief';
 import { installStrategyAuditPolicy } from './helpers/strategy-audit-policy';
 import { settleCanvas } from './helpers/settled-canvas';
 
@@ -125,14 +125,20 @@ test('Clear choices selection avoids full dossier rebuilds and refreshes changed
 });
 for(const preen of [false,true])test(`Clear choices ${preen?'Preen':'reward'} advice remains readable and inspection preserves the choice`,async({page},info)=>{
   await battle(page);
-  await page.evaluate(preen=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');const cards=b.allDeckCards().filter((c:any)=>!c.upgraded).slice(0,3);b.mode=preen?'upgradeReward':'cardReward';b.rewardChoices=cards;b.upgradeChoices=cards;b.renderAll();},preen);
+  await page.evaluate(preen=>{
+    const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');const cards=b.allDeckCards().filter((c:any)=>!c.upgraded).slice(0,3);
+    // An owned copy of the same identity must not replace the inspected offer's rules.
+    const duplicate=structuredClone(cards[0]);duplicate.instanceId+='-owned-copy';duplicate.upgraded=true;
+    duplicate.runtime.upgrade.effects=['gainCover(999)'];b.drawPile.unshift(duplicate);
+    b.mode=preen?'upgradeReward':'cardReward';b.rewardChoices=cards;b.upgradeChoices=cards;b.renderAll();
+  },preen);
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
   for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`offers-${size.width}.png`)});}
-  const before=await page.evaluate(()=>{
+  const before=await page.evaluate(preen=>{
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),card=(b.mode==='upgradeReward'?b.upgradeChoices:b.rewardChoices)[0];
     const before=JSON.stringify({deck:b.allDeckCards(),scrap:b.scrap,mode:b.mode});b.openRewardCardInspection(card.id);
-    return before;
-  });
+    return {snapshot:before,candidate:{...card,upgraded:preen}};
+  },preen);
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').cardPreview?.getData('reading'));
   const read=await page.evaluate(()=>{
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');
@@ -140,7 +146,8 @@ for(const preen of [false,true])test(`Clear choices ${preen?'Preen':'reward'} ad
     for(let i=0;i<total;i++){readings.push(panel.getData('reading'));panel.getData('turnRulesPage')(1);}
     b.closeRewardCardInspection();return {after:JSON.stringify({deck:b.allDeckCards(),scrap:b.scrap,mode:b.mode}),readings};
   });
-  expect(before).toBe(read.after);
+  expect(before.snapshot).toBe(read.after);
   const advice=read.readings.filter((r:any)=>r.title==='OWNED PAIRING · CONDITIONS').map((r:any)=>r.text).join(' ').replace(/\s+/g,' ');
   expect(advice).toContain('Potential, not a promised draw.');expect(advice).toContain('three-Wingbeat');
+  expect(advice).toContain(primaryBenefit(before.candidate).replace(/\s+/g,' '));expect(advice).not.toContain('999');
 });
