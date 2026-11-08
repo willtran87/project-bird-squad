@@ -36,6 +36,9 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   show clean selection/play transitions. Six native samples retain mixed
   timings and cold-entry outliers in both versions; no latency gain is claimed.
 - No human sessions are available; preparation remains the accepted deliverable.
+- Diagnostic `42433365993` found a title-flourish wall-clock sampling race.
+  The test now waits for lazy-module readiness and samples a defined animation
+  beat without relaxing visibility or route-transition assertions.
 
 ## 2026-11-04 — Decisions and rhythm (published)
 - Accepted the clarity, strategy, encounter-rhythm, turning-point and measured

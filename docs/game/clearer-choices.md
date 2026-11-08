@@ -41,13 +41,13 @@ changed resources, targets and rules are read again on the next refresh.
 The new HUD measures about 11.4 KiB; its separate lazy-module ceiling changes
 from 10 to 12 KiB to accommodate the forecast fields and critical warning row.
 The combined boot ceiling stays 700 KiB (final candidate 696.5 KiB).
-Artwork, text resolution and motion quality are unchanged. Three alternating
-runs plus a diagnostic pair (144 selections, 36 plays and 12 entries per build) reduced sampled
+Artwork, text resolution and motion quality are unchanged. Three final alternating
+runs (108 selections, 27 plays and nine entries per build) reduced sampled
 selection work from seven simulations/five full card views to two/zero.
-Native timings were mixed: baseline selection medians were 30.5–34.3 ms versus
-30.4–45.1 ms; play medians were 330.4–352.3 versus 316.5–371.4 ms. No frame-rate
+Native timings were mixed: baseline selection medians were 30.6–33.1 ms versus
+31.1–42.1 ms; play medians were 337.3–352.2 versus 342.5–366.4 ms. No frame-rate
 or interaction-latency improvement is established. See performance notes for
-the complete samples, including a non-repeated 1.8-second cold-entry outlier
+the complete samples, including an earlier 1.8-second cold-entry outlier
 whose cause remains unverified. This is reduced redundant work, with explicit UI cost.
 
 ## Strategy audit
@@ -139,3 +139,9 @@ clearance checks. The unmodified shared client selected and played First Flight;
 reviewed screenshots show the forecast dismissing cleanly. Six final native
 timing runs captured no page errors, with mixed timing results documented in
 the performance notes. Full qualification must pass on this exact revision.
+
+Diagnostic `42433365993` exposed an older title-flourish test sampling a fading
+glow after a fixed wall-clock delay. It now waits for lazy-module readiness
+with scene timers/tweens paused, then samples a defined animation beat. The
+existing visible-art, pending-launch and route-transition assertions remain.
+This superseded run is not qualifying evidence.
