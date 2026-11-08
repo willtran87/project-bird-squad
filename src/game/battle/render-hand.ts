@@ -378,7 +378,10 @@ export function renderBattleHand(context: BattleHandRenderContext): BattleHandRe
   return result;
 }
 
-export function refreshBattleHandFlow(cards: BattleHandCardView[], result: BattleHandRenderResult) {
+type BattleHandSelectionView = Pick<BattleHandCardView,
+  'instanceId' | 'selected' | 'guideCard' | 'guideMolt' | 'accent' | 'canPay' | 'flowVisible' | 'surgeNext'>;
+
+export function refreshBattleHandFlow(cards: Pick<BattleHandSelectionView, 'instanceId' | 'flowVisible' | 'surgeNext'>[], result: BattleHandRenderResult) {
   cards.forEach((card) => {
     const indicator = result.flowIndicators.get(card.instanceId);
     if (!indicator?.container.active) return;
@@ -394,7 +397,7 @@ export function refreshBattleHandFlow(cards: BattleHandCardView[], result: Battl
 
 export function refreshBattleHandSelection(
   context: Pick<BattleHandRenderContext, 'scene' | 'cardWidth' | 'cardHeight' | 'reducedMotion'>,
-  cards: BattleHandCardView[],
+  cards: BattleHandSelectionView[],
   result: BattleHandRenderResult,
 ) {
   cards.forEach((card) => {
@@ -442,11 +445,12 @@ function renderCombatCardDossier(context: BattleHandPreviewContext) {
 
 export function renderBattleHandPreview(
   context: BattleHandPreviewContext,
-  card: BattleHandCardPreviewView,
+  card: BattleHandCardPreviewView | undefined,
   _instanceId: string,
   previewX = context.width / 2,
 ) {
   if (context.combat) return renderCombatCardDossier(context);
+  if (!card) throw new Error('Reward preview requires a card.');
   return renderRewardHoverPreview(context, card, previewX);
 }
 

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { resolveScriptedBattle } from './helpers/scripted-battle';
+import { installStrategyAuditPolicy } from './helpers/strategy-audit-policy';
 import { settleCanvas } from './helpers/settled-canvas';
 import { writeFile } from 'node:fs/promises';
 import { flockLeaders } from '../src/game/leaders';
@@ -16,9 +17,9 @@ const cases = [
     policy: 'cache-first' as const, leader: leader.id, seed: `continuation-equipped-${seed}`, equipped: true,
     plan: undefined as string | undefined,
   }))),
-  ...(['shelter','tempo','molt'] as const).map(plan => ({
-    policy: 'cache-first' as const, leader: 'fledgling', seed: 'opening-strategy-1', equipped: true, plan,
-  })),
+  ...[1, 2, 3].flatMap(seed => (['shelter','tempo','molt'] as const).map(plan => ({
+    policy: 'cache-first' as const, leader: 'fledgling', seed: `opening-strategy-${seed}`, equipped: true, plan,
+  }))),
 ];
 
 // Actual run state flows through route, combat, reward and district transitions.
@@ -30,6 +31,8 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
   test.setTimeout(480000);
   const errors: string[] = [], journey: any[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(installStrategyAuditPolicy);
+  await page.addInitScript(() => Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [] }));
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('./');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
@@ -75,28 +78,41 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
       const result = await page.evaluate(resolveScriptedBattle, {
         policy: policy === 'cache-first' ? 'sheltered' : policy,
         supplies: equipped ? supplyData.supplies : [],
+        plan: scenario.plan,
       });
       journey.push({ kind: 'combat', ...result });
       expect(result.mode, JSON.stringify(result)).not.toBe('battle');
       expect(Number.isFinite(result.hp)).toBe(true);
     } else if (['defeat', 'runComplete'].includes(state)) terminal = state;
     else if (state === 'route') {
-      journey.push(await page.evaluate(({ policy, equipped }) => {
+      journey.push(await page.evaluate(({ policy, equipped, plan }) => {
         const w = window as any, r = w.__birdSquadGame.scene.getScene('RouteScene'), map = w.__birdSquadCurrentMap();
+        const score = (card: any, upgrade = false) => plan ? w.__auditCardScore(card, plan, upgrade) : 0;
         if (r.shouldChooseDistrictContract()) {
           const choice = r.districtContractChoices()[0]; r.chooseDistrictContract(choice.id);
           return { kind: 'contract', id: choice.id, map: map.id };
         }
         if (r.cardPickerMode) {
-          const card = r.pickerEligibleCards(r.cardPickerMode).find((c: any) => c.cost <= r.runState.scrap);
+          const offers = r.pickerEligibleCards(r.cardPickerMode).filter((c: any) => c.cost <= r.runState.scrap)
+            .map((entry: any) => ({ ...entry, score: score(entry.card, true) - score(entry.card) }));
+          offers.sort((a: any, b: any) => b.score - a.score);
+          const card = offers[0];
           if (!card) throw new Error('Empty progression picker');
           const before = r.runState.scrap, cost = card.cost, context = r.cardPickerContext;
-          r.applyCardPick(card.index); return { kind: 'preen', id: card.card.id, context, cost, before, after: r.runState.scrap };
+          r.applyCardPick(card.index); return { kind: 'preen', id: card.card.id, context, cost, before, after: r.runState.scrap,
+            offered: offers.map((c: any) => ({ id: c.card.id, score: c.score, cost: c.cost })) };
         }
         if (r.pendingRouteReward) { r.claimRouteReward(); return { kind: 'claim-route' }; }
         if (r.marketOpen) {
           if (equipped) {
             const before = r.runState.scrap;
+            if (plan) {
+              const offered = r.marketCardShelf.map((s: any, index: number) => ({ ...s, index,
+                score: score(r.marketCardOffers().find((c: any) => c.id === s.id)?.card ?? { effects: [] }) }));
+              const pick = offered.filter((s: any) => !s.sold && s.price <= before
+                && !r.runState.deck.some((c: any) => c.id === s.id)).sort((a: any, b: any) => b.score - a.score)[0];
+              if (pick) { r.buyMarketCard(pick.index); return { kind: 'market-card', listing: pick, offered, before, after: r.runState.scrap }; }
+            }
             // Buy only legal offered stock; no refresh, grant or price override.
             const utility = r.marketUtilityShelf.findIndex((s: any) => !s.sold && r.marketUtilityEnabled(s)
               && (s.id === 'preen' || s.supplyId));
@@ -149,22 +165,31 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
         r.commitRouteNode(choice.id);
         return { kind: 'travel', id: choice.id, type: choice.type, map: map.id, offered: choices.map((n: any) => ({ id: n.id, type: n.type, payload: n.payloadId })),
           hp: r.runState.currentHp, scrap: r.runState.scrap, deck: r.runState.deck.length };
-      }, { policy, equipped }));
+      }, { policy, equipped, plan: scenario.plan }));
     } else {
       await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
-      journey.push(await page.evaluate(() => {
+      journey.push(await page.evaluate(plan => {
         const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+        const score = (card: any, upgrade = false) => plan ? (window as any).__auditCardScore(card, plan, upgrade) : 0;
         const mode = b.mode;
         if (mode === 'cardReward') {
-          const card = b.rewardChoices.find((c: any) => c.runtime.kind !== 'snag');
-          const offered = b.rewardChoices.map((c: any) => ({ id: c.id, effects: c.runtime.effects }));
+          const card = [...b.rewardChoices].filter((c: any) => c.runtime.kind !== 'snag').sort((a: any, z: any) => score(z) - score(a))[0];
+          const offered = b.rewardChoices.map((c: any) => ({ id: c.id, effects: c.runtime.effects, moltEffects: c.runtime.moltEffects, score: score(c) }));
           if (card) { b.chooseRewardCard(card.id); return { kind: mode, id: card.id, offered }; }
           b.skipCardReward(); return { kind: 'skip-card' };
         }
-        if (mode === 'upgradeReward') { const id = b.upgradeChoices[0].id; b.chooseUpgradeCard(id); return { kind: mode, id }; }
-        if (mode === 'waymarkReward') { const id = b.waymarkChoices[0].id; b.chooseWaymarkReward(id); return { kind: mode, id }; }
+        if (mode === 'upgradeReward') {
+          const offered = b.upgradeChoices.map((c: any) => ({ id: c.id, score: score(c, true) - score(c) }));
+          const id = [...offered].sort((a: any, z: any) => z.score - a.score)[0].id;
+          b.chooseUpgradeCard(id); return { kind: mode, id, offered };
+        }
+        if (mode === 'waymarkReward') {
+          const offered = b.waymarkChoices.map((c: any) => ({ id: c.id, effects: c.effects, score: score(c) }));
+          const id = [...offered].sort((a: any, z: any) => z.score - a.score)[0].id;
+          b.chooseWaymarkReward(id); return { kind: mode, id, offered };
+        }
         throw new Error(`Unsupported progression state: ${mode}`);
-      }));
+      }, scenario.plan));
     }
   }
   const summary = await page.evaluate(() => (window as any).__birdSquadLastRun ?? null);

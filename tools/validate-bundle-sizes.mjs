@@ -38,7 +38,8 @@ const budgets = [
   { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
   { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 8, hard: true },
-  { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 10, hard: true },
+  // Separate cost/outcome/protection fields and critical warnings; remains lazy.
+  { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 12, hard: true },
   { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 10, hard: true },
   { label: 'combat card reading panel', pattern: /^combat-card-detail-.*\.js$/, maxKb: 4, hard: true },
   { label: 'shared reward card face', pattern: /^reward-card-face-.*\.js$/, maxKb: 4, hard: true },

@@ -88,6 +88,7 @@ export interface BattleSelectionPreviewView {
   card: string;
   target: string;
   summary: string;
+  fields?: { cost: string; impact: string; protection: string; notice: string; critical: boolean };
   targetHp?: {
     x: number;
     y: number;
@@ -172,8 +173,26 @@ export function formatBattleSelectionOutcome(
   if (outcome.resonanceDelta !== 0) parts.push(`Resonance ${outcome.flockBefore.resonance} -> ${outcome.flockAfter.resonance}`);
   if (outcome.nextTurnDrawDelta !== 0) parts.push(`Next draw ${outcome.nextTurnDrawDelta > 0 ? '+' : ''}${outcome.nextTurnDrawDelta}`);
   if (outcome.nextTurnEnergyDelta !== 0) parts.push(`Next Wingbeats ${outcome.nextTurnEnergyDelta > 0 ? '+' : ''}${outcome.nextTurnEnergyDelta}`);
+  const defeated = outcome.enemyStates.filter(enemy => enemy.hpBefore > 0 && enemy.defeated).length;
+  const impact = outcome.contract.target === 'allEnemies' && outcome.enemyDamage > 0
+    ? defeated ? `${defeated} enemies defeated` : `${outcome.enemyDamage} total damage`
+    : targetState && targetState.hpAfter !== targetState.hpBefore
+      ? targetState.defeated ? 'Enemy DEFEATED' : `Enemy ${targetState.hpBefore} → ${targetState.hpAfter}`
+      : outcome.cohesionDelta !== 0 ? `Cohesion ${outcome.flockBefore.hp} → ${outcome.flockAfter.hp}`
+      : outcome.resonanceDelta !== 0 ? `Resonance ${outcome.flockBefore.resonance} → ${outcome.flockAfter.resonance}`
+      : outcome.flowGain > 0 ? `Flow ${outcome.flockBefore.flow} → ${outcome.flockAfter.flow >= outcome.flockAfter.flowMax ? 'SURGE' : outcome.flockAfter.flow}`
+      : 'Utility · Full rules';
+  const warnings = [phaseBreak ? 'PHASE II' : '', outcome.bossDisruptions?.length ? 'ATTACK DISRUPTED' : '',
+    outcome.requiresChoice ? 'CHOICE: later effects pending' : ''].filter(Boolean);
   return {
     card,
+    fields: {
+      cost: `Wingbeats ${outcome.flockBefore.energy} → ${outcome.flockAfter.energy}`,
+      impact,
+      protection: `Cover ${outcome.flockBefore.block} → ${outcome.flockAfter.block}`,
+      notice: warnings.join(' · ') || 'Card-only forecast · Full rules for every effect',
+      critical: warnings.length > 0,
+    },
     target: outcome.contract.target === 'enemy'
       ? outcome.target?.name ?? 'Choose target'
       : outcome.contract.target === 'allEnemies' ? 'All enemies' : 'Flock',
@@ -413,7 +432,7 @@ export function renderBattleSelectionPreview(
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
   // History and the current decision share one quiet lane above the hand.
   // A card decision temporarily takes precedence over history and the Roost
-  // lesson. First-card/Molt teaching remains; cancellation restores the lesson.
+  // lesson. Cancellation restores the lesson.
   const logObjects = root.list.filter(child => child.name === 'combat-log-hit' || child.name === 'combat-log-latest' || child.getData('deferToCard')) as (Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text)[];
   const previousVisibility = logObjects.map(child => child.visible);
   logObjects.forEach(child => child.setVisible(false));
@@ -423,40 +442,55 @@ export function renderBattleSelectionPreview(
   container.add(scene.add.rectangle(gameWidth / 2, y, 600, 52, 0x07101a, 0.97)
     .setStrokeStyle(1, context.cyan, 0.72)
     .setName('combat-outcome-preview'));
-  const title = scene.add.text(gameWidth / 2 - 284, y - 13, '', {
-    fontFamily,
-    fontSize: '19px',
-    fontStyle: boldFontStyle,
-    color: '#ffe7a8',
-    fixedWidth: 368,
-    wordWrap: { width: 368, useAdvancedWrap: true },
-    resolution: 2,
-    align: 'left',
-    maxLines: 1,
-  }).setOrigin(0, 0.5).setName('combat-selection-card-target');
-  container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
-  container.add(scene.add.rectangle(gameWidth / 2 + 190, y - 13, 188, 24, 0x102534, 0.98)
+  const titleY = y - 13;
+  // The selected hand card and enemy already identify the action. Keep the
+  // real forecast to two rows, below the crowded enemy-status lane.
+  if (!preview.fields) {
+    const title = scene.add.text(gameWidth / 2 - 284, titleY, '', {
+      fontFamily,
+      fontSize: '19px',
+      fontStyle: boldFontStyle,
+      color: '#ffe7a8',
+      fixedWidth: 368,
+      wordWrap: { width: 368, useAdvancedWrap: true },
+      resolution: 2,
+      align: 'left',
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setName('combat-selection-card-target');
+    container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
+  }
+  // The right end of the decision lane clears enemy statuses, Roost and both
+  // ordinary/paged hands. The left gutter belongs to paging and inspection.
+  const commandX = preview.fields ? 1050 : gameWidth / 2 + 190;
+  const commandY = preview.fields ? 400 : titleY;
+  container.add(scene.add.rectangle(commandX, commandY, 188, 24, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame'));
-  container.add(scene.add.text(gameWidth / 2 + 190, y - 13, 'CONFIRM TO PLAY', {
+  container.add(scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
     fontFamily,
     fontSize: '19px',
     resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
   }).setOrigin(0.5).setName('combat-selection-command'));
-  const summary = scene.add.text(gameWidth / 2, y + 13, '', {
-    fontFamily,
-    fontSize: '19px',
-    resolution: 2,
-    fontStyle: boldFontStyle,
-    color: '#dffbff',
-    fixedWidth: 570,
-    wordWrap: { width: 570, useAdvancedWrap: true },
-    align: 'center',
-    maxLines: 1,
-  }).setOrigin(0.5).setName('combat-selection-summary');
-  container.add(fitTextExcerpt(summary, preview.summary, 1));
+  if (preview.fields) {
+    const { cost, impact, protection, notice, critical } = preview.fields;
+    for (const [index, value] of [cost, impact, protection].entries()) {
+      container.add(scene.add.text(gameWidth / 2 - 190 + index * 190, y - 13, value, {
+        fontFamily, fontSize: '19px', fontStyle: boldFontStyle, color: '#dffbff', resolution: 2,
+      }).setOrigin(0.5).setName(['combat-selection-summary', 'combat-selection-impact', 'combat-selection-protection'][index]));
+    }
+    container.add(scene.add.text(gameWidth / 2, y + 13, notice, {
+      fontFamily, fontSize: '19px', color: critical ? '#ffe08a' : '#a6c7d6', resolution: 2,
+    }).setOrigin(0.5).setName('combat-selection-notice').setData('critical', critical));
+  } else {
+    const summary = scene.add.text(gameWidth / 2, y + 13, '', {
+      fontFamily, fontSize: '19px', resolution: 2, fontStyle: boldFontStyle,
+      color: '#dffbff', fixedWidth: 570, wordWrap: { width: 570, useAdvancedWrap: true },
+      align: 'center', maxLines: 1,
+    }).setOrigin(0.5).setName('combat-selection-summary');
+    container.add(fitTextExcerpt(summary, preview.summary, 1));
+  }
   root.add(container);
   return container;
 }

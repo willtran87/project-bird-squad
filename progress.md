@@ -1,5 +1,45 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-07 — Clearer choices and distinct builds (in progress)
+- Implement separate readable combat forecast fields, evidence-based owned-card
+  reward advice, strategy-aware earned-deck audits across shared seeds, and
+  measured fixes for repeatable interaction stalls. Preserve canonical art,
+  complete rules, deliberate confirmation and the existing human-test handoff.
+- Baseline: `6ebcb887`; branch `codex/clear-choices-distinct-builds`.
+  Baseline Pages build: `.artifacts/choices-baseline-build`, preview port 5428.
+- New cross-browser checks: 24/24 passed; 440 normal/upgraded/Molt forecasts
+  remain bounded. 33 unit/policy tests and content/assets/docs checks passed.
+- Three alternating native-clock samples per build show mixed timing, not an
+  FPS gain. Selection calls fall from seven simulations/five full views to
+  two/zero. Pages boot is 696.5/700 KiB; lazy HUD cap is explicitly 12 KiB.
+- Nine strategy campaigns and 18 affected regressions passed. Five campaigns
+  completed; four ended in measured defeat. The audit does not justify balance
+  claims or speculative card changes.
+- Review fixed exact-copy advice when an owned Preened duplicate shares an
+  offered base card's identity. Superseded CI `42427628611` was cancelled;
+  complete final-revision release qualification remains pending.
+- Diagnostic `42428071928` then found crowded enemy statuses overlapping the
+  taller forecast and an outdated empty-deck advice expectation. The forecast
+  now retains its original 52-pixel lane; the confirmation hint clears the full
+  combat cast. Corrected local checks: 13/13 catalog/cast/choices and 27/27
+  across browsers. Final shared-client selection/play captures are clean.
+- Final native samples still show mixed timing; a 1.8-second cold-entry outlier
+  did not repeat in a diagnostic pair. Its cause is unverified, not fixed.
+- Diagnostic `42430004689`: 1,150/1,152 core and 498/498 browser cases passed.
+  The two failures exposed the confirmation hint overlapping large, paged hands.
+  It now sits to the right of the forecast above Roost. Hand/pager/inspection
+  geometry is explicitly checked; large hands join all three browser gates
+  (168 cases per engine / 504 total). Final release qualification remains pending.
+  See `docs/game/clearer-choices.md` and `docs/project/performance-notes.md`.
+- Final right-side layout: 23/23 layout/identity/catalog, 33/33 cross-browser,
+  and 3/3 focused critical-warning checks passed. Final shared-client captures
+  show clean selection/play transitions. Six native samples retain mixed
+  timings and cold-entry outliers in both versions; no latency gain is claimed.
+- No human sessions are available; preparation remains the accepted deliverable.
+- Diagnostic `42433365993` found a title-flourish wall-clock sampling race.
+  The test now waits for lazy-module readiness and samples a defined animation
+  beat without relaxing visibility or route-transition assertions.
+
 ## 2026-11-04 — Decisions and rhythm (published)
 - Accepted the clarity, strategy, encounter-rhythm, turning-point and measured
   performance pass, followed by full release tests, publication and cleanup.

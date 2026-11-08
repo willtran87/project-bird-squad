@@ -20334,8 +20334,15 @@ test('title start run renders generated launch flourish before route transition'
     await window.__birdSquadStartScene!('MenuScene');
     const menu: any = g.scene.getScene('MenuScene');
     for (let i = 0; i < 40 && !menu.textures.exists('title-run-launch-flourish'); i += 1) await wait(50);
+    // The launch module is lazy and its flourish fades after 80 ms. Sample a
+    // known animation beat instead of racing a wall-clock sleep against loading.
+    menu.time.paused = true;
+    menu.tweens.paused = true;
     menu.startRunAnimated(false, 780, 642, 286);
-    await wait(160);
+    for (let i = 0; i < 40 && menu.titleRunLaunchFlourishBursts === 0; i += 1) await wait(50);
+    menu.time.paused = false;
+    menu.tweens.paused = false;
+    window.advanceTime!(80);
     const during = JSON.parse(window.render_game_to_text!());
     const activeDuring = g.scene.getScenes(true).map((scene: any) => scene.scene.key);
     const collectObjects = (children: any[], textureKey: string): any[] => {

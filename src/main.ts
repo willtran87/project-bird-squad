@@ -8673,6 +8673,7 @@ class RouteScene extends Phaser.Scene {
       : anchorX;
     const contract = activeCardContract(card, false);
     this.cardHoverDetailRequest = {
+      card,
       cardId: card.id,
       marketCardId: marketCard ? card.id : undefined,
       name: displayName(card),
@@ -16035,9 +16036,8 @@ private playBattleIntro(onComplete?: () => void) {
     return activeMapIndex === 0 && ['card', 'roost', 'reward'].includes(step) && this.turn <= 3;
   }
 
-  private renderSelectedCardOutcomePreview() {
+  private renderSelectedCardOutcomePreview(preview = this.selectedCardOutcomePreview()) {
     if (this.discardChoice) return;
-    const preview = this.selectedCardOutcomePreview();
     if (!preview || this.combatAnimationPending || this.mode !== 'battle') return;
     const targetHp = preview.result.targetHp;
     const enemy = targetHp && targetHp.after < targetHp.before
@@ -16049,6 +16049,7 @@ private playBattleIntro(onComplete?: () => void) {
       card: preview.card,
       target: preview.target,
       summary: preview.summary,
+      fields: preview.fields,
       targetHp: targetHp && hp ? {
         x: hp.x,
         y: hp.y,
@@ -16090,10 +16091,10 @@ private playBattleIntro(onComplete?: () => void) {
       .filter((child) => child.name === 'combat-flow-preview-pip' || child.name === 'combat-enemy-outcome-preview')
       .forEach((child) => child.destroy());
     const card = this.getSelectedCard();
+    const preview = this.selectedCardOutcomePreview();
     let previewFlow = this.flock.flow;
-    if (card) {
-      const flowGain = this.simulateCardOutcome(card, this.selectedEnemyId).flowGain;
-      previewFlow = Math.min(this.flock.flowMax, this.flock.flow + flowGain);
+    if (card && preview) {
+      previewFlow = Math.min(this.flock.flowMax, preview.result.flow.after);
       const flowX = (FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2) + FLOCK_HP_BAR.w + FLOW_HUD_X_OFFSET;
       const flowY = FLOCK_HP_BAR.y + FLOW_HUD_Y_OFFSET + practiceHudOffset();
       const pipStart = flowX + FLOW_HUD_PIP_OFFSET;
@@ -16114,7 +16115,7 @@ private playBattleIntro(onComplete?: () => void) {
     status?.setText(flowStatus).setColor(flowStatusColor);
     const rail = this.root.list.find((child) => child.name === 'combat-flow-rail') as Phaser.GameObjects.Rectangle | undefined;
     rail?.setFillStyle(flowFill, 0.96).setStrokeStyle(1, flowAccent, 0.3);
-    this.renderSelectedCardOutcomePreview();
+    this.renderSelectedCardOutcomePreview(preview);
   }
 
   private createEncounterObjective(routeNode: RouteNode): EncounterObjective | undefined {
@@ -16797,6 +16798,10 @@ private playBattleIntro(onComplete?: () => void) {
     const selected = this.hand.findIndex(card => card.instanceId === this.selectedInstanceId);
     if (selected >= 0 && Math.floor(selected / 5) !== this.handPage) this.renderHand();
     if (this.battleHandRendererModule) {
+      const guideCard = this.firstCombatGuideCard()?.instanceId;
+      const guideMolt = this.firstMoltGuideCard()?.instanceId;
+      const guided = this.isGuidedFirstCombat();
+      const surgeNext = this.flock.flow === this.flock.flowMax - 1;
       this.battleHandRendererModule.refreshBattleHandSelection(
         {
           scene: this,
@@ -16804,7 +16809,20 @@ private playBattleIntro(onComplete?: () => void) {
           cardHeight: CARD_H,
           reducedMotion: prefersReducedMotion(),
         },
-        this.hand.map((card) => this.battleHandCardView(card)),
+        this.hand.filter(card => this.handCardRects.get(card.instanceId)?.active).map(card => ({
+          instanceId: card.instanceId,
+          selected: card.instanceId === this.selectedInstanceId,
+          guideCard: card.instanceId === guideCard,
+          guideMolt: card.instanceId === guideMolt,
+          accent: card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
+          canPay: this.effectiveCost(card) <= this.energy && this.mode === 'battle',
+          surgeNext,
+          // Selection never changes rules or art. Only simulate a Flow badge
+          // that can be visible; don't rebuild every card's complete dossier.
+          flowVisible: this.flock.flow < this.flock.flowMax
+            && (card.instanceId === this.selectedInstanceId || (surgeNext && (!guided || card.instanceId === guideCard)))
+            && this.cardBuildsFlow(card),
+        })),
         this.battleHandRenderResult(),
       );
       return;
@@ -16943,7 +16961,9 @@ private playBattleIntro(onComplete?: () => void) {
       this.showCardPreviewFallback(card, previewX);
       return;
     }
-    const view = this.battleHandCardView(card);
+    // The combat preview is only an Inspect control; its full dossier is built
+    // on activation from current state, not on every selection.
+    const preview = this.mode === 'battle' ? undefined : this.battleHandCardView(card).preview;
     try {
       this.cardPreview = this.battleHandRendererModule.renderBattleHandPreview({
         combat: this.mode === 'battle',
@@ -16965,7 +16985,7 @@ private playBattleIntro(onComplete?: () => void) {
         renderRichText: (target, x, y, text, options) => renderRichText(this, target, x, y, text, options),
         renderSnagArt: (target, _instanceId, x, y, width, height, alpha) =>
           renderSnagCardBorder(this, (obj) => target.add(obj), card, x, y, width, height, alpha),
-      }, view.preview, card.instanceId, previewX).setData('instanceId', card.instanceId);
+      }, preview, card.instanceId, previewX).setData('instanceId', card.instanceId);
       if (this.mode === 'battle' && this.hand.length > 5) this.cardPreview.setY(654);
     } catch (error) {
       console.warn('Battle hand preview renderer failed; using compact fallback.', error);

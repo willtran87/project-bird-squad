@@ -1,5 +1,6 @@
 import { contributionReading } from './card-contributions';
 import { candidateBuildReading } from './build-guidance';
+import { decisionBrief } from './decision-brief';
 import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import { boundedRewardText, renderRewardCardFace, rewardDecisionPreviewLabel } from './battle/reward-card-face';
 export { boundedRewardText, rewardDecisionPreviewLabel } from './battle/reward-card-face';
@@ -325,13 +326,16 @@ function observedFlightSection(scene: any) {
 }
 function candidateSections(scene: any, view: CardHoverDetailView) {
   const id = view.cardId ?? view.marketCardId;
-  const deck: Card[] = scene.runState ? cardsFromSave(scene.runState.deck) : scene.allDeckCards?.() ?? [];
-  const card = deck.find(c => c.id === id) ?? cardLibrary[id ?? ''];
+  const deck: Card[] = scene.allDeckCards?.() ?? (scene.runState ? cardsFromSave(scene.runState.deck) : []);
+  const card = view.card ?? deck.find(c => c.id === id) ?? cardLibrary[id ?? ''];
   if (!card) return [];
   const combats = [...(scene.runState?.combatResults ?? scene.runCombatResults ?? [])];
   if (scene.cardContributions?.length) combats.push({ cardContributions: scene.cardContributions });
   const read = candidateBuildReading(card, deck, combats);
-  return [{ title: 'FITS THIS FLOCK · POTENTIAL', text: read.potential }, { title: 'THIS BIRD · OBSERVED', text: read.observed }];
+  const candidate = scene.mode === 'upgradeReward' || scene.cardPickerMode === 'preen' ? { ...card, upgraded: true } : card;
+  const brief = decisionBrief({ ...candidate, name: displayName(candidate) }, deck.map(c => ({ ...c, name: displayName(c) })));
+  return [{ title: 'OWNED PAIRING · CONDITIONS', text: brief.details },
+    { title: 'FITS THIS FLOCK · POTENTIAL', text: read.potential }, { title: 'THIS BIRD · OBSERVED', text: read.observed }];
 }
 
 export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHoverDetailView) {
@@ -2012,6 +2016,7 @@ export function syncRewardCardInspection(scene: any, chrome: {
   // A reward describes the next flight decision, not the finished turn's Molt
   // stance or temporary energy discount. Never borrow effective combat costs.
   const view: CardHoverDetailView = {
+    card,
     cardId: card.id,
     name: displayName(card), bird: card.bird, label: cardLabel(card),
     zone: scene.mode === 'upgradeReward' ? 'Combat Preen inspection' : 'Combat reward inspection',

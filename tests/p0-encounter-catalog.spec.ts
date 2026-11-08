@@ -52,6 +52,7 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
         const clear = (a: any, z: any) => a.right <= z.left || a.left >= z.right || a.bottom <= z.top || a.top >= z.bottom;
         const contains = (a: any, z: any) => z.left >= a.left && z.right <= a.right && z.top >= a.top && z.bottom <= a.bottom;
         const frame = b.selectionOutcomePreview?.getByName('combat-outcome-preview')?.getBounds();
+        const command = b.selectionOutcomePreview?.getByName('combat-selection-command-frame')?.getBounds();
         const visible = b.root.list.filter((o: any) => o.name === 'combat-enemy-art');
         const goal = b.root.list.find((o: any) => o.name === 'encounter-objective' && o.type === 'Rectangle');
         const art = visible.map((group: any) => {
@@ -74,7 +75,7 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
           artClear: art.every((r: any) => r.left >= 0 && r.right <= 1280 && r.top >= 106 && panels.every((p: any) => clear(p.getBounds(), r))),
           goalClear: !goal || art.every((r: any) => clear(goal.getBounds(), r))
             && panels.every((p: any) => clear(goal.getBounds(), p.getBounds())),
-          previewClear: !frame || panels.every((p: any) => clear(p.getBounds(), frame)),
+          previewClear: !frame || panels.every((p: any) => clear(p.getBounds(), frame) && (!command || clear(p.getBounds(), command))),
           targetsInteractive: visible.every((g: any) => g.list[0].getByName('combat-enemy-portrait').input?.enabled),
           eliteLabels: b.enemies.filter((e: any) => e.runtime.type === 'elite').every((e: any) => {
             const label = b.root.list.find((o: any) => o.name === 'combat-elite-label' && o.getData('enemyId') === e.id);

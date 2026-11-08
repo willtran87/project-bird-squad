@@ -1,5 +1,46 @@
 # Performance Notes
 
+## November 7 2026 — Clearer choices
+
+Pages boot is 696.5 KiB against the unchanged 700 KiB cap, versus 694.1 KiB
+at baseline `6ebcb887`. The separate battle HUD grows to 11.4 KiB for three
+forecast fields and a persistent critical-warning row; its lazy-module cap
+changes from 10 to 12 KiB. This is an explicit feature cost, not a size win.
+No artwork, text resolution or motion quality was reduced.
+
+Selection refresh reuses its current forecast, updates only visible selection
+and Flow state, and builds the complete Inspect dossier on activation. Separate
+instrumentation consistently measured seven simulations/five full card views
+before versus two/zero after. There is no persistent simulation cache.
+
+Three alternating production-build runs per version, Chromium 1440×900, native clock,
+no concurrent browser tests or synthetic stepping. Each run has 36 selections,
+nine plays, three entries (two warm). Values list all three runs, in order.
+These final right-side-confirmation samples supersede earlier layout samples.
+Extra resources are confined to this timing fixture;
+the earned-deck strategy audit uses ordinary resources.
+
+| Metric, ms | Baseline | Candidate |
+| --- | --- | --- |
+| Selection median | 31.1 / 30.6 / 33.1 | 42.1 / 33.4 / 31.1 |
+| Selection synchronous median | 4.7 / 4.3 / 4.7 | 6.2 / 3.6 / 3.9 |
+| Selection frame P95 | 33.4 / 33.4 / 49.9 | 50.1 / 49.9 / 33.4 |
+| Play median | 337.3 / 352.2 / 345.0 | 366.4 / 342.5 / 354.2 |
+| Play frame P95 | 66.6 / 66.7 / 66.7 | 99.9 / 66.8 / 66.7 |
+| Entry median | 1937.4 / 1928.5 / 1949.0 | 2013.1 / 1926.2 / 1937.4 |
+| Entry frame P95 | 100.0 / 83.3 / 133.3 | 149.9 / 116.7 / 116.7 |
+| Entry max frame | 349.9 / 1333.3 / 316.6 | 1250.0 / 366.6 / 400.0 |
+| Warm-entry frame P95 | 33.4 / 33.4 / 50.0 | 50.0 / 33.5 / 33.5 |
+
+These samples establish less redundant work, not improved latency or FPS.
+Several candidate timing samples are slower; no general performance gain is
+claimed. Both versions show long cold-entry frames. An earlier candidate's
+1.8-second cold-entry frame did not recur at that magnitude, but its cause is
+unverified; it is retained, not called fixed. All six final runs were free of
+captured page errors. Raw profiles are local
+`.artifacts/choices-release-{baseline,candidate}-{1,2,3}/profile.json`; earlier
+outlier evidence remains in `.artifacts/choices-final-candidate-3/profile.json`.
+
 ## October 28 2026 — Distinct Builds + Living Battles
 
 Root boot is 697.2 KiB / 195.0 KiB gzip; main is 655.1 / 178.4 KiB. Existing

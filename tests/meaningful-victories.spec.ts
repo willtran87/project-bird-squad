@@ -51,7 +51,9 @@ test('Meaningful Victories reward benefits are complete and do not invent pairin
     const card={id:runtime.id,name:runtime.displayName,runtime:runtime as any,upgraded};
     expect(primaryBenefit(card)).not.toMatch(/\.\.\.|…/);
     expect(primaryBenefit(card)).toMatch(/[.]$/);
-    expect(decisionBrief(card,[]).pairing).toBe('Read for full rules and Molt ability.');
+    const brief=decisionBrief(card,[]);
+    expect(brief.pairing).toBe('No verified owned pairing.');
+    expect(brief.details).toContain('No supported pairing fits');
   }
 });
 
