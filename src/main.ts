@@ -16784,9 +16784,10 @@ private playBattleIntro(onComplete?: () => void) {
         firstAttack: outcome.firstAttackAfter,
       });
     const unknown = [...new Set([...before.uncertainty, ...(after?.uncertainty ?? []), ...uncertainty])];
+    const now = `Roost now: ${before.uncertainty.length ? 'estimated ' : ''}${before.hpLoss} HP loss.`;
     const detail = after
-      ? `Roost now: ${before.hpLoss} HP loss. After this card then Roost: ${unknown.length ? 'estimated ' : ''}${after.hpLoss} HP loss; ${after.afterHp} Cohesion left. ${after.scope}.${unknown.length ? ` ${unknown.join('; ')}.` : ''}`
-      : `Roost now: ${before.hpLoss} HP loss. After this card then Roost: unknown until the card is playable and its choices resolve.`;
+      ? `${now} After this card then Roost: ${unknown.length ? 'estimated ' : ''}${after.hpLoss} HP loss; ${after.afterHp} Cohesion left. ${after.scope}.${unknown.length ? ` ${unknown.join('; ')}.` : ''}`
+      : `${now} After this card then Roost: unknown until the card is playable and its choices resolve.`;
     return { before: before.hpLoss, after: after?.hpLoss, remaining: after?.afterHp, uncertainty: unknown, detail };
   }
 

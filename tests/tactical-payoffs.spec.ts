@@ -72,15 +72,23 @@ test('Tactical payoffs uncertainty, cancellation and independent Roost remain ho
     const selected=b.root.getByName('combat-roost-preview').text;
     b.selectedInstanceId=undefined;b.refreshCombatSelectionPreview();
     const cancelled=b.root.getByName('combat-roost-preview').text;
+    const enemy=b.enemies[0],runtime=enemy.runtime;
+    enemy.runtime={...runtime,moves:[{id:'unprojected',label:'Unprojected',effects:['futureRule()']}],attackPattern:{type:'cycle',moveIds:['unprojected']}};
+    b.selectedInstanceId=c.instanceId;b.renderAll();
+    const estimated=b.root.getByName('combat-roost-preview').text;
+    const estimatedDetail=b.selectedCardOutcomePreview().survival.detail;
+    enemy.runtime=runtime;
     b.selectedInstanceId=c.instanceId;const now=b.incomingFlockDamagePreview();
     let hp=b.flock.hp;const start=b.startPlayerTurn;
     b.startPlayerTurn=function(...args:any[]){hp=this.flock.hp;return start.apply(this,args);};
     b.endTurn();b.startPlayerTurn=start;
-    return {draw,choice,unaffordable,selected,cancelled,now,hp};
+    return {draw,choice,unaffordable,selected,cancelled,estimated,estimatedDetail,now,hp};
   });
   expect(result.draw.uncertainty.join(' ')).toContain('Draw-dependent');
   expect(result.choice.after).toBeUndefined();expect(result.unaffordable.after).toBeUndefined();
   expect(result.selected).toContain('Then:');expect(result.cancelled).not.toContain('Then:');
+  expect(result.estimated).toContain('Now: ~');
+  expect(result.estimatedDetail).toContain('Roost now: estimated');
   expect(result.hp).toBe(result.now.afterHp);
 });
 

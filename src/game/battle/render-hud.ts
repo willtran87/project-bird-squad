@@ -436,7 +436,7 @@ export function renderBattleSelectionPreview(
   if (risk && preview.survival) {
     const original = risk.text, font = risk.style.fontSize;
     const s = preview.survival;
-    risk.setFontSize(18).setText(`Now: ${s.before} HP loss\nThen: ${s.after === undefined ? '?' : `${s.uncertainty.length ? '~' : ''}${s.remaining === 0 ? 'defeat' : `${s.after} HP loss`}`}`)
+    risk.setFontSize(18).setText(`Now: ${original.startsWith('Est.') ? '~' : ''}${s.before} HP loss\nThen: ${s.after === undefined ? '?' : `${s.uncertainty.length ? '~' : ''}${s.remaining === 0 ? 'defeat' : `${s.after} HP loss`}`}`)
       .setData('survivalDetail', s.detail);
     container.once(Phaser.GameObjects.Events.DESTROY, () => {
       if (risk.active) risk.setFontSize(font).setText(original).setData('survivalDetail', undefined);
