@@ -7,6 +7,14 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Align temporary runner home ownership
+      shell: bash
+      run: |
+        # GitHub mounts its temporary home as the host runner user, while the
+        # official image runs as root. Firefox requires matching ownership.
+        if [[ "$HOME" == "/github/home" && "$(id -u)" == "0" ]]; then
+          chown "$(id -u):$(id -g)" /github/home
+        fi
     - name: Verify package version and browser executable
       shell: bash
       env:
@@ -21,5 +29,9 @@ runs:
         assert.ok(['chromium', 'firefox', 'webkit'].includes(name));
         const browser = require('playwright')[name];
         assert.ok(fs.existsSync(browser.executablePath()), `Missing packaged ${name} executable`);
-        console.log(`Verified Playwright ${version}: ${name}`);
+        (async () => {
+          const launched = await browser.launch();
+          await launched.close();
+          console.log(`Verified Playwright ${version}: ${name} launches`);
+        })().catch(error => { console.error(error); process.exitCode = 1; });
         NODE

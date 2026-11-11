@@ -159,3 +159,10 @@ image, pinned by digest, with browsers and system dependencies already included.
 A shared verification action rejects mismatched Playwright package versions or
 missing executables. Node 22, browser versions, test coverage, build gates and
 zero-test-retry requirements are unchanged. No package verification is disabled.
+
+The first packaged run (`43039492732`) exposed Firefox's root/home ownership
+requirement: GitHub mounts its temporary home as the host runner user. Browser
+launch failed before game execution. The shared setup action now aligns only
+that temporary `/github/home` directory with the container user, then launches
+and closes the requested browser before starting tests. The failed run was
+canceled; final qualification uses this correction.

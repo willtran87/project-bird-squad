@@ -15627,3 +15627,5 @@ Follow-up implementation and verification (same working turn):
 
 - Standard Ubuntu mirrors also failed DNS in run 43038007268; retained the installation log and canceled the unqualified run. Replaced per-job package installation with the official Playwright 1.60.0 Noble container, pinned to verified registry digest 9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948.
 - All five test/build jobs use the same packaged environment; a shared action rejects package-version drift or missing browser executables. Node 22 and all existing test/build gates remain unchanged.
+
+- Packaged-run follow-up: Firefox launch rejected the host-owned temporary GitHub home directory. The CI-only setup action now aligns that directory with the container user and validates an actual browser launch before tests. Run 43039492732 remains unqualified; no game assertions were weakened.
