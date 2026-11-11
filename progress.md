@@ -15601,3 +15601,11 @@ Follow-up implementation and verification (same working turn):
   sessions remain excluded. All 44 items are NOT resolved; broad art consistency,
   shared controls, card/combat/Collection polish and full release verification
   still require work. Do not report the game as all-A.
+
+## Tactical payoffs release-boundary follow-up — November 11, 2026
+
+- Full qualification attempt 43016816762 stopped before merge: 1,175/1,176 core and 548/549 browser checks passed. Retained all 29 reports and eighteen earned strategy audits.
+- Market click diagnostic reproduced a newly constructed but not yet registered Phaser hit area: pre-frame click ignored, post-registration click selected card:0. Test input now waits for canvas and hit-area registration.
+- WebKit story fixture reached its saved-story assertions but reloaded during cold outcome-art XHRs. It now observes the rendered ending and loaded textures before the persistence reload, preserving page-error assertions and zero retries.
+- Recorded three paired native timing runs in docs/game/tactical-payoffs.md: card-play median 338.7 → 287.9 ms, frame P95 66.6 → 33.4 ms; selection unchanged and a 299.9 ms entry outlier retained. Recorded earned-policy outcomes and limitations; human handoff remains pending actual sessions.
+- Further native Firefox diagnostics identified a genuine late-art input gap: the scene PRE_UPDATE refresh ran after InputPlugin registration. Moved the coalesced refresh to game STEP before scene registration, retaining tooltip/modal/paused-scene deferral and cleaning up the global listener. The deterministic post-step assertion fails on the previous build with registered:false; the corrected production build is being verified.

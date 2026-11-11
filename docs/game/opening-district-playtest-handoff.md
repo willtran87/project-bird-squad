@@ -42,6 +42,10 @@ At the first earned Preen, record which complementary branches were offered,
 which was chosen and why. In The Quiet Beat, record whether the player notices
 the option to interrupt Gather Force or chooses protection instead. Observe
 whether the resolved-action message remains readable before coaching returns.
+The six-seed scripted Tempo policy won fewer runs than Shelter or Molt. Observe
+whether players understand its protection and Resonance opportunities, and
+record which affordable opportunities they decline and why. This is a question
+for observation, not a diagnosis or a reason to teach the policy beforehand.
 
 After a signature encounter, ask what two approaches the player could take.
 Record whether the ferry crossing, relay interception or rooftop escape is

@@ -5157,7 +5157,15 @@ class RouteScene extends Phaser.Scene {
   private routeEventArtRequested = new Set<RouteNode['type']>();
   private routeEssentialAssetsReady = false;
   private routeArtworkRefreshPending = false;
+  private resumeRouteArtwork = () => {
+    this.routeArtworkRefreshPending = false;
+    this.refreshRouteArtwork();
+  };
   private flushRouteArtwork = () => {
+    if (this.sys.isPaused()) {
+      this.events.once(Phaser.Scenes.Events.RESUME, this.resumeRouteArtwork);
+      return;
+    }
     // A background image must not dismiss the tooltip the player is reading.
     // Keep one pending repaint until its existing close path releases it.
     const tooltip = this.children.getByName('route-node-tooltip');
@@ -5427,7 +5435,8 @@ class RouteScene extends Phaser.Scene {
     birdAudio.setMood('route');
     this.routeArtworkRefreshPending = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.events.off(Phaser.Scenes.Events.PRE_UPDATE, this.flushRouteArtwork);
+      this.game.events.off(Phaser.Core.Events.STEP, this.flushRouteArtwork);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.resumeRouteArtwork);
       this.routeArtworkRefreshPending = false;
     });
     observeChoiceInput(this);
@@ -6229,7 +6238,10 @@ class RouteScene extends Phaser.Scene {
     }
     if (this.routeArtworkRefreshPending || (!this.sys.isActive() && !this.sys.isPaused())) return;
     this.routeArtworkRefreshPending = true;
-    this.events.once(Phaser.Scenes.Events.PRE_UPDATE, this.flushRouteArtwork);
+    // Rebuild before the scene's InputPlugin PRE_UPDATE registers hit areas.
+    // A later scene PRE_UPDATE listener creates visible controls that cannot
+    // receive input until the following frame.
+    this.game.events.once(Phaser.Core.Events.STEP, this.flushRouteArtwork);
   }
 
   private queueCardPortraitArtLoad(card: Pick<Card, 'id'>, warning: string, onComplete: () => void = () => this.refreshRouteArtwork()) {

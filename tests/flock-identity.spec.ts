@@ -122,6 +122,16 @@ for(const story of ['chorus-line','clean-cut'])test(`Flock Identity ${story} rec
     // Explicit ending-boundary fixture; unit cases cover incomplete/defeat thresholds.
     b.flyway.resonanceSpent=12;b.flyway.windedHits=12;b.flyway.leaderCalls=3;b.flyway.rivalWins=3;b.flyway.restored=[0,1,2,3];b.mode='runComplete';b.emitRunSummary('win');b.renderAll();return {progress,complete:b.flyway.storyComplete};
   },story);expect(result.progress).toBe(story==='chorus-line'?3:1);expect(result.complete).toBe(true);
+  // This fixture jumps straight to the ending without warming its art through
+  // normal play. Observe the rendered ending before testing its saved journal;
+  // reloading mid-XHR produces WebKit navigation-abort access-control errors.
+  await page.waitForFunction(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    return b.root?.getByName('run-outcome-surface') && !b.load.isLoading()
+      && ['run-outcome-stat-row-frame', 'unlock-badge', 'run-outcome-report-frame',
+        'run-outcome-command-frame', 'progression-unlock-flourish', 'run-outcome-title-plaque',
+        'run-outcome-flourish', 'run-outcome-crest'].every(id => b.textures.exists(`ui-icon-${id}`));
+  });
   await page.reload();await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
   await expect(page.getByRole('heading',{name:story==='chorus-line'?'Every roof answers':'A path for smaller wings',exact:true})).toBeVisible();await expect(page.getByText(/Having yielded three wagers/)).toBeVisible();
   await expect(page.getByText(story==='chorus-line'?'Answering Chorus · amber wave journal seal':'Clear Passage · silver quill journal seal',{exact:true})).toBeVisible();
