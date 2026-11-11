@@ -26,7 +26,8 @@ branch cleanup. Human sessions remain unavailable; update the existing handoff.
 - Verify at 2560×1600, 1440×900 and 1000×560, all three browser engines, the
   shared game client, full release workflow and deployed Pages artifact.
 
-Baseline: `8a04cf84` (published runtime `a072362d`). Work is in progress.
+Baseline: `8a04cf84` (previous published runtime `a072362d`).
+Completed and published: `04792ad3b1eb5efc1684d32726f85e26ff81dfa3` via [PR #24](https://github.com/willtran87/project-bird-squad/pull/24).
 
 ## Implementation and evidence
 
@@ -70,38 +71,40 @@ passed. Two stale-served-label diagnostics are superseded by the fresh-build
 pass. Native high-resolution and minimum-size images were inspected, and live
 selection was checked in the integrated browser. Boot code is 699.1 KiB against
 the unchanged 700 KiB ceiling; documentation, content and bundle checks pass.
-The release inventory is 1,176 core and 549 cross-browser cases. Full workflow
-qualification and publication are pending.
+Full release qualification and publication passed; exact evidence is below.
 
 ## Native timing comparison
 
 Three isolated before/after pairs at 1440×900 used the native browser clock,
 unchanged art and a fixed First Flight timing fixture. The measured candidate
-was `f2e594b9`, before the later Market input-boundary correction. Each side contains 108
-selections, 27 plays, nine entries and six warm entries. The fixture's extra
-HP/energy isolates timing; it is not balance evidence.
+was `c6c456083b758e54c1833bd455a1223ab3562f64`, before the later outcome-input
+correction (which leaves the measured combat path unchanged). Each side contains 108 selections, 27 plays, nine entries
+and six warm entries. Extra fixture HP/energy isolates timing; it is not balance evidence.
 
 | Operation | Median before → after | Frame P95 before → after | Maximum frame before → after |
 | --- | --- | --- | --- |
-| Selection | 28.8 → 30.0 ms | 33.4 → 33.4 ms | 50.1 → 50.0 ms |
-| Card play | 338.7 → 287.9 ms | 66.6 → 33.4 ms | 100.0 → 66.7 ms |
-| Entry, all | 1909.0 → 1839.4 ms | 83.3 → 83.3 ms | 266.6 → 299.9 ms |
-| Entry, warm | 1906.6 → 1839.0 ms | 33.4 → 33.4 ms | 100.1 → 66.7 ms |
+| Selection | 29.5 → 30.5 ms | 33.4 → 50.0 ms | 50.0 → 50.1 ms |
+| Card play | 343.1 → 293.0 ms | 66.7 → 50.0 ms | 100.0 → 83.3 ms |
+| Entry, all | 1940.1 → 1902.5 ms | 100.0 → 83.4 ms | 266.7 → 1700.0 ms |
+| Entry, warm | 1918.5 → 1851.0 ms | 50.0 → 50.0 ms | 116.6 → 66.7 ms |
 
-The card-play median fell about 15%; selection did not improve. The 299.9 ms
-entry outlier remains. No claim that every stall is fixed, or that these browser
+Card-play median fell about 15%; selection did not improve. The 1700 ms cold-entry
+outlier remains in this table. An additional traced pair and native pair did not
+reproduce it (candidate cold-entry maxima 233.3 and 216.7 ms respectively), but
+its cause is unresolved. No claim that every stall is fixed or that these browser
 measurements guarantee physical-device performance. No page errors occurred.
-The diagnostic CPU trace pair reduced texture-upload samples beneath
-`setFilter` from 1105.3 ms/631 samples to zero; other texture creation remains.
-Evidence: `.artifacts/payoff-stable-performance-summary.json` and the paired
-native captures, plus `choices-payoff-baseline-trace` / `choices-payoff-filter-trace`.
+The final diagnostic CPU trace pair reduced texture-upload samples beneath
+`setFilter` from 1138.7 ms/662 samples to zero; other texture creation remains.
+Evidence: `.artifacts/payoff-head-performance-summary.json`, paired captures,
+`choices-payoff-head-before-trace` / `choices-payoff-head-after-trace`, and
+`choices-payoff-head-outlier-before` / `choices-payoff-head-outlier-after`.
+The earlier `f2e594b9` comparison is retained separately in
+`payoff-stable-performance-summary.json`; it also showed a roughly 15% play-median reduction.
 
 ## Earned strategy observations
 
-The eighteen recorded runs (six seeds per policy) used actual routes, rewards,
-shops and Preen dialogs, without deck grants or reordered draws. The first full
-qualification attempt produced the following strategy evidence, although two
-unrelated UI test boundaries prevented that run from qualifying the release.
+The eighteen qualified runs (six seeds per policy) used actual routes, rewards,
+shops and Preen dialogs, without deck grants or reordered draws.
 
 | Policy | Wins / runs | Fights | Blocked / fight | Resonance spent / fight | Affordable branch hands |
 | --- | --- | --- | --- | --- | --- |
@@ -109,14 +112,15 @@ unrelated UI test boundaries prevented that run from qualifying the release.
 | Tempo | 2 / 6 | 33 | 12.82 | 1.15 | 20 |
 | Molt | 5 / 6 | 61 | 26.51 | 2.00 | 94 |
 
-Complementary branches activated in play: Shelter Song once, Returning Call
-three times and Homeward Wing eight times. Generic Shelter/Flight branches also
-contributed. The three policies produced 89/29/149 Molt actions respectively.
-These are bounded scripted policies: card ranking before a branch choice still
-uses the canonical-upgrade heuristic, and the policies are not optimal or equally
-strong. Tempo's lower results are an observation for the human handoff, not
-proof of a particular balance defect. The concrete early-Preen availability
-bottleneck is fixed; damage, prices and reward probabilities remain unchanged.
+Complementary branches activated in play: Shelter Song once,
+Returning Call three times and Homeward Wing eight times. Generic
+Shelter/Flight branches also contributed. The three policies produced
+89/29/149 Molt actions respectively. These are bounded scripted policies:
+card ranking before a branch choice still uses the canonical-upgrade heuristic,
+and the policies are not optimal or equally strong. Tempo's lower results are
+an observation for the human handoff, not proof of a particular balance defect.
+The concrete early-Preen availability bottleneck is fixed; damage, prices and
+reward probabilities remain unchanged.
 
 ## Release-boundary corrections
 
@@ -174,3 +178,30 @@ having different ownership. The shared setup now registers only the explicit
 checked-out workspace as a Git safe directory and exercises the same tracked-file
 query before tests. The failed release is retained as evidence; final publication
 requires a successful artifact identity record as well as the test reports.
+
+## Published verification — November 11, 2026
+
+- [PR qualification](https://github.com/willtran87/project-bird-squad/actions/runs/43047838421) and
+  [main publication](https://github.com/willtran87/project-bird-squad/actions/runs/43056922022) each passed all
+  1,176 core and 549 cross-browser cases, with 29 complete reports, unique case
+  identities, zero test retries, failures or skips. Build/content/policy checks and
+  the Pages base-path checks also passed.
+- Qualified head `c4dd2b4b6b4b68e2e0ebf11d0455a198f99004a2` and squash merge `04792ad3b1eb5efc1684d32726f85e26ff81dfa3` have identical
+  Git trees. Clean PR/main build evidence matches source, entry, HTML and every
+  application chunk hash.
+- 102 published HTML/JS/CSS and canonical Leader image files match the Pages
+  artifact byte lengths and SHA-256 hashes. Retired atlas assets are absent.
+- All 61 post-deployment checks passed; browser cases used the deployed URL, including
+  tactical survival, canonical presentation, layout and the Market input fix.
+  Native 2560×1600 and minimum-size captures were reviewed. The unmodified shared
+  game client also completed selection/play on the final production build.
+- Release reports, public-byte manifest, build comparison and native traces are
+  retained under `.artifacts/payoff-*`. Public screenshot storage is recorded in
+  `.artifacts/payoff-evidence-location.json`; those captures are on G: because
+  C: lacked room for the archive and live-test output. The original Pages archive
+  was verified by bounded streaming, including the ZIP CRC and all selected file
+  hashes. Automatic approval review blocked deleting redundant temporary builds;
+  those build copies were retained.
+- Human sessions and physical-device/assistive-technology evidence remain under
+  the existing explicit handoff/waivers; no automated result is presented as
+  human comprehension, enjoyment or hardware qualification.

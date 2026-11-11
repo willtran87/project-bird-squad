@@ -15631,3 +15631,10 @@ Follow-up implementation and verification (same working turn):
 - Packaged-run follow-up: Firefox launch rejected the host-owned temporary GitHub home directory. The CI-only setup action now aligns that directory with the container user and validates an actual browser launch before tests. Run 43039492732 remains unqualified; no game assertions were weakened.
 
 - Run 43040743001 completed all 1,176 core + 549 browser cases, content/policy, bundle/cache and Pages-path checks. Artifact identity recording failed on Git checkout ownership in the container. Shared CI setup now trusts only GITHUB_WORKSPACE and exercises the artifact recorder's tracked-file query before tests; no game/test changes.
+
+## Tactical payoffs release closure — November 11, 2026
+
+- Merged PR #24 and published runtime 04792ad3b1eb5efc1684d32726f85e26ff81dfa3; qualified head c4dd2b4b6b4b68e2e0ebf11d0455a198f99004a2. PR run 43047838421 and main run 43056922022 each passed 1,176 core + 549 browser cases with no test retries/skips/failures. Build/content/policy and Pages-base checks passed.
+- Verified identical qualified/merged trees, matching clean source/entry/HTML/app hashes, 102 public artifact byte hashes, and all 61 post-deployment cases. Native high-resolution/minimum-size imagery reviewed; shared game client exercised final production selection/play without errors.
+- Final native paired play median 343.1 → 293.0 ms. Selection did not improve; 1700 ms cold-entry outlier remains explicit and was not reproduced by the follow-up trace/native pair. Redundant setFilter upload samples removed. No universal FPS or stall-free claim.
+- Human playtest handoff updated to the published revision; no human sessions invented. Task preview servers stopped; branch cleanup follows the verified merge.

@@ -8,10 +8,10 @@ assistive-technology evidence.
 ## Current session kit
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
-- Published revision: `a072362d23e0c9f15938171a450c82b7060b33d3`.
+- Published revision: `04792ad3b1eb5efc1684d32726f85e26ff81dfa3`.
 - Current upgrade scope: [tactical payoffs and survival](tactical-payoffs.md).
-  Publication evidence below will be updated after qualification; the revision
-  above remains the last verified public build until then.
+  [Verified publication run](https://github.com/willtran87/project-bird-squad/actions/runs/43056922022);
+  full release totals and performance limitations are recorded in the scope ledger.
 - Instructions: [first-run runbook](playtest-runbook.md).
 - One blank copy per tester: [observer sheet](playtest-observer-template.md).
 - Manual hardware/accessibility checks: [release evidence runbook](release-evidence-runbook.md).
