@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 
 const FLOATING_CALLOUT_TEXTURE = 'combat-floating-callout';
@@ -29,7 +30,7 @@ export function floatingText(
   });
   label.setOrigin(0.5);
   if (scene.textures.exists(FLOATING_CALLOUT_TEXTURE)) {
-    scene.textures.get(FLOATING_CALLOUT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(FLOATING_CALLOUT_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     const plateWidth = Phaser.Math.Clamp(label.width + 78, 154, 360);
     const plate = scene.add.image(0, 2, FLOATING_CALLOUT_TEXTURE)
       .setDisplaySize(plateWidth, 48)
@@ -195,7 +196,7 @@ export function banner(
   const group = scene.add.container(x, y).setAlpha(0).setScale(0.92);
   if (options.name) group.setName(options.name);
   if (options.textureKey && scene.textures.exists(options.textureKey)) {
-    scene.textures.get(options.textureKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(options.textureKey), Phaser.Textures.FilterMode.LINEAR);
     const backing = scene.add.image(0, 0, options.textureKey)
       .setDisplaySize(options.width ?? 520, options.height ?? 150);
     if (options.name) backing.setName(options.name);

@@ -98,6 +98,7 @@ export function simulateCombatCardOutcome<
   let nextTurnEnergy = config.nextTurnEnergy;
   let firstAttack = config.firstAttack;
   let blockedDamage = 0;
+  let drawCount = 0;
   let bossPhaseBreak: { enemyId: string; name: string; nextIntent?: string } | undefined;
   const state = createCardEffectResolutionState(config.contract.usesMolt ? config.moltPower : 0);
   const livingEnemies = () => enemies.filter((enemy) => enemy.hp > 0);
@@ -203,7 +204,7 @@ export function simulateCombatCardOutcome<
       if (overflowToCover) flock.block += config.rawCoverGain?.(value - healed) ?? value - healed;
     },
     loseCohesion: (_source, value) => { flock.hp = Math.max(1, flock.hp - value); },
-    drawCards: () => {},
+    drawCards: (value) => { drawCount += value; },
     discardCards: (value) => Math.min(value, config.discardableHandCount),
     gainWingbeat: (_source, value) => { energy += value; },
     loseWingbeat: (_source, value) => { energy = Math.max(0, energy - value); },
@@ -267,6 +268,10 @@ export function simulateCombatCardOutcome<
   }));
   return {
     contract: config.contract,
+    projectedFlock: flock,
+    projectedEnemies: enemies,
+    firstAttackAfter: firstAttack,
+    drawCount,
     steps,
     requiresChoice,
     target: getEnemy(config.enemyId),

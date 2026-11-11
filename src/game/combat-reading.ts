@@ -31,8 +31,9 @@ export function encounterDecision(id: string, enemies: any[], defeated: Map<stri
       : 'Build a short sequence, or remove support before it stores force. Check your Wingbeats.';
   if (id === 'enc_spire_quiet_beat') return beat % 3 === 2
     ? 'Quiet Beat: attack or rebuild. Molt changes the hand; inspect its alternate rules.'
-    : beat % 3 === 0 ? 'Force is gathering. Prepare Cover or Guard before a Molt burst.'
-      : 'The charged strike is next. Compare protection with staying in normal form.';
+    : beat % 3 === 0 ? 'Hit now to interrupt Gather Force, or prepare Cover for the stronger strike.'
+      : living.some(e => e.nextAttackBonus > 0) ? 'Stored force is ready. Cover the charged strike or finish the attacker.'
+        : 'Preparation interrupted: the base strike remains. Cover it or finish the attacker.';
   if (id === 'enc_signature_ferry') return beat < 3
     ? `Survive ${3 - beat} more beat${beat === 2 ? '' : 's'}, or clear both for +8 Scrap.`
     : 'Crossing secured.';

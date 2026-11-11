@@ -28,7 +28,7 @@ export function renderRooftopPlans(parent: HTMLElement, scene: Scene, state: Fly
     const recipe = buildRecipes[plan.id];
     const marks: string[] = scene.runState?.routeMarks ?? scene.routeMarks ?? [];
     for (const text of [plan.play, plan.preen, plan.cost, `In your flock: ${owned.map((c: any) => cardLibrary[c.id].name).join(', ') || 'no matching cards yet'}.`,
-      'Complementary Preens become available after Rooftops. Each replaces the active upgrade; passive stats stay unchanged.',
+      'Complementary Preens are available at your first earned Preen. Each replaces the active upgrade; passive stats stay unchanged.',
       ...recipe.sequences, `Weakness: ${recipe.weakness}`,
       `Waymark pairings: ${recipe.marks.map(id => `${alphaRouteMarkLibrary.get(id)?.name ?? id}${marks.includes(id) ? ' (owned)' : ' (not owned)'}`).join(', ')}. Inspect each Waymark for its trigger limits.`]) {
       const p = document.createElement('p'); p.textContent = text; box.append(p);

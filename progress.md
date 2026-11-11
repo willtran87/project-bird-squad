@@ -1,5 +1,32 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-11 — Tactical payoffs and survival (in progress)
+- Accepted survival forecast, measured stall investigation, earned strategy
+  tuning, ordinary encounter decisions and restrained action feedback, followed
+  by full release qualification, publication and branch cleanup.
+- Baseline `8a04cf84`; branch `codex/tactical-payoffs-survival`. Scope and checks:
+  `docs/game/tactical-payoffs.md`. Canonical identities and art remain locked.
+- Human sessions remain unavailable; update the existing accepted handoff.
+- Implemented copied-state survival projection (including combat-ending
+  interception), first-earned complementary Preens, interruptible Quiet Beat
+  preparation, action-owned feedback and guarded texture filtering.
+- All 15 focused production checks pass. The adjacent Clear Choices and
+  Distinct Builds checks pass; two diagnostics used an older served text label
+  and are superseded by the fresh-build pass. Native 2560×1600 and 1000×560
+  captures inspected; IAB selection checked. Current boot 698.8 KiB / 700;
+  documentation, runtime and delivery budgets pass.
+- Three branch-aware baseline campaigns completed. Expanded release inventory:
+  1,176 core cases, plus 549 cross-browser cases; final publication pending.
+- Review caught a selected-card label dropping the current Roost estimate
+  marker. Preserve it visually and in the spoken detail; test the unknown-rule
+  boundary. Superseded PR run `43013684458` was cancelled before merge so the
+  complete workflow can qualify the correction.
+- A native per-frame diagnostic then caught history briefly returning between
+  the 250 ms identity layout polls. Feedback ownership now synchronizes at
+  presentation boundaries before rendering, including queued HUD rebuilds.
+  The regression checks every sampled action frame. Superseded run
+  `43015093984` was cancelled before merge; it is not release evidence.
+
 ## 2026-11-07 — Clearer choices and distinct builds (published)
 - PR #23 merged as `a072362d23e0c9f15938171a450c82b7060b33d3`; its tree matches
   qualified head `5850ae4e7ea32649eeb5277fd45b088d91262895` exactly. PR run
@@ -15574,3 +15601,33 @@ Follow-up implementation and verification (same working turn):
   sessions remain excluded. All 44 items are NOT resolved; broad art consistency,
   shared controls, card/combat/Collection polish and full release verification
   still require work. Do not report the game as all-A.
+
+## Tactical payoffs release-boundary follow-up — November 11, 2026
+
+- Full qualification attempt 43016816762 stopped before merge: 1,175/1,176 core and 548/549 browser checks passed. Retained all 29 reports and eighteen earned strategy audits.
+- Market click diagnostic reproduced a newly constructed but not yet registered Phaser hit area: pre-frame click ignored, post-registration click selected card:0. Test input now waits for canvas and hit-area registration.
+- WebKit story fixture reached its saved-story assertions but reloaded during cold outcome-art XHRs. It now observes the rendered ending and loaded textures before the persistence reload, preserving page-error assertions and zero retries.
+- Recorded three paired native timing runs in docs/game/tactical-payoffs.md: card-play median 338.7 → 287.9 ms, frame P95 66.6 → 33.4 ms; selection unchanged and a 299.9 ms entry outlier retained. Recorded earned-policy outcomes and limitations; human handoff remains pending actual sessions.
+- Further native Firefox diagnostics identified a genuine late-art input gap: the scene PRE_UPDATE refresh ran after InputPlugin registration. Moved the coalesced refresh to game STEP before scene registration, retaining tooltip/modal/paused-scene deferral and cleaning up the global listener. The deterministic post-step assertion fails on the previous build with registered:false; the corrected production build is being verified.
+
+## Tactical payoffs outcome-input follow-up — November 11, 2026
+
+- Run 43024040769 passed all 1,176 core cases and 548/549 browser cases. WebKit timed out after a missed Practice This Fight click. Merge remained stopped.
+- Reproduced the outcome redraw input gap deterministically on the previous production build: the replacement Practice control was visible but absent from InputPlugin registration at post-step.
+- Extended the existing early-frame reward scheduling to defeat/run-complete screens; combat rendering/timing is unchanged. Assertions now check same-frame registration for both outcomes, then the real Practice click, exact opening restoration, and no saved rewards.
+- All nine focused cases passed across Chromium, Firefox and WebKit on the corrected production build. Native defeat/rematch images and shared-client play were inspected; bundle/cache checks passed at 699.1 KiB boot code.
+
+## Release setup resilience — November 11, 2026
+
+- Run 43031065967 passed all executed tests (966 core + 549 browser); three shards failed browser dependency installation twice because azure.archive.ubuntu.com could not resolve. No tests started in those failed jobs.
+- Consolidated all five CI browser installs into a composite action using official Ubuntu archive mirrors, 15-second package request timeouts, one package retry and a ten-minute installation limit. Browser versions, signatures and test gates remain unchanged. YAML/Bash syntax and documentation validation passed; full qualification restarts on the infrastructure correction.
+
+
+## Packaged CI browser environment — November 11, 2026
+
+- Standard Ubuntu mirrors also failed DNS in run 43038007268; retained the installation log and canceled the unqualified run. Replaced per-job package installation with the official Playwright 1.60.0 Noble container, pinned to verified registry digest 9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948.
+- All five test/build jobs use the same packaged environment; a shared action rejects package-version drift or missing browser executables. Node 22 and all existing test/build gates remain unchanged.
+
+- Packaged-run follow-up: Firefox launch rejected the host-owned temporary GitHub home directory. The CI-only setup action now aligns that directory with the container user and validates an actual browser launch before tests. Run 43039492732 remains unqualified; no game assertions were weakened.
+
+- Run 43040743001 completed all 1,176 core + 549 browser cases, content/policy, bundle/cache and Pages-path checks. Artifact identity recording failed on Git checkout ownership in the container. Shared CI setup now trusts only GITHUB_WORKSPACE and exercises the artifact recorder's tracked-file query before tests; no game/test changes.

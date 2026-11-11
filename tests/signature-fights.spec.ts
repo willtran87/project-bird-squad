@@ -113,6 +113,14 @@ test('Signature Fights lost-fight practice restores exact opening and never save
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').root.list.some((o:any)=>o.name==='run-outcome-command-hit'&&o.getData('label')==='Practice This Fight'));
   await settleCanvas(page);
   await page.screenshot({path:info.outputPath('defeat-buttons.png')});
+  // Late outcome art must not leave a rendered Practice button unregistered
+  // for one frame. Observe the scheduled redraw before the next browser input.
+  expect(await page.evaluate(()=>new Promise(resolve=>{
+    const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');
+    const hit=()=>b.root.list.find((o:any)=>o.name==='run-outcome-command-hit'&&o.getData('label')==='Practice This Fight');
+    const previous=hit();b.requestBattleRender();
+    b.game.events.once('poststep',()=>resolve({replaced:hit()!==previous,registered:b.input._list.includes(hit())}));
+  }))).toEqual({replaced:true,registered:true});
   const point=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),hit=b.root.list.find((o:any)=>o.name==='run-outcome-command-hit'&&o.getData('label')==='Practice This Fight'),c=b.game.canvas.getBoundingClientRect();return {x:c.left+hit.x*c.width/1280,y:c.top+hit.y*c.height/720};});
   await page.mouse.click(point.x,point.y);await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').mode==='battle');await battleReady(page);
   const replay=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {hand:b.hand.map((c:any)=>[c.id,c.upgraded,c.preenBranch]),draw:b.drawPile.map((c:any)=>[c.id,c.upgraded,c.preenBranch]),hp:b.flock.hp,energy:b.energy,enemies:b.enemies.map((e:any)=>[e.runtime.id,e.hp,e.intentIndex])};});expect(replay).toEqual(opening);
@@ -120,6 +128,13 @@ test('Signature Fights lost-fight practice restores exact opening and never save
   for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`rematch-${size.width}.png`)});}
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies.forEach((e:any)=>e.hp=0);b.checkOutcome();b.renderAll();});
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').mode)).toBe('runComplete');
+  expect(await page.evaluate(()=>new Promise(resolve=>{
+    const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.requestBattleRender();
+    b.game.events.once('poststep',()=>{
+      const controls=b.root.list.filter((o:any)=>o.name==='run-outcome-command-hit');
+      resolve(controls.length>0&&controls.every((o:any)=>b.input._list.includes(o)));
+    });
+  }))).toBe(true);
   expect(await page.evaluate(()=>JSON.stringify(Object.entries(localStorage).sort()))).toBe(disk);
   await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').returnToMainMenu());
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.isActive('MenuScene'));

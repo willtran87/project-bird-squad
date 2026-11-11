@@ -1,3 +1,4 @@
+import { setTextureFilter } from './game/texture-filter';
 import { recordContribution, sanitizeContributions, totalContributions, type CardContribution, type ContributionKey } from './game/card-contributions';
 import { tacticalFormation } from './game/tactical-formations';
 import Phaser from 'phaser';
@@ -2831,7 +2832,7 @@ const routeRewardSparkBurstAsset = runtimeUiIconAsset('reward-spark-burst');
 const routeRewardRevealHaloAsset = runtimeUiIconAsset('reward-reveal-halo');
 function setSupplyArtPixelFilter(scene: Phaser.Scene, key: string) {
   if (!scene.textures.exists(key)) return;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.NEAREST);
 }
 
 function addSupplyArtImage(scene: Phaser.Scene, x: number, y: number, key: string) {
@@ -2842,13 +2843,13 @@ function addSupplyArtImage(scene: Phaser.Scene, x: number, y: number, key: strin
 function addRewardBadgeArtImage(scene: Phaser.Scene, badgeId: string, x: number, y: number, size: number) {
   const asset = rewardBadgeArtAssets[badgeId];
   if (!asset || !scene.textures.exists(asset.key)) return undefined;
-  scene.textures.get(asset.key).setFilter(badgeId === 'card' || badgeId === 'waymark' || badgeId === 'preen' || badgeId === 'heal' || badgeId === 'supply' || badgeId === 'scrap' ? Phaser.Textures.FilterMode.LINEAR : Phaser.Textures.FilterMode.NEAREST);
+  setTextureFilter(scene.textures.get(asset.key), badgeId === 'card' || badgeId === 'waymark' || badgeId === 'preen' || badgeId === 'heal' || badgeId === 'supply' || badgeId === 'scrap' ? Phaser.Textures.FilterMode.LINEAR : Phaser.Textures.FilterMode.NEAREST);
   return scene.add.image(x, y, asset.key).setDisplaySize(size, size);
 }
 
 function addRewardSparkBurstFx(scene: Phaser.Scene, x: number, y: number, size: number) {
   if (!scene.textures.exists(routeRewardSparkBurstAsset.key)) return [];
-  scene.textures.get(routeRewardSparkBurstAsset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(routeRewardSparkBurstAsset.key), Phaser.Textures.FilterMode.LINEAR);
   const objects: Phaser.GameObjects.GameObject[] = [];
   const burst = scene.add.image(x, y, routeRewardSparkBurstAsset.key)
     .setDisplaySize(size, size)
@@ -2898,7 +2899,7 @@ function addRewardRevealHaloFx(
   alpha = 0.32
 ) {
   if (!scene.textures.exists(routeRewardRevealHaloAsset.key)) return undefined;
-  scene.textures.get(routeRewardRevealHaloAsset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(routeRewardRevealHaloAsset.key), Phaser.Textures.FilterMode.LINEAR);
   const halo = scene.add.image(x, y, routeRewardRevealHaloAsset.key)
     .setDisplaySize(width, height)
     .setAlpha(prefersReducedMotion() ? Math.min(alpha, 0.22) : alpha)
@@ -2921,7 +2922,7 @@ function addRewardRevealHaloFx(
 
 function setWaymarkArtPixelFilter(scene: Phaser.Scene, key: string) {
   if (!scene.textures.exists(key)) return;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.NEAREST);
 }
 
 function addWaymarkArtImage(scene: Phaser.Scene, x: number, y: number, key: string) {
@@ -3482,7 +3483,7 @@ function queueRouteSceneEssentialArt(
 function addUiIconImage(scene: Phaser.Scene, iconId: UiIconId, x: number, y: number, size: number) {
   const asset = uiIconAssets[iconId];
   if (!asset || !scene.textures.exists(asset.key)) return undefined;
-  scene.textures.get(asset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(asset.key), Phaser.Textures.FilterMode.LINEAR);
   return scene.add.image(x, y, asset.key).setDisplaySize(size * UI_ICON_PREVIEW_SCALE, size * UI_ICON_PREVIEW_SCALE);
 }
 
@@ -5156,7 +5157,15 @@ class RouteScene extends Phaser.Scene {
   private routeEventArtRequested = new Set<RouteNode['type']>();
   private routeEssentialAssetsReady = false;
   private routeArtworkRefreshPending = false;
+  private resumeRouteArtwork = () => {
+    this.routeArtworkRefreshPending = false;
+    this.refreshRouteArtwork();
+  };
   private flushRouteArtwork = () => {
+    if (this.sys.isPaused()) {
+      this.events.once(Phaser.Scenes.Events.RESUME, this.resumeRouteArtwork);
+      return;
+    }
     // A background image must not dismiss the tooltip the player is reading.
     // Keep one pending repaint until its existing close path releases it.
     const tooltip = this.children.getByName('route-node-tooltip');
@@ -5426,7 +5435,8 @@ class RouteScene extends Phaser.Scene {
     birdAudio.setMood('route');
     this.routeArtworkRefreshPending = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.events.off(Phaser.Scenes.Events.PRE_UPDATE, this.flushRouteArtwork);
+      this.game.events.off(Phaser.Core.Events.STEP, this.flushRouteArtwork);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.resumeRouteArtwork);
       this.routeArtworkRefreshPending = false;
     });
     observeChoiceInput(this);
@@ -6228,7 +6238,10 @@ class RouteScene extends Phaser.Scene {
     }
     if (this.routeArtworkRefreshPending || (!this.sys.isActive() && !this.sys.isPaused())) return;
     this.routeArtworkRefreshPending = true;
-    this.events.once(Phaser.Scenes.Events.PRE_UPDATE, this.flushRouteArtwork);
+    // Rebuild before the scene's InputPlugin PRE_UPDATE registers hit areas.
+    // A later scene PRE_UPDATE listener creates visible controls that cannot
+    // receive input until the following frame.
+    this.game.events.once(Phaser.Core.Events.STEP, this.flushRouteArtwork);
   }
 
   private queueCardPortraitArtLoad(card: Pick<Card, 'id'>, warning: string, onComplete: () => void = () => this.refreshRouteArtwork()) {
@@ -7130,7 +7143,7 @@ class RouteScene extends Phaser.Scene {
   private renderSelectedRouteNodeFocus(x: number, y: number, radius: number) {
     const key = uiIconAssets['route-selected-node-ring'].key;
     if (this.textures.exists(key)) {
-      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(this.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
       const size = radius * 2 + ROUTE_NODE_FOCUS_PAD * 2 + (radius > ROUTE_NODE_RADIUS ? 20 : 12);
       this.add.image(x, y, key)
         .setDisplaySize(size, size)
@@ -10095,7 +10108,7 @@ class RouteScene extends Phaser.Scene {
   private marketPurchaseFlourish(x: number, y: number, accent = UI_FIELD.gold, countBurst = true) {
     const key = uiIconAssets['market-purchase-flourish'].key;
     if (!this.textures.exists(key)) return;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     if (countBurst) {
       this.marketPurchaseFlourishBursts += 1;
       birdAudio.play('marketPurchase', 1);
@@ -13515,8 +13528,9 @@ private playBattleIntro(onComplete?: () => void) {
     }
     this.battleRenderQueued = true;
     const token = ++this.battleRenderScheduleToken;
-    const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward';
-    // Reward redraws replace all hit targets. Rebuild before InputPlugin flushes
+    const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward'
+      || isRunOutcome(this.mode);
+    // Reward and outcome redraws replace all hit targets. Rebuild before InputPlugin flushes
     // its registration queue so visible buttons are clickable in the same frame.
     const emitter = rewardMode ? this.game.events : this.events;
     const event = rewardMode ? Phaser.Core.Events.PRE_STEP : Phaser.Scenes.Events.POST_UPDATE;
@@ -13612,6 +13626,7 @@ private playBattleIntro(onComplete?: () => void) {
       if (this.inspectOverlay) this.renderInspectOverlay(this.inspectOverlay);
       if (this.waymarkDrawerOpen) this.renderWaymarkDrawer();
       if (this.supplyDrawerOpen) this.renderSupplyDrawer();
+      this.events.emit('battle-hud-rendered');
       if (!modalUiOpen) {
         this.setBattleFxDepth(80);
         this.children.bringToTop(this.fxLayer);
@@ -14068,7 +14083,7 @@ private playBattleIntro(onComplete?: () => void) {
   private fxCastFocusBurst(x: number, y: number, color: number, scale = 1) {
     if (prefersReducedMotion()) return;
     if (!this.textures.exists(COMBAT_CAST_FOCUS_BURST_TEXTURE)) return;
-    this.textures.get(COMBAT_CAST_FOCUS_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_CAST_FOCUS_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCastFocusBurstBursts += 1;
     const size = 220 * scale;
     const burst = this.add.image(x, y, COMBAT_CAST_FOCUS_BURST_TEXTURE)
@@ -14093,7 +14108,7 @@ private playBattleIntro(onComplete?: () => void) {
   private wingbeatSpendFx(x: number, y: number, amount: number, suitColor: number) {
     if (prefersReducedMotion()) return;
     if (!this.textures.exists(COMBAT_WINGBEAT_SPEND_TEXTURE)) return;
-    this.textures.get(COMBAT_WINGBEAT_SPEND_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_WINGBEAT_SPEND_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatWingbeatSpendBursts += 1;
     const scale = Phaser.Math.Clamp(0.72 + amount * 0.08, 0.78, 1.06);
     const glow = this.add.circle(x, y + 2, 74 * scale, 0xffd37a, 0.18)
@@ -14434,7 +14449,7 @@ private playBattleIntro(onComplete?: () => void) {
       floatingText(this, this.fxLayer, x, y, label, labelColor);
       return;
     }
-    this.textures.get(COMBAT_ENEMY_WINDUP_PLAQUE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_WINDUP_PLAQUE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyWindupPlaqueBursts += 1;
     const plaqueScale = Phaser.Math.Clamp(scale, 0.9, 1.18);
     const group = this.add.container(x, y).setName('combat-enemy-windup-plaque');
@@ -14667,7 +14682,7 @@ private playBattleIntro(onComplete?: () => void) {
     const height = width * (320 / 768);
     const tint = damage > 0 ? 0xffffff : supportMove ? 0x9be6b0 : 0xd7a6ff;
 
-    this.textures.get(COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyRecoveryAfterglowBursts += 1;
     const base = this.add.image(view.x, y, COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE)
       .setDisplaySize(width, height)
@@ -16050,6 +16065,7 @@ private playBattleIntro(onComplete?: () => void) {
       target: preview.target,
       summary: preview.summary,
       fields: preview.fields,
+      survival: preview.survival,
       targetHp: targetHp && hp ? {
         x: hp.x,
         y: hp.y,
@@ -16695,6 +16711,10 @@ private playBattleIntro(onComplete?: () => void) {
         energyDelta: 0,
         steps: [],
         requiresChoice: false,
+        projectedFlock: { ...this.flock },
+        projectedEnemies: this.enemies.map(enemy => ({ ...enemy })),
+        firstAttackAfter: this.firstAttackThisTurn,
+        drawCount: 0,
         resonanceDelta: 0,
         nextTurnDrawDelta: 0,
         nextTurnEnergyDelta: 0,
@@ -16748,13 +16768,41 @@ private playBattleIntro(onComplete?: () => void) {
     const card = this.getSelectedCard();
     if (!card) return undefined;
     const outcome = this.simulateCardOutcome(card, this.selectedEnemyId);
-    return this.battleHudRendererModule?.formatBattleSelectionOutcome(
+    const preview = this.battleHudRendererModule?.formatBattleSelectionOutcome(
       displayName(card),
       this.selectedEnemyId,
       compactCardEffectSummary(outcome.contract.effects),
       this.activeMoltPower(),
       outcome
     );
+    if (!preview) return undefined;
+    const survival = this.selectedCardSurvival(card, outcome);
+    return { ...preview, survival, summary: `${preview.summary} / ${survival.detail}` };
+  }
+
+  private selectedCardSurvival(card: Card, outcome: ReturnType<BattleScene['simulateCardOutcome']>) {
+    const before = this.incomingFlockDamagePreview();
+    const uncertainty: string[] = [];
+    if (outcome.drawCount) uncertainty.push('Draw-dependent hand and held-card effects are estimated');
+    if (this.ownedMarkDefs().some(mark => /^(onSuitPlayed|onNthCard|onHealFlock|onEnemyCoverBroken|onResonanceSpent|onEnterMolt)/.test(mark.trigger))) uncertainty.push('Card-triggered Waymarks may change the result');
+    if (this.runLeaderId && this.runLeaderId !== 'fledgling') uncertainty.push('Leader triggers may change the result');
+    const after = outcome.requiresChoice || this.effectiveCost(card) > this.energy || !this.combatPreviewModule ? undefined
+      : outcome.projectedEnemies.every(enemy => enemy.hp <= 0) || outcome.projectedFlock.hp <= 0
+        || !!signatureVictory(currentCombatNodes()[this.currentRouteIndex]?.payloadId ?? '', outcome.projectedEnemies, outcome.projectedFlock.hp, this.enemyDefeatedTurns)
+        ? { hpLoss: 0, afterHp: outcome.projectedFlock.hp, uncertainty: [], scope: 'Combat ends before Roost' }
+      : this.enemyDamageProjection(outcome.projectedEnemies, outcome.projectedFlock, true, undefined, false, {
+        hand: this.hand.filter(entry => entry.instanceId !== card.instanceId),
+        drawn: Math.min(outcome.drawCount, this.drawPile.length + this.discardPile.length),
+        energy: outcome.flockAfter.energy, played: this.cardsPlayedThisTurn + 1,
+        zero: this.zeroCostThisTurn + (this.effectiveCost(card) === 0 ? 1 : 0),
+        firstAttack: outcome.firstAttackAfter,
+      });
+    const unknown = [...new Set([...before.uncertainty, ...(after?.uncertainty ?? []), ...uncertainty])];
+    const now = `Roost now: ${before.uncertainty.length ? 'estimated ' : ''}${before.hpLoss} HP loss.`;
+    const detail = after
+      ? `${now} After this card then Roost: ${unknown.length ? 'estimated ' : ''}${after.hpLoss} HP loss; ${after.afterHp} Cohesion left. ${after.scope}.${unknown.length ? ` ${unknown.join('; ')}.` : ''}`
+      : `${now} After this card then Roost: unknown until the card is playable and its choices resolve.`;
+    return { before: before.hpLoss, after: after?.hpLoss, remaining: after?.afterHp, uncertainty: unknown, detail };
   }
 
   private handCardLeft(index: number, handSize = this.hand.length) {
@@ -16863,7 +16911,8 @@ private playBattleIntro(onComplete?: () => void) {
       preview.outcome = this.battleHudRendererModule?.formatBattleSelectionOutcome(
         displayName(card), this.selectedEnemyId, compactCardEffectSummary(outcome.contract.effects),
         this.activeMoltPower(), outcome,
-      ).details + '\n\nCard-only forecast. Leader and Waymark triggers can change these results.';
+      ).details + '\n\n' + this.selectedCardSurvival(card, outcome).detail
+        + '\n\nCard-only forecast. Leader and Waymark triggers can change these results.';
       preview.sequence = `Target: ${outcome.contract.target === 'enemy' ? outcome.target?.name ?? 'Choose target' : outcome.contract.target === 'allEnemies' ? 'All enemies' : 'Flock'}. Cost: ${cost} Wingbeat${cost === 1 ? '' : 's'}.\n\n`
         + outcome.steps.map((step, i) => `${i + 1}. ${labels[step.status]} — ${formatEffects([step.effect])}`).join('\n\n')
         + '\n\nCard-only forecast in written order. Leader and Waymark triggers can change the result. Effects after a card choice are not predicted.';
@@ -19799,9 +19848,13 @@ private playBattleIntro(onComplete?: () => void) {
     return this.enemyDamageProjection(enemies, flock, false, undefined, true).total;
   }
 
-  private enemyDamageProjection(enemies: Enemy[], flock: Flock, roost: boolean, onlyEnemyId?: string, stopAfterFirstAttack = false) {
+  private enemyDamageProjection(enemies: Enemy[], flock: Flock, roost: boolean, onlyEnemyId?: string, stopAfterFirstAttack = false,
+    afterCard?: { hand: Card[]; drawn: number; energy: number; played: number; zero: number; firstAttack: boolean }) {
+    const hand = afterCard?.hand ?? this.hand;
+    const held = hand.length + (afterCard?.drawn ?? 0);
+    const played = afterCard?.played ?? this.cardsPlayedThisTurn;
     const context = roost
-      ? { turn: this.turn, c: this.cardsPlayedThisTurn, z: this.zeroCostThisTurn, h: this.hand.length }
+      ? { turn: this.turn, c: played, z: afterCard?.zero ?? this.zeroCostThisTurn, h: held }
       : this.enemyContext();
     const marks = this.ownedMarkDefs();
     const firstSkyEffects = marks.filter(mark => mark.trigger === 'firstOpenSkyIncrease').flatMap(routeMarkEffects);
@@ -19814,7 +19867,7 @@ private playBattleIntro(onComplete?: () => void) {
       firstSkyEffects, onlyEnemyId, stopAfterFirstAttack,
       counterstrike: {
         available: this.leaderSignatureAvailable('roostkeeper', 'perfectBrace'),
-        firstAttackKeystone: this.firstAttackThisTurn && this.keystoneActive('quills'),
+        firstAttackKeystone: (afterCard?.firstAttack ?? this.firstAttackThisTurn) && this.keystoneActive('quills'),
         damage: (amount, projected, enemy, first) => cardDamageOutcome(amount, projected, enemy.block, false, 0, first),
         coverBreakEffects: marks.filter(mark => mark.trigger === 'onEnemyCoverBroken' && !this.markFiredThisTurn.has(mark.id)).map(routeMarkEffects),
       },
@@ -19854,11 +19907,11 @@ private playBattleIntro(onComplete?: () => void) {
             default: unknown.add(snag ? 'Snag choice not projected' : 'Roost trigger not projected');
           }
         };
-        this.hand.filter(card => isSnagCard(card)).forEach(card => card.runtime.heldEffects?.forEach(effect => apply(effect, true)));
+        hand.filter(card => isSnagCard(card)).forEach(card => card.runtime.heldEffects?.forEach(effect => apply(effect, true)));
         marks.filter(mark => !this.markFiredThisCombat.has(mark.id)
-          && this.roostRestraintMarkMatches(mark, this.hand.length, this.energy, this.cardsPlayedThisTurn))
+          && this.roostRestraintMarkMatches(mark, held, afterCard?.energy ?? this.energy, played))
           .forEach(mark => routeMarkEffects(mark).forEach(effect => apply(effect)));
-        if (projected.molt || this.cardsPlayedThisTurn >= (this.flyway.condition === 'scaffold' ? 3 : OVEREXTENSION_CARD_THRESHOLD)) projected.exposed = true;
+        if (projected.molt || played >= (this.flyway.condition === 'scaffold' ? 3 : OVEREXTENSION_CARD_THRESHOLD)) projected.exposed = true;
         projected.molt = false;
       } : undefined,
     });
@@ -20509,7 +20562,7 @@ private playBattleIntro(onComplete?: () => void) {
   // Cards flick from the draw pile to their new hand slots.
   private createCombatCardBack(x: number, y: number, width: number, height: number, alpha = 1, angle = 0) {
     if (this.textures.exists(COMBAT_CARD_BACK_TEXTURE)) {
-      this.textures.get(COMBAT_CARD_BACK_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(this.textures.get(COMBAT_CARD_BACK_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
       return this.add.image(x, y, COMBAT_CARD_BACK_TEXTURE)
         .setDisplaySize(width, height)
         .setAlpha(alpha)
@@ -22305,7 +22358,7 @@ function addSystemFieldCommandFrame(
 ) {
   const key = uiIconAssets['system-field-command-frame'].key;
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const frame = scene.add.image(cx, cy, key)
     .setDisplaySize(width, height)
     .setAlpha(prefersReducedMotion() ? Math.min(opts.alpha ?? 0.78, 0.66) : (opts.alpha ?? 0.78))
@@ -22330,7 +22383,7 @@ function addDeckReviewDetailFrame(
 ) {
   const key = uiIconAssets['deck-review-detail-frame'].key;
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const frame = scene.add.image(cx, cy, key)
     .setDisplaySize(width, height)
     .setAlpha(opts.alpha ?? 0.68)
@@ -22377,7 +22430,7 @@ function addRouteWaymarkScrollRailFrame(
     return false;
   }
 
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const railScale = 52 / 256;
   addUi(addTo, scene.add.nineslice(x, trackY, key, undefined, 256, (trackH + 58) / railScale, 1, 1, 300, 165)
     .setScale(railScale)

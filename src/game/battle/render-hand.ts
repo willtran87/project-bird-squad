@@ -1,3 +1,4 @@
+import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
@@ -153,7 +154,7 @@ export interface BattleHandPreviewContext {
 
 function textureReady(scene: Phaser.Scene, key: string) {
   if (!key || !scene.textures.exists(key)) return false;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   return true;
 }
 

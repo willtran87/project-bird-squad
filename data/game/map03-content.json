@@ -909,7 +909,7 @@
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "The grackle gathers force, strikes, then takes a Quiet Beat with no effects. Prepare Cover for the charged strike and a combination for its recovery. The cycle repeats.",
+      "lesson": "Hit the grackle during Gather Force to prevent its 3 stored force, or prepare Cover for the stronger strike. Both approaches leave a Quiet Beat to attack or recover. The cycle repeats.",
       "tags": ["heavy", "tempo"],
       "enemies": ["spire_beacon_grackle"],
       "rewardProfileId": "street_map03"

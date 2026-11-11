@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import { UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 import { recoveryOwnsInput } from './recovery-input';
@@ -200,7 +201,7 @@ function screenReaderLabel(value: ScreenReaderPreference) {
 function addIconImage(scene: Phaser.Scene, id: string, x: number, y: number, size: number) {
   const key = iconKey(id);
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   return scene.add.image(x, y, key).setDisplaySize(size * 2.2, size * 2.2);
 }
 
@@ -213,7 +214,7 @@ function addOverlayPanelFlourish(
 ) {
   const key = iconKey('overlay-panel-flourish');
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const alpha = options.alpha ?? 0.18;
   const flourish = scene.add.image(frame.cx, frame.cy + (options.yOffset ?? 0), key)
     .setDisplaySize(Math.min(frame.w + 130, 850), Math.min(frame.h + 96, 560))
@@ -246,7 +247,7 @@ function addSystemMenuCommandFrame(
 ) {
   const key = iconKey('system-menu-command-frame');
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const reduced = dependencies.prefersReducedMotion();
   const alpha = reduced ? Math.min(options.alpha ?? 0.28, 0.2) : (options.alpha ?? 0.28);
   const y = frame.cy + (options.yOffset ?? 0);
@@ -303,7 +304,7 @@ function addSystemOverlayTitlePlaque(
 ) {
   const key = iconKey('system-overlay-title-plaque');
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const plaque = scene.add.image(cx, cy, key)
     .setDisplaySize(width, height)
     .setAlpha(options.alpha ?? 0.54)
@@ -326,7 +327,7 @@ function addAssetFrame(
 ) {
   const key = iconKey(id);
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const requestedAlpha = options.alpha ?? 0.76;
   const frame = scene.add.image(cx, cy, key)
     .setDisplaySize(width, height)
@@ -402,7 +403,7 @@ function addHowToPlayGuideFrame(
 ) {
   const key = iconKey('how-to-play-guide-frame');
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const reduced = dependencies.prefersReducedMotion();
   const alpha = reduced ? 0.14 : 0.2;
   const y = frame.cy + 16;

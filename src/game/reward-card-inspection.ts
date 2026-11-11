@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import { contributionReading } from './card-contributions';
 import { candidateBuildReading } from './build-guidance';
 import { decisionBrief } from './decision-brief';
@@ -1603,7 +1604,7 @@ export function renderWaymarkRewardChoice(context: Pick<RewardCeremonyRenderCont
       .setName('reward-input-focus-ring'));
   }
   if (waymark.artKey && scene.textures.exists(waymark.artKey)) {
-    scene.textures.get(waymark.artKey).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    setTextureFilter(scene.textures.get(waymark.artKey), Phaser.Textures.FilterMode.NEAREST);
     target.add(scene.add.image(x - 96, 280, waymark.artKey).setDisplaySize(64, 64));
   } else {
     target.add(scene.add.text(x - 96, 280, waymark.glyph, {

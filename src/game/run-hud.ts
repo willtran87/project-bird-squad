@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 import { addUi, addUiIconImage, flowHudPresentation, FLOCK_HP_BAR, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, FLOW_HUD_WIDTH, FLOW_HUD_HEIGHT, FLOW_HUD_PIP_OFFSET, FLOW_HUD_PIP_GAP, GAME_WIDTH, KEYSTONE_AT, prefersReducedMotion, uiIconAssets, type UnifiedRunHudData, type UiAdd, type UiIconId } from '../main';
 import { UI_FIELD, UI_FONT, UI_BOLD, UI_GOLD, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
@@ -17,7 +18,7 @@ export function renderRouteMapFrame(scene: Phaser.Scene, { cx, cy, w, h }: { cx:
   const accent = 0x49606d;
   const key = uiIconAssets['route-map-frame'].key;
   if (scene.textures.exists(key)) {
-    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     scene.add.nineslice(cx, cy, key, undefined, w, h, 64, 64, 42, 42).setAlpha(0.14).setName('route-map-frame');
     return;
   }
@@ -91,7 +92,7 @@ export function renderUnifiedRunHud(
   const accent = data.statusColor ? Phaser.Display.Color.HexStringToColor(data.statusColor).color : UI_FIELD.gold;
   const highlight = data.statusLabel && !['ROUTE', 'HOLDING'].includes(data.statusLabel);
   if (data.context !== 'battle' && data.railIcon && scene.textures.exists(uiIconAssets[data.railIcon].key)) {
-    scene.textures.get(uiIconAssets[data.railIcon].key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(uiIconAssets[data.railIcon].key), Phaser.Textures.FilterMode.LINEAR);
     const rail = scene.add.image(GAME_WIDTH / 2, 47, uiIconAssets[data.railIcon].key)
       .setDisplaySize(1284, 118)
       .setAlpha(prefersReducedMotion() ? 0.42 : 0.54);
@@ -152,7 +153,7 @@ export function renderUnifiedRunHud(
     const fx = FLOCK_HP_BAR.x;
     const fy = FLOCK_HP_BAR.y + 33;
     if (data.context !== 'battle' && scene.textures.exists(forecastKey)) {
-      scene.textures.get(forecastKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(scene.textures.get(forecastKey), Phaser.Textures.FilterMode.LINEAR);
       addUi(addTo, scene.add.image(fx, fy, forecastKey)
         .setDisplaySize(188, 38)
         .setAlpha(0.9)
@@ -311,7 +312,7 @@ export function renderUnifiedRunHud(
     ];
     const frameKey = uiIconAssets['combat-suit-keystone-chip-frame'].key;
     const hasFrame = !battleHud && scene.textures.exists(frameKey);
-    if (hasFrame) scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    if (hasFrame) setTextureFilter(scene.textures.get(frameKey), Phaser.Textures.FilterMode.LINEAR);
     const chipW = battleHud ? 116 : 84;
     const chipH = 24;
     const chipY = FLOCK_HP_BAR.y + 38;
@@ -373,7 +374,7 @@ function renderHudMetricChip(
   if (!opts.quiet) addUi(addTo, scene.add.rectangle(cx, cy, width - 14, height - 8, 0x0b1017, hasFrame ? fillAlpha * 0.82 : fillAlpha)
     .setStrokeStyle(hasFrame ? 0 : 1, accent, hasFrame ? 0 : 0.42));
   if (hasFrame) {
-    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(frameKey), Phaser.Textures.FilterMode.LINEAR);
     addUi(addTo, scene.add.image(cx, cy, frameKey)
       .setDisplaySize(width + 16, height + 8)
       .setAlpha(0.94));

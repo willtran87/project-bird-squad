@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 // Optional market and card-picker presentation, loaded only when opened.
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, MARKET_KIT_ASSETS, MENU_BORDER_WIDTH, MIN_SUPPORTED_TOUCH_TARGET, TOKEN_DISPLAY_FONT, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, addSupplyArtImage, addUiIconImage, addWaymarkArtImage, alphaRouteMarkLibrary, alphaSupplyLibrary, buttonIconForLabel, cardStatEntries, clamp, cloneCard, compactCardArtKey, controlBindingLabel, currentMap, displayName, fitTextExcerpt, flockStatLabel, playUiSound, prefersReducedMotion, quietButton, renderFieldPanel, renderSnagCardBorder, suitAccentColor, supplyCompactArtAssets, uiIconAssets, waymarkCompactArtAssets, waymarkGlyph } from '../main';
@@ -241,7 +242,7 @@ export function renderMarketVendorTitle(this: any, frame: { cx: number; top: num
     const key = uiIconAssets['market-vendor-title-plaque'].key;
     const hasPlaque = this.marketCategory === 'catalog' && this.textures.exists(key);
     if (hasPlaque) {
-      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(this.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
       this.add.image(x, y - 2, key)
         .setDisplaySize(500, 104)
         .setAlpha(0.92)
@@ -651,7 +652,7 @@ export function renderMarketItemLabelBox(this: any, x: number, y: number, w: num
 export function renderMarketItemLabelFrame(this: any, x: number, y: number, w: number, h: number, enabled: boolean): any {
     const key = uiIconAssets['market-item-label-frame'].key;
     if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     const frame = this.add.image(x, y, key)
       .setDisplaySize(w + 26, h + 14)
       .setAlpha(enabled ? 0.9 : 0.4)
@@ -745,7 +746,7 @@ export function renderMarketEnamelButton(this: any, x: number, y: number, w: num
     }
     let frame: Phaser.GameObjects.Image | undefined;
     if (hasFrame) {
-      this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(this.textures.get(frameKey), Phaser.Textures.FilterMode.LINEAR);
       frame = this.add.image(x, y, frameKey)
         .setDisplaySize(w + 24, h + 18)
         .setAlpha(enabled ? 0.88 : 0.38)
@@ -812,7 +813,7 @@ export function renderMarketSoldSlat(this: any, x: number, y: number, w: number,
     const slatWidth = Math.max(150, w + 38);
     const slatHeight = slatWidth * 192 / 640;
     if (this.textures.exists(slatKey)) {
-      this.textures.get(slatKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(this.textures.get(slatKey), Phaser.Textures.FilterMode.LINEAR);
       this.add.image(x, y, slatKey)
         .setDisplaySize(slatWidth, slatHeight)
         .setAngle(-16)

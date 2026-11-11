@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 import { addRouteWaymarkScrollRailFrame, controlBindingLabel, playUiSound } from '../main';
 import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
@@ -28,7 +29,7 @@ const text = (scene: Phaser.Scene, x: number, y: number, value: string, width: n
 
 function art(scene: Phaser.Scene, entry: SceneWaymarkReviewEntry, x: number, y: number, size: number) {
   if (entry.artKey && scene.textures.exists(entry.artKey)) {
-    scene.textures.get(entry.artKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(entry.artKey), Phaser.Textures.FilterMode.LINEAR);
     scene.add.image(x, y, entry.artKey).setDisplaySize(size, size).setName('route-waymark-review-art');
   } else text(scene, x, y, entry.glyph, size, 22, '#ffe1a3').setOrigin(0.5);
 }

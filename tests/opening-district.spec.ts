@@ -105,10 +105,17 @@ test('saved shelter support changes the route and artwork completions coalesce',
   await page.keyboard.press('j');
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.isPaused('RouteScene'));
   expect(await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.refreshRouteArtwork();return r.routeArtworkRefreshPending;})).toBe(true);
+  await settleCanvas(page);
+  expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').routeArtworkRefreshPending)).toBe(true);
   await page.keyboard.press('Escape');
   await page.waitForFunction(()=>!(window as any).__birdSquadGame.scene.getScene('RouteScene').routeArtworkRefreshPending);
   const timings=await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');const key='birdsquad.animationPace';const old=localStorage.getItem(key);const values=['relaxed','standard','fast'].map(value=>{localStorage.setItem(key,value);return r.routeCommitDelayMs();});if(old===null)localStorage.removeItem(key);else localStorage.setItem(key,old);return values;});
   expect(timings[0]).toBeGreaterThan(timings[1]);expect(timings[1]).toBeGreaterThan(timings[2]);
+  expect(await page.evaluate(()=>{
+    const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.refreshRouteArtwork();
+    const queued=r.game.events.listeners('step').includes(r.flushRouteArtwork);r.game.scene.stop('RouteScene');
+    return {queued,retained:r.game.events.listeners('step').includes(r.flushRouteArtwork)};
+  })).toEqual({queued:true,retained:false});
 });
 
 test('Crow purpose and coaching stay readable; reduced-motion reactions work without portrait art',async({page},info)=>{

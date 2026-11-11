@@ -1,3 +1,4 @@
+import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
 export { addEnemyBreathing } from './enemy-breathing';
 export { presentTriggerFeedback } from './trigger-feedback';
@@ -219,7 +220,7 @@ export function presentBattleFxDirectionalStreak(
   const angle = Phaser.Math.Angle.Between(x1, y1, x2, y2);
   const streak = scene.add.container(0, 0);
   if (scene.textures.exists(actionTrailTextureKey)) {
-    scene.textures.get(actionTrailTextureKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(actionTrailTextureKey), Phaser.Textures.FilterMode.LINEAR);
     host.onActionTrailRendered();
     const width = Phaser.Math.Clamp(distance * 1.24, 220, 680);
     const height = Phaser.Math.Clamp(width * 0.28, 52, 96);

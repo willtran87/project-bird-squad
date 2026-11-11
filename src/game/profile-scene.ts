@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 import { bindFolioEditor, disposeFolioEditor } from './folio-editor';
 import { consumeSaveRecoveryGamepad } from './save-recovery-dialog';
@@ -636,7 +637,7 @@ function profileIconKey(iconId: string) {
 function addProfileIconImage(scene: Phaser.Scene, iconId: string, x: number, y: number, size: number) {
   const key = profileIconKey(iconId);
   if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   return scene.add.image(x, y, key).setDisplaySize(size * UI_ICON_PREVIEW_SCALE, size * UI_ICON_PREVIEW_SCALE);
 }
 
@@ -5282,7 +5283,7 @@ function renderCardShowcase(
         .setName('profile-showcase-card-frame')
         .setData('cardId', entry.id);
       if (entry.artKey && scene.textures.exists(entry.artKey)) {
-        scene.textures.get(entry.artKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+        setTextureFilter(scene.textures.get(entry.artKey), Phaser.Textures.FilterMode.LINEAR);
         scene.add.image(cx, cy, entry.artKey)
           .setDisplaySize(147, 220)
           .setName('profile-showcase-card-art')
@@ -5624,7 +5625,7 @@ function renderProfileRecordRowFrame(
 ) {
   const key = profileIconKey('profile-record-row-frame');
   if (scene.textures.exists(key)) {
-    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     const row = scene.add.image(cx, cy, key)
       .setDisplaySize(width + 14, height + 8)
       .setAlpha(active ? 0.44 : 0.22)
@@ -5639,7 +5640,7 @@ function renderProfileRecordRowFrame(
 function renderProfileTitlePlaque(scene: Phaser.Scene, cx: number, cy: number) {
   const key = profileIconKey('profile-title-plaque');
   if (!scene.textures.exists(key)) return;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   scene.add.image(cx, cy, key).setDisplaySize(560, 104).setAlpha(0.5).setName('profile-title-plaque');
 }
 
@@ -5652,7 +5653,7 @@ function renderProfileSectionTabFrame(
 ) {
   const key = profileIconKey('profile-section-tab-frame');
   if (scene.textures.exists(key)) {
-    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     scene.add.image(cx, cy, key)
       .setDisplaySize(width, 48)
       .setAlpha(0.58)
@@ -5675,7 +5676,7 @@ function renderProfileReturnCommand(
   if (!scene.textures.exists(key)) {
     return dependencies.renderFieldButton(scene, () => {}, cx, cy, width, height, 'Return', true, onClick, UI_FIELD.gold);
   }
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const frame = scene.add.image(cx, cy, key)
     .setDisplaySize(width + 34, 62)
     .setAlpha(0.68)
@@ -5723,7 +5724,7 @@ function renderRecordStatChip(
 ) {
   const key = profileIconKey('profile-stat-chip-frame');
   if (scene.textures.exists(key)) {
-    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     scene.add.image(cx, cy + 1, key)
       .setDisplaySize(width + 10, 54)
       .setAlpha(0.66)
@@ -5780,7 +5781,7 @@ function renderProgressRail(
     color: UI_FIELD.warm,
   }).setResolution(2).setOrigin(1, 0);
   if (scene.textures.exists(frameKey)) {
-    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(frameKey), Phaser.Textures.FilterMode.LINEAR);
     scene.add.image(x + width / 2, y + 6, frameKey)
       .setDisplaySize(width + 28, 34)
       .setAlpha(0.48)
@@ -5793,7 +5794,7 @@ function renderProgressRail(
   const fillWidth = fraction <= 0 ? 0 : Math.max(10, trackWidth * fraction);
   const fillKey = profileIconKey('profile-progress-fill-strip');
   if (fillWidth > 0 && scene.textures.exists(fillKey)) {
-    scene.textures.get(fillKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(fillKey), Phaser.Textures.FilterMode.LINEAR);
     const fill = scene.add.image(x + trackInset + fillWidth / 2, y + 6, fillKey)
       .setDisplaySize(fillWidth + 18, 16)
       .setAlpha(0.82)
@@ -5814,7 +5815,7 @@ function renderProfileRecordFlourish(
 ) {
   const key = profileIconKey('profile-record-flourish');
   if (!scene.textures.exists(key)) return;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const firstReveal = state.revealBursts === 0;
   if (firstReveal) {
     state.revealBursts += 1;

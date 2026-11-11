@@ -69,6 +69,7 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   fight.setAttribute('role', 'status'); fight.setAttribute('aria-live', 'polite'); document.body.append(fight);
   const stats={decisionMs:0,animationMs:0,rewardMs:0,cleanupMs:0,signatures:0};scene.identityPacing=stats;
   let last=performance.now();
+  const deferred = new Map<any, boolean>();
   let alive=true, performances: ReturnType<typeof import('./living-performances')['installLivingPerformances']> | undefined;
   void import('./living-performances').then(module=>{if(alive)performances=module.installLivingPerformances(scene);}).catch(()=>{});
   const update=()=>{
@@ -86,10 +87,27 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     }
     const hidden=readingBlocked()||paused||scene.mode!=='battle';callButton.hidden=blocked()||hidden;
     const focus=scene.motionFocus?.active ? scene.motionFocus : undefined;
+    const resolving = scene.combatAnimationPending || scene.discardChoice || scene.returnChoice
+      || (scene.motionPayoff && scene.time.now < scene.motionPayoff.until);
+    // The resolved action owns this short reading beat. Keep history and
+    // coaching available afterward; never hide Tells, health, or commands.
+    if (resolving) {
+      for (const child of scene.root?.list ?? []) {
+        if (child.visible && (child.name === 'combat-log-hit' || child.name === 'combat-log-latest' || child.getData('deferToCard'))) {
+          deferred.set(child, true); child.setVisible(false);
+        }
+      }
+    } else if (!scene.selectedInstanceId) {
+      for (const [child, visible] of deferred) if (child.active) child.setVisible(visible);
+      deferred.clear();
+    }
     sequence.hidden=hidden||!!scene.selectedInstanceId&&!focus;
     const phase = signaturePhase(currentCombatNodes()[scene.currentRouteIndex]?.payloadId ?? '', scene.enemies);
     scene.signatureFight = phase;
-      fight.hidden = hidden || !phase || !!scene.selectedInstanceId || !!focus;
+      // Phase coaching yields to the action and its resolved payoff. Enemy Tells
+      // and critical combat warnings remain in their own permanent HUD lanes.
+      fight.hidden = hidden || !phase || !!scene.selectedInstanceId || !!focus || scene.combatAnimationPending
+        || !!resolving;
     if(hidden){scene.combatReading=undefined;return;}
     const r=scene.game.canvas.getBoundingClientRect(),scale=r.width/1280;
     Object.assign(fight.style, { left: `${r.left+370*scale}px`, top: `${r.top+372*scale}px`, width: `${625*scale}px`, fontSize: `${Math.max(12,16*scale)}px`, borderLeft: `4px solid ${phase?.phase===3?'#90d4b5':'#edba72'}` });
@@ -116,6 +134,25 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     sequence.dataset.feedback=casting?'action':payoff?'resolved':decision?'decision':'combination';
     scene.combatReading={text:text??'',detail:sequence.title,visible:!sequence.hidden,kind:sequence.dataset.feedback,actor:focus?{...focus}:undefined};
   };
+  // The layout poll is deliberately slow, but ownership must change before
+  // rendering the next frame. Refresh only at a presentation boundary, not on
+  // every frame; a rebuilt history node also signals a new canvas HUD.
+  let observed: Record<string,any> = {};
+  const syncFeedback = () => {
+    const focus=scene.motionFocus?.active ? scene.motionFocus : undefined;
+    const casting=!!focus && (focus.phase==='anticipation'||focus.phase==='commit'||focus.phase==='settle');
+    const payoff=scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? scene.motionPayoff : undefined;
+    const log=scene.root?.getByName('combat-log-latest'), choice=scene.discardChoice ?? scene.returnChoice;
+    if (focus!==observed.focus || casting!==observed.casting || payoff!==observed.payoff || log!==observed.log
+      || choice!==observed.choice || scene.mode!==observed.mode || scene.selectedInstanceId!==observed.selected
+      || scene.combatAnimationPending!==observed.pending) {
+      observed={focus,casting,payoff,log,choice,mode:scene.mode,selected:scene.selectedInstanceId,pending:scene.combatAnimationPending};
+      update();
+    }
+  };
+  scene.events.on(Phaser.Scenes.Events.POST_UPDATE,syncFeedback);
+  scene.events.on('battle-hud-rendered',syncFeedback);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{scene.events.off(Phaser.Scenes.Events.POST_UPDATE,syncFeedback);scene.events.off('battle-hud-rendered',syncFeedback);});
   const key=(event:KeyboardEvent)=>{
     if(event.code!=='F9'||event.repeat||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||blocked()||!scene.sys.isActive()||scene.mode!=='battle')return;
     if((event.target as HTMLElement)?.matches('input,textarea,[contenteditable=true]'))return;
@@ -137,5 +174,5 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   }};
   const onCard=(card:any)=>{scene.lastFlockCard={id:card.id,name:card.name,turn:scene.turn};};
   scene.events.on('flyway-call',onCall);scene.events.on('flyway-combination',onCombo);scene.events.on('flyway-card',onCard);
-  return {update,destroy:()=>{alive=false;performances?.destroy();callButton.remove();sequence.remove();fight.remove();delete scene.motionFocus;delete scene.motionPayoff;delete scene.combatReading;delete scene.lastFlockCard;delete scene.flockCombination;window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);scene.events.off('flyway-card',onCard);}};
+  return {update,destroy:()=>{alive=false;scene.events.off(Phaser.Scenes.Events.POST_UPDATE,syncFeedback);scene.events.off('battle-hud-rendered',syncFeedback);deferred.clear();performances?.destroy();callButton.remove();sequence.remove();fight.remove();delete scene.motionFocus;delete scene.motionPayoff;delete scene.combatReading;delete scene.lastFlockCard;delete scene.flockCombination;window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);scene.events.off('flyway-card',onCard);}};
 }

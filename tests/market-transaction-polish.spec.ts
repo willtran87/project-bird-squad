@@ -25,6 +25,15 @@ async function boot(page: Page) {
   await page.waitForFunction(() => !!(window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('market-purchase-action'));
 }
 async function click(page: Page, name: string, touch = false) {
+  // A newly drawn Phaser object exists before the next PRE_UPDATE registers
+  // its hit area. Do not send an automated click to an unpresented control.
+  await settleCanvas(page);
+  await page.waitForFunction(name => {
+    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    const all = (list: any[]): any[] => list.flatMap(o => [o, ...(o.list ? all(o.list) : [])]);
+    const o = all(r.children.list).find(o => o.name === name || o.getData?.('marketFocusId') === name);
+    return o && r.input._list.includes(o);
+  }, name);
   const p = await page.evaluate(name => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     const all = (list: any[]): any[] => list.flatMap(o => [o, ...(o.list ? all(o.list) : [])]);
@@ -100,6 +109,14 @@ test('Market primary action selects before buying, preserves services and blocks
   await installVirtualController(page); await boot(page);
   const before = await state(page);
   const price = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').marketCardShelf[0].price);
+  const refreshed = await page.evaluate(() => new Promise(resolve => {
+    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    const previous = r.children.getByName('market-purchase-action');
+    r.refreshRouteArtwork();
+    r.game.events.once('poststep', () => resolve({ replaced: r.children.getByName('market-purchase-action') !== previous,
+      registered: r.input._list.includes(r.children.getByName('market-purchase-action')) }));
+  }));
+  expect(refreshed).toEqual({ replaced: true, registered: true });
   await click(page, 'market-purchase-action');
   expect((await state(page)).run).toBe(before.run); expect((await state(page)).title).toContain('Selected');
   expect((await state(page)).action).toBe('Buy');

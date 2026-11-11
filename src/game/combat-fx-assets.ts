@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import type { RuntimeImageAsset } from './runtime-images';
 import Phaser from 'phaser';
 import { birdAudio, GAME_WIDTH, motionState, combatPacingState } from '../main';
@@ -73,7 +74,7 @@ import combatResourceOvercapUrl from '../../assets/runtime/fx/combat-resource-ov
 
 export function presentCombatRoostHandoff(host: any, x = 468, y = 382, scale = 1) {
   if (!host.textures.exists('combat-roost-handoff')) return;
-  host.textures.get('combat-roost-handoff').setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(host.textures.get('combat-roost-handoff'), Phaser.Textures.FilterMode.LINEAR);
   const reduced = motionState().reduced;
   const s = Phaser.Math.Clamp(scale, 0.74, 1.12);
   const width = 560 * s;
@@ -157,7 +158,7 @@ export function presentCombatRoostHandoff(host: any, x = 468, y = 382, scale = 1
 
 export function presentCombatPlayerTurnRally(host: any, x = GAME_WIDTH / 2, y = 276, scale = 1) {
   if (!host.textures.exists('combat-player-turn-rally')) return;
-  host.textures.get('combat-player-turn-rally').setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(host.textures.get('combat-player-turn-rally'), Phaser.Textures.FilterMode.LINEAR);
   const reduced = motionState().reduced;
   const s = Phaser.Math.Clamp(scale, 0.74, 1.08);
   const width = 560 * s;
@@ -248,7 +249,7 @@ export function presentCombatPlayerTurnRally(host: any, x = GAME_WIDTH / 2, y = 
 
 export function presentEnemyCommitmentSeal(host: any, enemy: any, move: any, flockX: number, flockY: number) {
   if (!host.textures.exists('combat-enemy-commitment-seal')) return;
-  host.textures.get('combat-enemy-commitment-seal').setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(host.textures.get('combat-enemy-commitment-seal'), Phaser.Textures.FilterMode.LINEAR);
   const view = host.enemyView(enemy);
   const damage = Math.max(1, host.incomingAttackDamage(enemy));
   const reduced = motionState().reduced;
