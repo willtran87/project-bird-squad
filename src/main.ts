@@ -13613,6 +13613,7 @@ private playBattleIntro(onComplete?: () => void) {
       if (this.inspectOverlay) this.renderInspectOverlay(this.inspectOverlay);
       if (this.waymarkDrawerOpen) this.renderWaymarkDrawer();
       if (this.supplyDrawerOpen) this.renderSupplyDrawer();
+      this.events.emit('battle-hud-rendered');
       if (!modalUiOpen) {
         this.setBattleFxDepth(80);
         this.children.bringToTop(this.fxLayer);

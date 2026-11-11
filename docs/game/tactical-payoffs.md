@@ -54,6 +54,10 @@ Baseline: `8a04cf84` (published runtime `a072362d`). Work is in progress.
 - History, ordinary objectives and phase coaching yield while an action or its
   payoff owns the reading beat. Enemy Tells, vitals and commands remain visible.
   Canonical portraits and the single canonical card actor are unchanged.
+  A per-frame diagnostic caught a brief history flash between layout polls;
+  ownership now refreshes at presentation boundaries before rendering and
+  immediately after queued HUD rebuilds. The regression samples every action
+  frame, in addition to the settled screenshots.
 - Native CPU traces identified Phaser's repeated `setFilter` calls reuploading
   identical pixels during HUD and action rendering. The shared filter guard
   reads current texture and data-source modes, so genuine changes/replacements

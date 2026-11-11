@@ -133,6 +133,10 @@ test('Tactical payoffs real actions defer coaching and history without hiding Te
     const originals:any[]=[];
     for(const t of Object.values(b.textures.list) as any[]){const fn=t.setFilter;originals.push([t,fn]);t.setFilter=function(mode:number){if([...t.source,...t.dataSource].every((s:any)=>s.scaleMode===mode))redundant++;return fn.call(this,mode);};}
     try{b.renderAll();b.renderAll();}finally{for(const [t,fn] of originals)t.setFilter=fn;}
+    b.feedbackFrames=[];b.feedbackSampler=()=>{
+      if(b.combatAnimationPending || (b.motionPayoff&&b.time.now<b.motionPayoff.until))
+        b.feedbackFrames.push({history:b.root.getByName('combat-log-latest')?.visible,kind:b.combatReading?.kind});
+    };b.events.on('postupdate',b.feedbackSampler);
     b.enemies.forEach((e:any)=>e.hp=e.maxHp=1000);b.energy=3;
     b.playCard(b.hand[0],b.enemies[0].id,{resolveDelayMs:450});return redundant;
   });
@@ -140,7 +144,9 @@ test('Tactical payoffs real actions defer coaching and history without hiding Te
   await page.waitForFunction(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.motionPayoff&&!b.combatAnimationPending;});
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=true;});
   await expect.poll(()=>page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.root.getByName('combat-log-latest')?.visible;})).toBe(false);
-  const reading=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {reading:b.combatReading,vitals:b.root.list.filter((c:any)=>c.name==='combat-enemy-vitals').every((c:any)=>c.visible)};});
+  const reading=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.events.off('postupdate',b.feedbackSampler);return {reading:b.combatReading,frames:b.feedbackFrames,vitals:b.root.list.filter((c:any)=>c.name==='combat-enemy-vitals').every((c:any)=>c.visible)};});
+  expect(reading.frames.length).toBeGreaterThan(0);
+  expect(reading.frames.filter((f:any)=>f.history)).toEqual([]);
   expect(reading.vitals).toBe(true);expect(reading.reading.kind).toBe('resolved');
   await page.screenshot({path:info.outputPath('quiet-payoff-2560.png')});
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.motionPayoff.until=b.time.now-1;b.time.paused=false;});

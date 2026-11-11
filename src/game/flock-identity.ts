@@ -134,6 +134,25 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     sequence.dataset.feedback=casting?'action':payoff?'resolved':decision?'decision':'combination';
     scene.combatReading={text:text??'',detail:sequence.title,visible:!sequence.hidden,kind:sequence.dataset.feedback,actor:focus?{...focus}:undefined};
   };
+  // The layout poll is deliberately slow, but ownership must change before
+  // rendering the next frame. Refresh only at a presentation boundary, not on
+  // every frame; a rebuilt history node also signals a new canvas HUD.
+  let observed: Record<string,any> = {};
+  const syncFeedback = () => {
+    const focus=scene.motionFocus?.active ? scene.motionFocus : undefined;
+    const casting=!!focus && (focus.phase==='anticipation'||focus.phase==='commit'||focus.phase==='settle');
+    const payoff=scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? scene.motionPayoff : undefined;
+    const log=scene.root?.getByName('combat-log-latest'), choice=scene.discardChoice ?? scene.returnChoice;
+    if (focus!==observed.focus || casting!==observed.casting || payoff!==observed.payoff || log!==observed.log
+      || choice!==observed.choice || scene.mode!==observed.mode || scene.selectedInstanceId!==observed.selected
+      || scene.combatAnimationPending!==observed.pending) {
+      observed={focus,casting,payoff,log,choice,mode:scene.mode,selected:scene.selectedInstanceId,pending:scene.combatAnimationPending};
+      update();
+    }
+  };
+  scene.events.on(Phaser.Scenes.Events.POST_UPDATE,syncFeedback);
+  scene.events.on('battle-hud-rendered',syncFeedback);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{scene.events.off(Phaser.Scenes.Events.POST_UPDATE,syncFeedback);scene.events.off('battle-hud-rendered',syncFeedback);});
   const key=(event:KeyboardEvent)=>{
     if(event.code!=='F9'||event.repeat||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||blocked()||!scene.sys.isActive()||scene.mode!=='battle')return;
     if((event.target as HTMLElement)?.matches('input,textarea,[contenteditable=true]'))return;
@@ -155,5 +174,5 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   }};
   const onCard=(card:any)=>{scene.lastFlockCard={id:card.id,name:card.name,turn:scene.turn};};
   scene.events.on('flyway-call',onCall);scene.events.on('flyway-combination',onCombo);scene.events.on('flyway-card',onCard);
-  return {update,destroy:()=>{alive=false;performances?.destroy();callButton.remove();sequence.remove();fight.remove();delete scene.motionFocus;delete scene.motionPayoff;delete scene.combatReading;delete scene.lastFlockCard;delete scene.flockCombination;window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);scene.events.off('flyway-card',onCard);}};
+  return {update,destroy:()=>{alive=false;scene.events.off(Phaser.Scenes.Events.POST_UPDATE,syncFeedback);scene.events.off('battle-hud-rendered',syncFeedback);deferred.clear();performances?.destroy();callButton.remove();sequence.remove();fight.remove();delete scene.motionFocus;delete scene.motionPayoff;delete scene.combatReading;delete scene.lastFlockCard;delete scene.flockCombination;window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);scene.events.off('flyway-card',onCard);}};
 }

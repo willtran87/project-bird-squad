@@ -21,6 +21,11 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   marker. Preserve it visually and in the spoken detail; test the unknown-rule
   boundary. Superseded PR run `43013684458` was cancelled before merge so the
   complete workflow can qualify the correction.
+- A native per-frame diagnostic then caught history briefly returning between
+  the 250 ms identity layout polls. Feedback ownership now synchronizes at
+  presentation boundaries before rendering, including queued HUD rebuilds.
+  The regression checks every sampled action frame. Superseded run
+  `43015093984` was cancelled before merge; it is not release evidence.
 
 ## 2026-11-07 — Clearer choices and distinct builds (published)
 - PR #23 merged as `a072362d23e0c9f15938171a450c82b7060b33d3`; its tree matches
