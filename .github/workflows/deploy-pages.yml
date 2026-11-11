@@ -39,7 +39,10 @@ jobs:
         run: npm ci
 
       - name: Install browser
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 10
+        uses: ./.github/actions/install-browser
+        with:
+          browser: chromium
 
       - name: Production regression
         run: npx playwright test --fully-parallel --workers=1 --timeout=90000 --grep-invert="reference flight|seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/16 --reporter=list,json
@@ -78,7 +81,10 @@ jobs:
         run: npm ci
 
       - name: Install browser
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 10
+        uses: ./.github/actions/install-browser
+        with:
+          browser: chromium
 
       - name: Campaign progression
         run: npx playwright test --fully-parallel --workers=1 --grep="seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/6 --reporter=list,json
@@ -117,7 +123,10 @@ jobs:
         run: npm ci
 
       - name: Install browser
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 10
+        uses: ./.github/actions/install-browser
+        with:
+          browser: chromium
 
       - name: Live-control journey
         run: npx playwright test --fully-parallel --workers=1 --grep="reference flight" --shard=${{ matrix.shard }}/4 --reporter=list,json
@@ -154,7 +163,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install browser
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 10
+        uses: ./.github/actions/install-browser
+        with:
+          browser: ${{ matrix.browser }}
       - name: Verify release smoke and district upgrades
         run: >-
           node tools/run-cross-browser-smoke.mjs
@@ -191,7 +203,10 @@ jobs:
         run: npm ci
 
       - name: Install browser
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 10
+        uses: ./.github/actions/install-browser
+        with:
+          browser: chromium
 
       - name: Validate content and release policy
         run: |

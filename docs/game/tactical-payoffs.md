@@ -146,3 +146,12 @@ The existing early-frame scheduling for reward screens now includes defeat and
 run-complete screens. Regression assertions cover both outcomes, followed by a
 real Practice click, exact opening-state restoration and unchanged saved rewards.
 The combat rendering path and timing fixture are unchanged by this correction.
+
+Run `43031065967` passed every executed test: 966 core and all 549 browser
+cases. Three regression shards could not install browser dependencies because
+the hosted runner's Azure Ubuntu mirror failed DNS resolution. An infrastructure
+retry failed at the same installation step, still before any tests started.
+Neither attempt qualified the release. All five browser-install locations now
+share a composite action using the standard official Ubuntu archive mirrors,
+bounded package timeouts and a ten-minute setup limit. Package signature checks,
+browser versions, test coverage and zero-test-retry requirements are unchanged.

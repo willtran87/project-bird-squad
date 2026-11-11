@@ -15616,3 +15616,9 @@ Follow-up implementation and verification (same working turn):
 - Reproduced the outcome redraw input gap deterministically on the previous production build: the replacement Practice control was visible but absent from InputPlugin registration at post-step.
 - Extended the existing early-frame reward scheduling to defeat/run-complete screens; combat rendering/timing is unchanged. Assertions now check same-frame registration for both outcomes, then the real Practice click, exact opening restoration, and no saved rewards.
 - All nine focused cases passed across Chromium, Firefox and WebKit on the corrected production build. Native defeat/rematch images and shared-client play were inspected; bundle/cache checks passed at 699.1 KiB boot code.
+
+## Release setup resilience — November 11, 2026
+
+- Run 43031065967 passed all executed tests (966 core + 549 browser); three shards failed browser dependency installation twice because azure.archive.ubuntu.com could not resolve. No tests started in those failed jobs.
+- Consolidated all five CI browser installs into a composite action using official Ubuntu archive mirrors, 15-second package request timeouts, one package retry and a ten-minute installation limit. Browser versions, signatures and test gates remain unchanged. YAML/Bash syntax and documentation validation passed; full qualification restarts on the infrastructure correction.
+

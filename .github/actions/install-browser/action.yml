@@ -1,0 +1,31 @@
+name: Install release browser
+description: Install Playwright using bounded Ubuntu package downloads.
+inputs:
+  browser:
+    description: Playwright browser to install
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Configure Ubuntu package mirrors
+      shell: bash
+      run: |
+        # Hosted runners can stall on the Azure mirror before failover.
+        # Keep official, signed Ubuntu archives and normal package verification.
+        if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+          printf '%s\n' \
+            'https://archive.ubuntu.com/ubuntu/' \
+            'https://security.ubuntu.com/ubuntu/' \
+            | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+        fi
+        printf '%s\n' \
+          'Acquire::Retries "1";' \
+          'Acquire::http::Timeout "15";' \
+          'Acquire::https::Timeout "15";' \
+          | sudo tee /etc/apt/apt.conf.d/zzzz-release-timeouts > /dev/null
+        apt-config dump Acquire::Retries Acquire::http::Timeout Acquire::https::Timeout
+    - name: Install browser and system dependencies
+      shell: bash
+      env:
+        RELEASE_BROWSER: ${{ inputs.browser }}
+      run: npx playwright install --with-deps "$RELEASE_BROWSER"
