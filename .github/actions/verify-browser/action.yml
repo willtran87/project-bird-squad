@@ -15,6 +15,11 @@ runs:
         if [[ "$HOME" == "/github/home" && "$(id -u)" == "0" ]]; then
           chown "$(id -u):$(id -g)" /github/home
         fi
+        # Checkout's temporary Git configuration does not cover later shell
+        # steps in this container. Trust only this checked-out workspace.
+        git config --global --add safe.directory "${GITHUB_WORKSPACE:?}"
+        git rev-parse --show-toplevel
+        git ls-files -c -o --exclude-standard -z > /dev/null
     - name: Verify package version and browser executable
       shell: bash
       env:

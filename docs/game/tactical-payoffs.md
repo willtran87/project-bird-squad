@@ -166,3 +166,11 @@ launch failed before game execution. The shared setup action now aligns only
 that temporary `/github/home` directory with the container user, then launches
 and closes the requested browser before starting tests. The failed run was
 canceled; final qualification uses this correction.
+
+Run `43040743001` passed all 1,176 core and 549 browser cases, content/policy
+checks, the Pages build, delivery budgets and the real Pages-path smoke check.
+Artifact identity recording then rejected Git's container-mounted checkout as
+having different ownership. The shared setup now registers only the explicit
+checked-out workspace as a Git safe directory and exercises the same tracked-file
+query before tests. The failed release is retained as evidence; final publication
+requires a successful artifact identity record as well as the test reports.

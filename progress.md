@@ -15629,3 +15629,5 @@ Follow-up implementation and verification (same working turn):
 - All five test/build jobs use the same packaged environment; a shared action rejects package-version drift or missing browser executables. Node 22 and all existing test/build gates remain unchanged.
 
 - Packaged-run follow-up: Firefox launch rejected the host-owned temporary GitHub home directory. The CI-only setup action now aligns that directory with the container user and validates an actual browser launch before tests. Run 43039492732 remains unqualified; no game assertions were weakened.
+
+- Run 43040743001 completed all 1,176 core + 549 browser cases, content/policy, bundle/cache and Pages-path checks. Artifact identity recording failed on Git checkout ownership in the container. Shared CI setup now trusts only GITHUB_WORKSPACE and exercises the artifact recorder's tracked-file query before tests; no game/test changes.
