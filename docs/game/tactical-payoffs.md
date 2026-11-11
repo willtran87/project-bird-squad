@@ -137,3 +137,12 @@ which WebKit reported as navigation-abort access-control errors; saved-story
 assertions themselves passed. The fixture now observes the rendered ending and
 loaded outcome textures before checking persistence through reload. Error
 assertions and zero-retry release requirements remain intact.
+
+The next run, `43024040769`, passed all 1,176 core cases and 548/549 browser
+cases, but WebKit missed a Practice This Fight click after defeat. It was not
+merged. A deterministic post-step check confirmed that a late outcome redraw
+could show its replacement controls before their hit areas were registered.
+The existing early-frame scheduling for reward screens now includes defeat and
+run-complete screens. Regression assertions cover both outcomes, followed by a
+real Practice click, exact opening-state restoration and unchanged saved rewards.
+The combat rendering path and timing fixture are unchanged by this correction.

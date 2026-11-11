@@ -15609,3 +15609,10 @@ Follow-up implementation and verification (same working turn):
 - WebKit story fixture reached its saved-story assertions but reloaded during cold outcome-art XHRs. It now observes the rendered ending and loaded textures before the persistence reload, preserving page-error assertions and zero retries.
 - Recorded three paired native timing runs in docs/game/tactical-payoffs.md: card-play median 338.7 → 287.9 ms, frame P95 66.6 → 33.4 ms; selection unchanged and a 299.9 ms entry outlier retained. Recorded earned-policy outcomes and limitations; human handoff remains pending actual sessions.
 - Further native Firefox diagnostics identified a genuine late-art input gap: the scene PRE_UPDATE refresh ran after InputPlugin registration. Moved the coalesced refresh to game STEP before scene registration, retaining tooltip/modal/paused-scene deferral and cleaning up the global listener. The deterministic post-step assertion fails on the previous build with registered:false; the corrected production build is being verified.
+
+## Tactical payoffs outcome-input follow-up — November 11, 2026
+
+- Run 43024040769 passed all 1,176 core cases and 548/549 browser cases. WebKit timed out after a missed Practice This Fight click. Merge remained stopped.
+- Reproduced the outcome redraw input gap deterministically on the previous production build: the replacement Practice control was visible but absent from InputPlugin registration at post-step.
+- Extended the existing early-frame reward scheduling to defeat/run-complete screens; combat rendering/timing is unchanged. Assertions now check same-frame registration for both outcomes, then the real Practice click, exact opening restoration, and no saved rewards.
+- All nine focused cases passed across Chromium, Firefox and WebKit on the corrected production build. Native defeat/rematch images and shared-client play were inspected; bundle/cache checks passed at 699.1 KiB boot code.

@@ -13528,8 +13528,9 @@ private playBattleIntro(onComplete?: () => void) {
     }
     this.battleRenderQueued = true;
     const token = ++this.battleRenderScheduleToken;
-    const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward';
-    // Reward redraws replace all hit targets. Rebuild before InputPlugin flushes
+    const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward'
+      || isRunOutcome(this.mode);
+    // Reward and outcome redraws replace all hit targets. Rebuild before InputPlugin flushes
     // its registration queue so visible buttons are clickable in the same frame.
     const emitter = rewardMode ? this.game.events : this.events;
     const event = rewardMode ? Phaser.Core.Events.PRE_STEP : Phaser.Scenes.Events.POST_UPDATE;
