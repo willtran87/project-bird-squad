@@ -1,0 +1,25 @@
+name: Verify packaged release browser
+description: Verify the pinned Playwright image matches the installed test package.
+inputs:
+  browser:
+    description: Playwright browser to verify
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Verify package version and browser executable
+      shell: bash
+      env:
+        RELEASE_BROWSER: ${{ inputs.browser }}
+      run: |
+        node <<'NODE'
+        const assert = require('node:assert/strict');
+        const fs = require('node:fs');
+        const version = require('@playwright/test/package.json').version;
+        assert.equal(version, '1.60.0', 'Update the pinned CI image with the Playwright package.');
+        const name = process.env.RELEASE_BROWSER;
+        assert.ok(['chromium', 'firefox', 'webkit'].includes(name));
+        const browser = require('playwright')[name];
+        assert.ok(fs.existsSync(browser.executablePath()), `Missing packaged ${name} executable`);
+        console.log(`Verified Playwright ${version}: ${name}`);
+        NODE

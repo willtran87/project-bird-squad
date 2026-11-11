@@ -20,6 +20,9 @@ jobs:
   regression:
     name: Production regression (${{ matrix.shard }}/16)
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
+      options: --init --ipc=host
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -38,9 +41,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install browser
-        timeout-minutes: 10
-        uses: ./.github/actions/install-browser
+      - name: Verify packaged browser
+        uses: ./.github/actions/verify-browser
         with:
           browser: chromium
 
@@ -62,6 +64,9 @@ jobs:
   campaigns:
     name: Campaign progression (${{ matrix.shard }}/6)
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
+      options: --init --ipc=host
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -80,9 +85,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install browser
-        timeout-minutes: 10
-        uses: ./.github/actions/install-browser
+      - name: Verify packaged browser
+        uses: ./.github/actions/verify-browser
         with:
           browser: chromium
 
@@ -104,6 +108,9 @@ jobs:
   journeys:
     name: Live-control journey (${{ matrix.shard }}/4)
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
+      options: --init --ipc=host
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -122,9 +129,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install browser
-        timeout-minutes: 10
-        uses: ./.github/actions/install-browser
+      - name: Verify packaged browser
+        uses: ./.github/actions/verify-browser
         with:
           browser: chromium
 
@@ -146,6 +152,9 @@ jobs:
   browsers:
     name: Browser qualification (${{ matrix.browser }})
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
+      options: --init --ipc=host
     # The expanded visual suite needs room for runner setup and evidence upload.
     timeout-minutes: 45
     strategy:
@@ -162,9 +171,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install browser
-        timeout-minutes: 10
-        uses: ./.github/actions/install-browser
+      - name: Verify packaged browser
+        uses: ./.github/actions/verify-browser
         with:
           browser: ${{ matrix.browser }}
       - name: Verify release smoke and district upgrades
@@ -188,6 +196,9 @@ jobs:
   build:
     needs: [regression, campaigns, journeys, browsers]
     runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
+      options: --init --ipc=host
     timeout-minutes: 180
     steps:
       - name: Checkout
@@ -202,9 +213,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install browser
-        timeout-minutes: 10
-        uses: ./.github/actions/install-browser
+      - name: Verify packaged browser
+        uses: ./.github/actions/verify-browser
         with:
           browser: chromium
 

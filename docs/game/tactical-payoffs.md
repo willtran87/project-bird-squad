@@ -151,7 +151,11 @@ Run `43031065967` passed every executed test: 966 core and all 549 browser
 cases. Three regression shards could not install browser dependencies because
 the hosted runner's Azure Ubuntu mirror failed DNS resolution. An infrastructure
 retry failed at the same installation step, still before any tests started.
-Neither attempt qualified the release. All five browser-install locations now
-share a composite action using the standard official Ubuntu archive mirrors,
-bounded package timeouts and a ten-minute setup limit. Package signature checks,
-browser versions, test coverage and zero-test-retry requirements are unchanged.
+Neither attempt qualified the release. A bounded standard-mirror fallback in
+run `43038007268` confirmed DNS failures for both archive.ubuntu.com and
+security.ubuntu.com; it was canceled after setup failures, before qualification.
+All five test/build jobs now use the official Playwright 1.60.0 Ubuntu Noble
+image, pinned by digest, with browsers and system dependencies already included.
+A shared verification action rejects mismatched Playwright package versions or
+missing executables. Node 22, browser versions, test coverage, build gates and
+zero-test-retry requirements are unchanged. No package verification is disabled.

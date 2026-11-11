@@ -15622,3 +15622,8 @@ Follow-up implementation and verification (same working turn):
 - Run 43031065967 passed all executed tests (966 core + 549 browser); three shards failed browser dependency installation twice because azure.archive.ubuntu.com could not resolve. No tests started in those failed jobs.
 - Consolidated all five CI browser installs into a composite action using official Ubuntu archive mirrors, 15-second package request timeouts, one package retry and a ten-minute installation limit. Browser versions, signatures and test gates remain unchanged. YAML/Bash syntax and documentation validation passed; full qualification restarts on the infrastructure correction.
 
+
+## Packaged CI browser environment — November 11, 2026
+
+- Standard Ubuntu mirrors also failed DNS in run 43038007268; retained the installation log and canceled the unqualified run. Replaced per-job package installation with the official Playwright 1.60.0 Noble container, pinned to verified registry digest 9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948.
+- All five test/build jobs use the same packaged environment; a shared action rejects package-version drift or missing browser executables. Node 22 and all existing test/build gates remain unchanged.
