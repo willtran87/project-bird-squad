@@ -207,7 +207,7 @@ export function installFlyway(raw: Phaser.Scene) {
   function renderPreen(body: HTMLElement) {
     const request = pendingPreen!; const runtime = cardLibrary[request.card.id].runtime;
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
-    const extras = [...(mapIndex(scene) === 1 ? canalPreens : mapIndex(scene) === 2 ? spirePreens : []), ...(mapIndex(scene) > 0 ? buildPreens : [])];
+    const extras = [...(mapIndex(scene) === 1 ? canalPreens : mapIndex(scene) === 2 ? spirePreens : []), ...buildPreens];
     const branches: PreenBranch[] = ['shelter', 'flight', ...extras.filter(entry => entry.card === runtime.id).map(entry => entry.id)];
     for (const branch of branches) {
       const upgrade = branchUpgrade(runtime, branch);

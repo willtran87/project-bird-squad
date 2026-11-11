@@ -69,6 +69,7 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   fight.setAttribute('role', 'status'); fight.setAttribute('aria-live', 'polite'); document.body.append(fight);
   const stats={decisionMs:0,animationMs:0,rewardMs:0,cleanupMs:0,signatures:0};scene.identityPacing=stats;
   let last=performance.now();
+  const deferred = new Map<any, boolean>();
   let alive=true, performances: ReturnType<typeof import('./living-performances')['installLivingPerformances']> | undefined;
   void import('./living-performances').then(module=>{if(alive)performances=module.installLivingPerformances(scene);}).catch(()=>{});
   const update=()=>{
@@ -86,10 +87,27 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     }
     const hidden=readingBlocked()||paused||scene.mode!=='battle';callButton.hidden=blocked()||hidden;
     const focus=scene.motionFocus?.active ? scene.motionFocus : undefined;
+    const resolving = scene.combatAnimationPending || scene.discardChoice || scene.returnChoice
+      || (scene.motionPayoff && scene.time.now < scene.motionPayoff.until);
+    // The resolved action owns this short reading beat. Keep history and
+    // coaching available afterward; never hide Tells, health, or commands.
+    if (resolving) {
+      for (const child of scene.root?.list ?? []) {
+        if (child.visible && (child.name === 'combat-log-hit' || child.name === 'combat-log-latest' || child.getData('deferToCard'))) {
+          deferred.set(child, true); child.setVisible(false);
+        }
+      }
+    } else if (!scene.selectedInstanceId) {
+      for (const [child, visible] of deferred) if (child.active) child.setVisible(visible);
+      deferred.clear();
+    }
     sequence.hidden=hidden||!!scene.selectedInstanceId&&!focus;
     const phase = signaturePhase(currentCombatNodes()[scene.currentRouteIndex]?.payloadId ?? '', scene.enemies);
     scene.signatureFight = phase;
-      fight.hidden = hidden || !phase || !!scene.selectedInstanceId || !!focus;
+      // Phase coaching yields to the action and its resolved payoff. Enemy Tells
+      // and critical combat warnings remain in their own permanent HUD lanes.
+      fight.hidden = hidden || !phase || !!scene.selectedInstanceId || !!focus || scene.combatAnimationPending
+        || !!resolving;
     if(hidden){scene.combatReading=undefined;return;}
     const r=scene.game.canvas.getBoundingClientRect(),scale=r.width/1280;
     Object.assign(fight.style, { left: `${r.left+370*scale}px`, top: `${r.top+372*scale}px`, width: `${625*scale}px`, fontSize: `${Math.max(12,16*scale)}px`, borderLeft: `4px solid ${phase?.phase===3?'#90d4b5':'#edba72'}` });

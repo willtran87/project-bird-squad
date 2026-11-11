@@ -1,3 +1,4 @@
+import { setTextureFilter } from '../texture-filter';
 // Combat-only presentation. Loaded with the existing essential battle FX module.
 import Phaser from 'phaser';
 import { COMBAT_BANK_CACHE_TEXTURE, COMBAT_BOSS_PHASE_BREAK_TEXTURE, COMBAT_CACHE_CHOICE_REVEAL_TEXTURE, COMBAT_CARD_DRAW_TEXTURE, COMBAT_CLEANSE_BURST_TEXTURE, COMBAT_COVER_BLOCK_BURST_TEXTURE, COMBAT_COVER_GUARD_TEXTURE, COMBAT_COVER_SHATTER_TEXTURE, COMBAT_DEFEAT_BURST_TEXTURE, COMBAT_DISCARD_SWEEP_TEXTURE, COMBAT_ENEMY_ATTACK_TELL_TEXTURE, COMBAT_ENEMY_COVER_BLOCK_TEXTURE, COMBAT_ENEMY_COVER_TEXTURE, COMBAT_ENEMY_HEAL_BEAM_TEXTURE, COMBAT_ENEMY_HEAVY_CONTACT_TEXTURE, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE, COMBAT_ENEMY_MEND_TEXTURE, COMBAT_ENEMY_SUPPORT_CHARGE_TEXTURE, COMBAT_ENEMY_SUPPORT_TELL_TEXTURE, COMBAT_ENEMY_SWIPE_TEXTURE, COMBAT_FLOCK_IMPACT_BURST_TEXTURE, COMBAT_FLOW_SURGE_TEXTURE, COMBAT_FORMATION_SHIFT_TEXTURE, COMBAT_FOULED_PRESSURE_TEXTURE, COMBAT_HEAL_BLOOM_TEXTURE, COMBAT_IMPACT_FLASH_TEXTURE, COMBAT_MOLT_SHIFT_TEXTURE, COMBAT_MOLT_TRIGGER_CHOICE_TEXTURE, COMBAT_OPEN_SKY_BREAK_TEXTURE, COMBAT_OPEN_SKY_EXPOSURE_TEXTURE, COMBAT_OPEN_SKY_GUARD_TEXTURE, COMBAT_OVEREXTENSION_WARNING_TEXTURE, COMBAT_OVERFLOW_SHELTER_TEXTURE, COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE, COMBAT_PINNED_OPENING_STRIKE_TEXTURE, COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE, COMBAT_RESONANCE_SPEND_TEXTURE, COMBAT_RESONANCE_SURGE_TEXTURE, COMBAT_RESOURCE_OVERCAP_TEXTURE, COMBAT_RUFFLED_BREAK_TEXTURE, COMBAT_SHUFFLE_VORTEX_TEXTURE, COMBAT_SPARK_ECHO_TEXTURE, COMBAT_STATUS_CLEANSE_SPECIFIC_TEXTURE, COMBAT_SUPPLY_USE_BURST_TEXTURE, COMBAT_THREAT_CHARGE_TEXTURE, COMBAT_TURN_BANNER_TEXTURE, COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE, COMBAT_VICTORY_RALLY_TEXTURE, COMBAT_WINDED_GUST_TEXTURE, COMBAT_WINGBEAT_DRAIN_TEXTURE, COMBAT_WINGBEAT_SURGE_TEXTURE, ENEMY_ATTACK_WINDUP_MS, ENEMY_FX_X, ENEMY_FX_Y, FLOCK_FX_X, FLOCK_FX_Y, GAME_WIDTH, TOKEN_DISPLAY_FONT, banner, birdAudio, combatPacePreference, currentCombatNodes, currentFlashEffectsState, floatingText, prefersReducedMotion, suitFxMeta } from '../../main';
@@ -5,7 +6,7 @@ import type { ActiveCardContract, Card, FlockState } from '../../main';
 
 export function combatImpactFlash(this: any, x: number, y: number, color: number, direction: 1 | -1 = 1, heavy = false): any {
     if (!this.textures.exists(COMBAT_IMPACT_FLASH_TEXTURE)) return;
-    this.textures.get(COMBAT_IMPACT_FLASH_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_IMPACT_FLASH_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     const reducedFlashes = currentFlashEffectsState().reduced;
     this.fxGlowPulse(
       x,
@@ -44,7 +45,7 @@ export function combatImpactFlash(this: any, x: number, y: number, color: number
 
 export function combatPlayerHitConfirm(this: any, x: number, y: number, color: number, heavy = false): any {
     if (!this.textures.exists(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)) return;
-    this.textures.get(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatPlayerHitConfirmBursts += 1;
     const size = heavy ? 128 : 92;
     const reducedMotion = prefersReducedMotion();
@@ -100,7 +101,7 @@ export function combatPlayerCommitSigil(this: any, _card: Card, _enemyId: string
 
 export function combatFlockImpactBurst(this: any, x: number, y: number, heavy = false): any {
     if (!this.textures.exists(COMBAT_FLOCK_IMPACT_BURST_TEXTURE)) return;
-    this.textures.get(COMBAT_FLOCK_IMPACT_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_FLOCK_IMPACT_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatFlockImpactBurstBursts += 1;
     const burst = this.add.image(x, y, COMBAT_FLOCK_IMPACT_BURST_TEXTURE)
       .setDisplaySize(heavy ? 180 : 128, heavy ? 75 : 54)
@@ -130,7 +131,7 @@ export function combatFlockImpactBurst(this: any, x: number, y: number, heavy = 
 
 export function combatEnemyImpactContact(this: any, x: number, y: number, fromX: number, heavy = false): any {
     if (!this.textures.exists(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     const reducedMotion = prefersReducedMotion();
     const direction = fromX >= x ? 1 : -1;
     const width = heavy ? 228 : 180;
@@ -163,7 +164,7 @@ export function combatEnemyImpactContact(this: any, x: number, y: number, fromX:
 
 export function combatEnemySwipe(this: any, fromX: number, fromY: number, toX: number, toY: number, heavy = false): any {
     if (!this.textures.exists(COMBAT_ENEMY_SWIPE_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_SWIPE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_SWIPE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemySwipeBursts += 1;
     const distance = Math.max(1, Math.hypot(fromX - toX, fromY - toY));
     const targetToSource = Phaser.Math.Angle.Between(toX, toY, fromX, fromY);
@@ -202,7 +203,7 @@ export function combatEnemySwipe(this: any, fromX: number, fromY: number, toX: n
 
 export function combatCoverGuard(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_COVER_GUARD_TEXTURE)) return;
-    this.textures.get(COMBAT_COVER_GUARD_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_COVER_GUARD_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverGuardBursts += 1;
     const guard = this.add.image(x, y - 8, COMBAT_COVER_GUARD_TEXTURE)
       .setDisplaySize(164 * scale, 122 * scale)
@@ -229,7 +230,7 @@ export function combatCoverGuard(this: any, x: number, y: number, scale = 1): an
 
 export function combatCoverBlockBurst(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_COVER_BLOCK_BURST_TEXTURE)) return;
-    this.textures.get(COMBAT_COVER_BLOCK_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_COVER_BLOCK_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverBlockBurstBursts += 1;
     const burst = this.add.image(x, y - 4, COMBAT_COVER_BLOCK_BURST_TEXTURE)
       .setDisplaySize(330 * scale, 138 * scale)
@@ -268,7 +269,7 @@ export function combatCoverBlockBurst(this: any, x: number, y: number, scale = 1
 
 export function combatEnemyCoverBlock(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_ENEMY_COVER_BLOCK_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_COVER_BLOCK_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_COVER_BLOCK_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyCoverBlockBursts += 1;
     const sizeScale = Phaser.Math.Clamp(scale, 0.84, 1.18);
     const reduced = prefersReducedMotion();
@@ -309,7 +310,7 @@ export function combatEnemyCoverBlock(this: any, x: number, y: number, scale = 1
 
 export function combatPerfectBraceRiposte(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE)) return;
-    this.textures.get(COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatPerfectBraceRiposteBursts += 1;
     const crest = this.add.image(x, y, COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE)
       .setDisplaySize(420 * scale, 175 * scale)
@@ -348,7 +349,7 @@ export function combatPerfectBraceRiposte(this: any, x: number, y: number, scale
 
 export function combatPinnedOpeningStrike(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_PINNED_OPENING_STRIKE_TEXTURE)) return;
-    this.textures.get(COMBAT_PINNED_OPENING_STRIKE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_PINNED_OPENING_STRIKE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatPinnedOpeningStrikeBursts += 1;
     const mark = this.add.image(x, y, COMBAT_PINNED_OPENING_STRIKE_TEXTURE)
       .setDisplaySize(360 * scale, 150 * scale)
@@ -401,7 +402,7 @@ export function combatGeneratedFx(this: any, textureKey: string, name: string, x
       driftY?: number;
     } = {}): any {
     if (!this.textures.exists(textureKey)) return false;
-    this.textures.get(textureKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(textureKey), Phaser.Textures.FilterMode.LINEAR);
     const reduced = prefersReducedMotion();
     const angle = options.angle ?? Phaser.Math.Between(-6, 6);
     const pressureAlpha = this.activeGeneratedFxSprites >= 4 ? 0.68 : this.activeGeneratedFxSprites >= 2 ? 0.82 : 1;
@@ -556,7 +557,7 @@ export function combatEnemyHeavyContact(this: any, x: number, y: number, fromX: 
 
 export function combatEnemyHealBeam(this: any, fromX: number, fromY: number, toX: number, toY: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_ENEMY_HEAL_BEAM_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_HEAL_BEAM_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_HEAL_BEAM_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     const x = (fromX + toX) / 2;
     const y = (fromY + toY) / 2;
     const distance = Math.max(120, Math.hypot(toX - fromX, toY - fromY));
@@ -640,7 +641,7 @@ export function combatFourSuitRally(this: any, x: number, y: number, scale = 1):
 
 export function combatHealBloom(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_HEAL_BLOOM_TEXTURE)) return;
-    this.textures.get(COMBAT_HEAL_BLOOM_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_HEAL_BLOOM_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatHealBloomBursts += 1;
     const bloom = this.add.image(x, y + 8, COMBAT_HEAL_BLOOM_TEXTURE)
       .setDisplaySize(152 * scale, 114 * scale)
@@ -668,7 +669,7 @@ export function combatHealBloom(this: any, x: number, y: number, scale = 1): any
 
 export function combatOverflowShelter(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_OVERFLOW_SHELTER_TEXTURE)) return;
-    this.textures.get(COMBAT_OVERFLOW_SHELTER_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_OVERFLOW_SHELTER_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatOverflowShelterBursts += 1;
     const shelter = this.add.image(x, y, COMBAT_OVERFLOW_SHELTER_TEXTURE)
       .setDisplaySize(232 * scale, 232 * scale)
@@ -726,7 +727,7 @@ export function combatOverflowShelter(this: any, x: number, y: number, scale = 1
 
 export function combatFormationShift(this: any, state: FlockState, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_FORMATION_SHIFT_TEXTURE)) return;
-    this.textures.get(COMBAT_FORMATION_SHIFT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_FORMATION_SHIFT_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.setBattleFxDepth(90);
     this.children.bringToTop(this.fxLayer);
     this.combatFormationShiftBursts += 1;
@@ -792,7 +793,7 @@ export function combatEnemySupportCue(this: any, x: number, y: number, scale: nu
     if (!this.textures.exists(texture)) return false;
     // Repeated support on one target changes the numeric total, not its glow.
     if (this.fxLayer.list.some((object: Phaser.GameObjects.GameObject) => object.name === name && (object as Phaser.GameObjects.Image).x === x)) return false;
-    this.textures.get(texture).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(texture), Phaser.Textures.FilterMode.LINEAR);
     const reduced = prefersReducedMotion();
     const size = 128 * Phaser.Math.Clamp(scale, 0.8, 1.2);
     const cue = this.add.image(x, y - 88, texture).setDisplaySize(size, size * 0.75)
@@ -810,7 +811,7 @@ export function combatEnemySupportCue(this: any, x: number, y: number, scale: nu
 
 export function combatCoverShatter(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_COVER_SHATTER_TEXTURE)) return;
-    this.textures.get(COMBAT_COVER_SHATTER_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_COVER_SHATTER_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverShatterBursts += 1;
     const shatter = this.add.image(x, y - 18, COMBAT_COVER_SHATTER_TEXTURE)
       .setDisplaySize(450 * scale, 338 * scale)
@@ -851,7 +852,7 @@ export function combatCoverShatter(this: any, x: number, y: number, scale = 1): 
 
 export function combatCardDraw(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_CARD_DRAW_TEXTURE)) return;
-    this.textures.get(COMBAT_CARD_DRAW_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_CARD_DRAW_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCardDrawBursts += 1;
     const burst = this.add.image(x, y, COMBAT_CARD_DRAW_TEXTURE)
       .setDisplaySize(430 * scale, 322 * scale)
@@ -893,7 +894,7 @@ export function combatCardDraw(this: any, x: number, y: number, scale = 1): any 
 
 export function combatDiscardSweep(this: any, x: number, y: number, scale = 1, count = 1): any {
     if (!this.textures.exists(COMBAT_DISCARD_SWEEP_TEXTURE)) return;
-    this.textures.get(COMBAT_DISCARD_SWEEP_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_DISCARD_SWEEP_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatDiscardSweepBursts += 1;
     const angle = Phaser.Math.Between(-7, 4);
     const sweep = this.add.image(x, y, COMBAT_DISCARD_SWEEP_TEXTURE)
@@ -946,7 +947,7 @@ export function combatDiscardSweep(this: any, x: number, y: number, scale = 1, c
 
 export function combatShuffleVortex(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_SHUFFLE_VORTEX_TEXTURE)) return;
-    this.textures.get(COMBAT_SHUFFLE_VORTEX_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_SHUFFLE_VORTEX_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatShuffleVortexBursts += 1;
     const vortex = this.add.image(x, y, COMBAT_SHUFFLE_VORTEX_TEXTURE)
       .setDisplaySize(468 * scale, 351 * scale)
@@ -1007,7 +1008,7 @@ export function combatShuffleVortex(this: any, x: number, y: number, scale = 1):
 
 export function combatFouledPressure(this: any, x: number, y: number, scale = 1, tick = false): any {
     if (!this.textures.exists(COMBAT_FOULED_PRESSURE_TEXTURE)) return;
-    this.textures.get(COMBAT_FOULED_PRESSURE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_FOULED_PRESSURE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatFouledPressureBursts += 1;
     const pressure = this.add.image(x, y, COMBAT_FOULED_PRESSURE_TEXTURE)
       .setDisplaySize((tick ? 268 : 248) * scale, (tick ? 201 : 186) * scale)
@@ -1035,7 +1036,7 @@ export function combatFouledPressure(this: any, x: number, y: number, scale = 1,
 
 export function combatRuffledBreak(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_RUFFLED_BREAK_TEXTURE)) return;
-    this.textures.get(COMBAT_RUFFLED_BREAK_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_RUFFLED_BREAK_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatRuffledBreakBursts += 1;
     const ruffle = this.add.image(x, y, COMBAT_RUFFLED_BREAK_TEXTURE)
       .setDisplaySize(292 * scale, 219 * scale)
@@ -1063,7 +1064,7 @@ export function combatRuffledBreak(this: any, x: number, y: number, scale = 1): 
 
 export function combatResonanceSurge(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_RESONANCE_SURGE_TEXTURE)) return;
-    this.textures.get(COMBAT_RESONANCE_SURGE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_RESONANCE_SURGE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatResonanceSurgeBursts += 1;
     const surge = this.add.image(x, y, COMBAT_RESONANCE_SURGE_TEXTURE)
       .setDisplaySize(240 * scale, 180 * scale)
@@ -1090,7 +1091,7 @@ export function combatResonanceSurge(this: any, x: number, y: number, scale = 1)
 
 export function combatResonanceSpend(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_RESONANCE_SPEND_TEXTURE)) return;
-    this.textures.get(COMBAT_RESONANCE_SPEND_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_RESONANCE_SPEND_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatResonanceSpendBursts += 1;
     const spend = this.add.image(x, y, COMBAT_RESONANCE_SPEND_TEXTURE)
       .setDisplaySize(252 * scale, 189 * scale)
@@ -1117,7 +1118,7 @@ export function combatResonanceSpend(this: any, x: number, y: number, scale = 1)
 
 export function combatSparkEcho(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_SPARK_ECHO_TEXTURE)) return;
-    this.textures.get(COMBAT_SPARK_ECHO_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_SPARK_ECHO_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatSparkEchoBursts += 1;
     const crest = this.add.image(x, y, COMBAT_SPARK_ECHO_TEXTURE)
       .setDisplaySize(224 * scale, 224 * scale)
@@ -1174,7 +1175,7 @@ export function combatSparkEcho(this: any, x: number, y: number, scale = 1): any
 
 export function combatWingbeatSurge(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_WINGBEAT_SURGE_TEXTURE)) return;
-    this.textures.get(COMBAT_WINGBEAT_SURGE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_WINGBEAT_SURGE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatWingbeatSurgeBursts += 1;
     const surge = this.add.image(x, y, COMBAT_WINGBEAT_SURGE_TEXTURE)
       .setDisplaySize(250 * scale, 188 * scale)
@@ -1202,7 +1203,7 @@ export function combatWingbeatSurge(this: any, x: number, y: number, scale = 1):
 
 export function combatWingbeatDrain(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_WINGBEAT_DRAIN_TEXTURE)) return;
-    this.textures.get(COMBAT_WINGBEAT_DRAIN_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_WINGBEAT_DRAIN_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatWingbeatDrainBursts += 1;
     const drain = this.add.image(x, y, COMBAT_WINGBEAT_DRAIN_TEXTURE)
       .setDisplaySize(264 * scale, 198 * scale)
@@ -1229,7 +1230,7 @@ export function combatWingbeatDrain(this: any, x: number, y: number, scale = 1):
 
 export function combatMoltShift(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_MOLT_SHIFT_TEXTURE)) return;
-    this.textures.get(COMBAT_MOLT_SHIFT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_MOLT_SHIFT_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatMoltShiftBursts += 1;
     const shift = this.add.image(x, y, COMBAT_MOLT_SHIFT_TEXTURE)
       .setDisplaySize(284 * scale, 213 * scale)
@@ -1258,7 +1259,7 @@ export function combatMoltShift(this: any, x: number, y: number, scale = 1): any
 
 export function combatOpenSkyGuard(this: any, x: number, y: number, scale = 1, consume = false): any {
     if (!this.textures.exists(COMBAT_OPEN_SKY_GUARD_TEXTURE)) return;
-    this.textures.get(COMBAT_OPEN_SKY_GUARD_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_OPEN_SKY_GUARD_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatOpenSkyGuardBursts += 1;
     const guard = this.add.image(x, y, COMBAT_OPEN_SKY_GUARD_TEXTURE)
       .setDisplaySize((consume ? 276 : 258) * scale, (consume ? 207 : 194) * scale)
@@ -1286,7 +1287,7 @@ export function combatOpenSkyGuard(this: any, x: number, y: number, scale = 1, c
 
 export function combatOpenSkyExposure(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_OPEN_SKY_EXPOSURE_TEXTURE)) return;
-    this.textures.get(COMBAT_OPEN_SKY_EXPOSURE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_OPEN_SKY_EXPOSURE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatOpenSkyExposureBursts += 1;
     const exposure = this.add.image(x, y, COMBAT_OPEN_SKY_EXPOSURE_TEXTURE)
       .setDisplaySize(284 * scale, 213 * scale)
@@ -1314,7 +1315,7 @@ export function combatOpenSkyExposure(this: any, x: number, y: number, scale = 1
 
 export function combatDefeatBurst(this: any, x: number, y: number): any {
     if (!this.textures.exists(COMBAT_DEFEAT_BURST_TEXTURE)) return;
-    this.textures.get(COMBAT_DEFEAT_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_DEFEAT_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatDefeatBurstBursts += 1;
     const burstImage = this.add.image(x, y, COMBAT_DEFEAT_BURST_TEXTURE)
       .setDisplaySize(316, 316)
@@ -1351,7 +1352,7 @@ export function combatDefeatBurst(this: any, x: number, y: number): any {
 
 export function combatVictoryRally(this: any, x = GAME_WIDTH / 2, y = 292): any {
     if (!this.textures.exists(COMBAT_VICTORY_RALLY_TEXTURE)) return;
-    this.textures.get(COMBAT_VICTORY_RALLY_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_VICTORY_RALLY_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatVictoryRallyBursts += 1;
     const currentNode = currentCombatNodes()[this.currentRouteIndex];
     const reduced = prefersReducedMotion();
@@ -1424,7 +1425,7 @@ export function combatVictoryRally(this: any, x = GAME_WIDTH / 2, y = 292): any 
 
 export function combatVictoryFanfareSigil(this: any, x: number, y: number): any {
     if (!this.textures.exists(COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE)) return;
-    this.textures.get(COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.setBattleFxDepth(110);
     this.children.bringToTop(this.fxLayer);
     this.combatVictoryFanfareSigilBursts += 1;
@@ -1567,7 +1568,7 @@ export function combatPlayerTurnRally(this: any, x = GAME_WIDTH / 2, y = 276, sc
 
 export function combatWindedGust(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_WINDED_GUST_TEXTURE)) return;
-    this.textures.get(COMBAT_WINDED_GUST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_WINDED_GUST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatWindedGustBursts += 1;
     const gust = this.add.image(x, y, COMBAT_WINDED_GUST_TEXTURE)
       .setDisplaySize(276 * scale, 207 * scale)
@@ -1594,7 +1595,7 @@ export function combatWindedGust(this: any, x: number, y: number, scale = 1): an
 
 export function combatFlowSurge(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_FLOW_SURGE_TEXTURE)) return;
-    this.textures.get(COMBAT_FLOW_SURGE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_FLOW_SURGE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatFlowSurgeBursts += 1;
     const surge = this.add.image(x, y, COMBAT_FLOW_SURGE_TEXTURE)
       .setDisplaySize(286 * scale, 214 * scale)
@@ -1622,7 +1623,7 @@ export function combatFlowSurge(this: any, x: number, y: number, scale = 1): any
 
 export function combatCleanseBurst(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_CLEANSE_BURST_TEXTURE)) return;
-    this.textures.get(COMBAT_CLEANSE_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_CLEANSE_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCleanseBurstBursts += 1;
     const burst = this.add.image(x, y, COMBAT_CLEANSE_BURST_TEXTURE)
       .setDisplaySize(270 * scale, 203 * scale)
@@ -1649,7 +1650,7 @@ export function combatCleanseBurst(this: any, x: number, y: number, scale = 1): 
 
 export function combatBankCache(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_BANK_CACHE_TEXTURE)) return;
-    this.textures.get(COMBAT_BANK_CACHE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_BANK_CACHE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatBankCacheBursts += 1;
     const cache = this.add.image(x, y, COMBAT_BANK_CACHE_TEXTURE)
       .setDisplaySize(330 * scale, 248 * scale)
@@ -1677,7 +1678,7 @@ export function combatBankCache(this: any, x: number, y: number, scale = 1): any
 
 export function combatSupplyUseBurst(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_SUPPLY_USE_BURST_TEXTURE)) return;
-    this.textures.get(COMBAT_SUPPLY_USE_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_SUPPLY_USE_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatSupplyUseBurstBursts += 1;
     const reduced = prefersReducedMotion();
     const clamped = Phaser.Math.Clamp(scale, 0.7, 1.08);
@@ -1749,7 +1750,7 @@ export function combatSupplyUseBurst(this: any, x: number, y: number, scale = 1)
 
 export function combatThreatCharge(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_THREAT_CHARGE_TEXTURE)) return;
-    this.textures.get(COMBAT_THREAT_CHARGE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_THREAT_CHARGE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatThreatChargeBursts += 1;
     const warning = this.add.image(x, y, COMBAT_THREAT_CHARGE_TEXTURE)
       .setDisplaySize(340 * scale, 255 * scale)
@@ -1787,7 +1788,7 @@ export function combatThreatCharge(this: any, x: number, y: number, scale = 1): 
 
 export function combatEnemySupportCharge(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_ENEMY_SUPPORT_CHARGE_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_SUPPORT_CHARGE_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_SUPPORT_CHARGE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemySupportChargeBursts += 1;
     const size = 360 * scale;
     const angle = Phaser.Math.Between(-5, 5);
@@ -1835,7 +1836,7 @@ export function combatEnemySupportCharge(this: any, x: number, y: number, scale 
 
 export function combatEnemyAttackTell(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_ENEMY_ATTACK_TELL_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_ATTACK_TELL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_ATTACK_TELL_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyAttackTellBursts += 1;
     const size = 210 * scale;
     const angle = Phaser.Math.Between(-4, 4);
@@ -1894,7 +1895,7 @@ export function combatEnemyAttackTell(this: any, x: number, y: number, scale = 1
 
 export function combatEnemySupportTell(this: any, x: number, y: number, scale = 1): any {
     if (!this.textures.exists(COMBAT_ENEMY_SUPPORT_TELL_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_SUPPORT_TELL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(this.textures.get(COMBAT_ENEMY_SUPPORT_TELL_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemySupportTellBursts += 1;
     const size = 202 * scale;
     const angle = Phaser.Math.Between(-3, 3);

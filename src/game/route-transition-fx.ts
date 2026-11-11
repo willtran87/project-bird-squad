@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 import { uiIconAssets, birdAudio, activeMapIndex, currentMap, prefersReducedMotion, clamp } from '../main';
 import { prefersLeanEffects } from './graphics-quality';
@@ -7,7 +8,7 @@ const ROUTE_COMMIT_STREAK_TEXTURE = 'route-commit-streak';
 export function renderRouteBossBeaconRing(scene: Phaser.Scene, x: number, y: number, completed: boolean) {
   const key = uiIconAssets['route-boss-beacon-ring'].key;
   if (!scene.textures.exists(key)) return;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const reduced = prefersReducedMotion();
   const beacon = scene.add.image(x, y, key).setDisplaySize(204, 204)
     .setAlpha(completed ? 0.24 : reduced ? 0.36 : 0.46).setName('route-boss-beacon-ring');
@@ -23,7 +24,7 @@ export function renderDistrictAdvanceFlourish(scene: any) {
     if (!scene.textures.exists(key)) return;
     const plaqueKey = uiIconAssets['district-advance-title-plaque'].key;
 
-    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
     if (!scene.districtAdvanceFlourishShown) {
       scene.districtAdvanceFlourishShown = true;
       scene.districtAdvanceFlourishBursts += 1;
@@ -52,7 +53,7 @@ export function renderDistrictAdvanceFlourish(scene: any) {
       .setName('district-advance-flourish');
     const plaqueParts: Phaser.GameObjects.GameObject[] = [];
     if (scene.textures.exists(plaqueKey)) {
-      scene.textures.get(plaqueKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      setTextureFilter(scene.textures.get(plaqueKey), Phaser.Textures.FilterMode.LINEAR);
       const plaqueY = y - 36;
       const plaque = scene.add.image(x, plaqueY, plaqueKey)
         .setDisplaySize(610, 134)
@@ -211,7 +212,7 @@ export function routeCommitStreakFx(scene: any, routeNodeId: string) {
     }
 
     if (!scene.textures.exists(ROUTE_COMMIT_STREAK_TEXTURE)) return;
-    scene.textures.get(ROUTE_COMMIT_STREAK_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(ROUTE_COMMIT_STREAK_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     const displayWidth = clamp(distance * 1.08, 390, 540);
     const displayHeight = displayWidth / 3;
     const graph = scene.routeLayout().graph;

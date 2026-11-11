@@ -17,7 +17,7 @@ const cases = [
     policy: 'cache-first' as const, leader: leader.id, seed: `continuation-equipped-${seed}`, equipped: true,
     plan: undefined as string | undefined,
   }))),
-  ...[1, 2, 3].flatMap(seed => (['shelter','tempo','molt'] as const).map(plan => ({
+  ...[1, 2, 3, 4, 5, 6].flatMap(seed => (['shelter','tempo','molt'] as const).map(plan => ({
     policy: 'cache-first' as const, leader: 'fledgling', seed: `opening-strategy-${seed}`, equipped: true, plan,
   }))),
 ];
@@ -53,6 +53,18 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
   // old opening-only policy. Still bounded to expose actual progression loops.
   for (let step = 0; step < 240 && !terminal; step++) {
     await settleCanvas(page);
+    // Follow the same branch dialog as players, rather than silently applying
+    // the canonical upgrade and overlooking the earned strategy Preens.
+    if (scenario.plan && await page.getByRole('button', { name: 'Choose Shelter', exact: true }).isVisible()) {
+      const preferences = scenario.plan === 'shelter' ? ['Shelter Song', 'Patient Answer', 'Locked Nest', 'Shelter']
+        : scenario.plan === 'tempo' ? ['Answering Basin', 'Returning Call', 'Plume Flash', 'Flight']
+        : ['Storm Shelter', 'Homeward Wing', 'Hot Feathers', 'Flight'];
+      const offered = await page.locator('.flyway-book button').allTextContents();
+      const pick = preferences.find(name => offered.includes(`Choose ${name}`)) ?? 'Shelter';
+      await page.getByRole('button', { name: `Choose ${pick}`, exact: true }).click();
+      journey.push({kind:'earned-preen-branch', pick, offered: offered.filter(name => name.startsWith('Choose '))});
+      continue;
+    }
     await page.waitForFunction(() => {
       if (document.querySelector('#flyway-book-title')?.textContent === 'The Canal carries your flock forward') return true;
       const game = (window as any).__birdSquadGame;
@@ -99,7 +111,9 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
           const card = offers[0];
           if (!card) throw new Error('Empty progression picker');
           const before = r.runState.scrap, cost = card.cost, context = r.cardPickerContext;
-          r.applyCardPick(card.index); return { kind: 'preen', id: card.card.id, context, cost, before, after: r.runState.scrap,
+          if (plan) { r.requestCardPick(card.index); r.requestCardPick(card.index); }
+          else r.applyCardPick(card.index);
+          return { kind: 'preen', id: card.card.id, context, cost, before, after: r.runState.scrap,
             offered: offers.map((c: any) => ({ id: c.card.id, score: c.score, cost: c.cost })) };
         }
         if (r.pendingRouteReward) { r.claimRouteReward(); return { kind: 'claim-route' }; }
@@ -181,7 +195,7 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
         if (mode === 'upgradeReward') {
           const offered = b.upgradeChoices.map((c: any) => ({ id: c.id, score: score(c, true) - score(c) }));
           const id = [...offered].sort((a: any, z: any) => z.score - a.score)[0].id;
-          b.chooseUpgradeCard(id); return { kind: mode, id, offered };
+          b.chooseUpgradeCard(id, !!plan); return { kind: mode, id, offered };
         }
         if (mode === 'waymarkReward') {
           const offered = b.waymarkChoices.map((c: any) => ({ id: c.id, effects: c.effects, score: score(c) }));

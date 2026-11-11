@@ -9,7 +9,9 @@ assistive-technology evidence.
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
 - Published revision: `a072362d23e0c9f15938171a450c82b7060b33d3`.
-- Current scope and release evidence: [clearer choices and distinct builds](clearer-choices.md).
+- Current upgrade scope: [tactical payoffs and survival](tactical-payoffs.md).
+  Publication evidence below will be updated after qualification; the revision
+  above remains the last verified public build until then.
 - Instructions: [first-run runbook](playtest-runbook.md).
 - One blank copy per tester: [observer sheet](playtest-observer-template.md).
 - Manual hardware/accessibility checks: [release evidence runbook](release-evidence-runbook.md).
@@ -31,6 +33,15 @@ After the first fight, ask:
 1. Which bird acted, who was affected, and what changed?
 2. What will the enemy do when you Roost, and what would Cover change?
 3. Would you choose another fight now? Record the answer and reason verbatim.
+
+For the tactical-payoffs build, also ask what “Now” and “Then” on the Roost
+control mean while a card is selected. Record whether the player distinguishes
+Roost now from playing the selected card and then Roosting, and whether `~` or
+`?` communicates an estimate or unresolved choice. Do not explain first.
+At the first earned Preen, record which complementary branches were offered,
+which was chosen and why. In The Quiet Beat, record whether the player notices
+the option to interrupt Gather Force or chooses protection instead. Observe
+whether the resolved-action message remains readable before coaching returns.
 
 After a signature encounter, ask what two approaches the player could take.
 Record whether the ferry crossing, relay interception or rooftop escape is

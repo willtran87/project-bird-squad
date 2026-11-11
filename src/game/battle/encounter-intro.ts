@@ -1,3 +1,4 @@
+import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
 
 export interface EncounterIntroOptions {
@@ -40,7 +41,7 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
     scene.add.rectangle(w / 2, 626, w, 106, 0x05080e, 1),
   ]);
   if (scene.textures.exists(o.texture)) {
-    scene.textures.get(o.texture).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(o.texture), Phaser.Textures.FilterMode.LINEAR);
     c.add([
       scene.add.image(w / 2, 356, o.texture).setDisplaySize(706, 282)
         .setAlpha(o.reduced ? 0.34 : 0.48).setBlendMode(Phaser.BlendModes.ADD).setName('combat-encounter-intro'),
@@ -55,7 +56,7 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
       color: o.gold, stroke: '#000000', strokeThickness: 4 }),
   ]);
   if (scene.textures.exists(o.plaque)) {
-    scene.textures.get(o.plaque).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(o.plaque), Phaser.Textures.FilterMode.LINEAR);
     const plaque = scene.add.image(w - 180, 598, o.plaque);
     c.add(plaque.setScale(Math.min(328 / plaque.width, 58 / plaque.height))
       .setAlpha(o.reduced ? 0.66 : 0.76).setName('combat-encounter-plaque'));

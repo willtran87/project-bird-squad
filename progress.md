@@ -1,5 +1,23 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-11 — Tactical payoffs and survival (in progress)
+- Accepted survival forecast, measured stall investigation, earned strategy
+  tuning, ordinary encounter decisions and restrained action feedback, followed
+  by full release qualification, publication and branch cleanup.
+- Baseline `8a04cf84`; branch `codex/tactical-payoffs-survival`. Scope and checks:
+  `docs/game/tactical-payoffs.md`. Canonical identities and art remain locked.
+- Human sessions remain unavailable; update the existing accepted handoff.
+- Implemented copied-state survival projection (including combat-ending
+  interception), first-earned complementary Preens, interruptible Quiet Beat
+  preparation, action-owned feedback and guarded texture filtering.
+- All 15 focused production checks pass. The adjacent Clear Choices and
+  Distinct Builds checks pass; two diagnostics used an older served text label
+  and are superseded by the fresh-build pass. Native 2560×1600 and 1000×560
+  captures inspected; IAB selection checked. Current boot 698.8 KiB / 700;
+  documentation, runtime and delivery budgets pass.
+- Three branch-aware baseline campaigns completed. Expanded release inventory:
+  1,176 core cases, plus 549 cross-browser cases; final publication pending.
+
 ## 2026-11-07 — Clearer choices and distinct builds (published)
 - PR #23 merged as `a072362d23e0c9f15938171a450c82b7060b33d3`; its tree matches
   qualified head `5850ae4e7ea32649eeb5277fd45b088d91262895` exactly. PR run

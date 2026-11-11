@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 import { prefersLeanEffects } from './graphics-quality';
 import {
@@ -62,7 +63,7 @@ function titleRunLaunchFx(scene: any, x: number, y: number, w: number) {
   group.add([blocker, plate, rail]);
 
   if (scene.textures.exists(texture)) {
-    scene.textures.get(texture).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(texture), Phaser.Textures.FilterMode.LINEAR);
     const displayW = Math.max(430, w + 220);
     const flourish = scene.add.image(x, y - 4, texture)
       .setDisplaySize(displayW, 142)

@@ -1,3 +1,4 @@
+import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
 export { renderUnifiedRunHud } from '../run-hud';
 import { MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
@@ -85,6 +86,7 @@ export interface BattleHudRenderResult {
 }
 
 export interface BattleSelectionPreviewView {
+  survival?: { before: number; after?: number; remaining?: number; uncertainty: string[]; detail: string };
   card: string;
   target: string;
   summary: string;
@@ -226,7 +228,7 @@ export function formatBattleSelectionOutcome(
 
 function textureReady(scene: Phaser.Scene, key: string) {
   if (!key || !scene.textures.exists(key)) return false;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   return true;
 }
 
@@ -430,6 +432,16 @@ export function renderBattleSelectionPreview(
 
   const y = 412;
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
+  const risk = root.getByName('combat-roost-preview') as Phaser.GameObjects.Text | undefined;
+  if (risk && preview.survival) {
+    const original = risk.text, font = risk.style.fontSize;
+    const s = preview.survival;
+    risk.setFontSize(18).setText(`Now: ${s.before} HP loss\nThen: ${s.after === undefined ? '?' : `${s.uncertainty.length ? '~' : ''}${s.remaining === 0 ? 'defeat' : `${s.after} HP loss`}`}`)
+      .setData('survivalDetail', s.detail);
+    container.once(Phaser.GameObjects.Events.DESTROY, () => {
+      if (risk.active) risk.setFontSize(font).setText(original).setData('survivalDetail', undefined);
+    });
+  }
   // History and the current decision share one quiet lane above the hand.
   // A card decision temporarily takes precedence over history and the Roost
   // lesson. Cancellation restores the lesson.

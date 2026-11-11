@@ -275,7 +275,8 @@ export function spireRelayProgress(s: FlywayState) {
   const clears = new Set(s.settledNodes.filter(id => id.startsWith('2:'))).size;
   return { clears, ready: !!s.spireRelay && (s.restored.includes(2) || clears >= s.spireRelay.startedAt + 2) };
 }
-/** Complementary birds become available after leaving the first district.
+/** Complementary birds are available at the first earned Preen, before an
+ * early upgrade can permanently close its later strategy branch.
  * Replace active rules, never add an undisclosed passive bonus. */
 export const buildPreens: typeof canalPreens = [
   { id: 'build-shelter', card: 'cups_ace', name: 'Shelter Song', plan: 'Hold & Answer', cost: 1,

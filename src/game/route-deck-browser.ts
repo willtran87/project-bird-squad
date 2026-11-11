@@ -1,3 +1,4 @@
+import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
 import { uiIconAssets } from '../main';
 function addDeckReviewCostBadge(
@@ -17,7 +18,7 @@ function addDeckReviewCostBadge(
     addTo(fallback);
     return fallback;
   }
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
   const badge = scene.add.image(cx, cy, key)
     .setDisplaySize(size, size)
     .setAlpha(opts.alpha ?? (opts.selected ? 0.98 : 0.9))

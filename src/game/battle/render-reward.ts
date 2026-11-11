@@ -1,3 +1,4 @@
+import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
 import { quietButton } from '../quiet-ui';
 import { renderCardColorCue } from '../card-color-cues';
@@ -118,7 +119,7 @@ export interface RewardCeremonyRenderContext {
 function addSpotlight(context: RewardCeremonyRenderContext, x: number, y: number, width: number, height: number, alpha: number) {
   const { scene, textures, reducedMotion, leanEffects } = context;
   if (!scene.textures.exists(textures.choiceSpotlight)) return undefined;
-  scene.textures.get(textures.choiceSpotlight).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(textures.choiceSpotlight), Phaser.Textures.FilterMode.LINEAR);
   const spotlight = scene.add.image(x, y, textures.choiceSpotlight)
     .setDisplaySize(width, height)
     .setAlpha(reducedMotion ? Math.min(alpha, 0.14) : alpha)
@@ -150,7 +151,7 @@ function addGlowBurst(
 ) {
   const { scene, textures, reducedMotion, leanEffects } = context;
   if (!scene.textures.exists(textures.choiceGlowBurst)) return { objects: [] as Phaser.GameObjects.GameObject[], burst: 0 };
-  scene.textures.get(textures.choiceGlowBurst).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(textures.choiceGlowBurst), Phaser.Textures.FilterMode.LINEAR);
   const animateDecor = !reducedMotion && !leanEffects;
   const alpha = reducedMotion ? Math.min(alphaValue, 0.16) : alphaValue;
   const objects: Phaser.GameObjects.GameObject[] = [];
@@ -197,7 +198,7 @@ function addGlowBurst(
 function addHoverRing(context: RewardCeremonyRenderContext, x: number, y: number, width: number, height: number) {
   const { scene, textures } = context;
   if (!scene.textures.exists(textures.choiceHoverRing)) return undefined;
-  scene.textures.get(textures.choiceHoverRing).setFilter(Phaser.Textures.FilterMode.LINEAR);
+  setTextureFilter(scene.textures.get(textures.choiceHoverRing), Phaser.Textures.FilterMode.LINEAR);
   return scene.add.nineslice(x, y, textures.choiceHoverRing, undefined, width, height, 24, 24, 24, 24)
     .setAlpha(0)
     .setVisible(false)
@@ -209,7 +210,7 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
   target.add(scene.add.rectangle(width / 2, height / 2, width, height, 0x020409, 0.58));
   let hasCeremonyBackdrop = false;
   if (context.kind !== 'waymark' && scene.textures.exists(textures.ceremonyBackdrop)) {
-    scene.textures.get(textures.ceremonyBackdrop).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    setTextureFilter(scene.textures.get(textures.ceremonyBackdrop), Phaser.Textures.FilterMode.LINEAR);
     const backdrop = scene.add.image(width / 2, height / 2 + 10, textures.ceremonyBackdrop)
       .setDisplaySize(1224, 612)
       .setAlpha(0.6)

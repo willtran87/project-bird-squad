@@ -14,9 +14,13 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
   const decisions: Array<{ turn: number; card: string; target?: string; hp: number; molt: boolean; energy: number; resonance: number }> = [];
   const choices: Array<{ source: string; kind: string; ids: string[] }> = [];
   const supplyUses: Array<{ id: string; turn: number; hp: number; remaining: number }> = [];
+  const opportunities: any[] = [], contributions: any[] = [];
+  const seenTurns = new Set<number>();
   let cleanupRoosts = 0;
   const resonanceBefore = b.flyway.resonanceSpent ?? 0;
-  const owned = b.allDeckCards().map((c: any) => ({ id: c.id, effects: (c.upgraded ? c.runtime.upgrade.effects : c.runtime.effects) }));
+  const owned = b.allDeckCards().map((c: any) => ({ id: c.id, branch: c.preenBranch,
+    effects: (c.upgraded ? c.runtime.upgrade.effects : c.runtime.effects),
+    moltEffects: (c.upgraded ? c.runtime.upgrade.moltEffects : c.runtime.moltEffects) }));
   b.renderAll = () => {}; // Presentation is captured at the encounter boundary.
   const rate = (outcome: any, effects: string[], incoming: number) =>
     outcome.enemyDamage * (policy === 'pressure' ? 1.6 : plan === 'shelter' ? 0.8 : 1)
@@ -30,6 +34,12 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
   try {
     for (let step = 0; step < 200 && b.mode === 'battle'; step++) {
       const candidates: any[] = [], incoming = b.incomingFlockDamagePreview().hpLoss;
+      if (!seenTurns.has(b.turn)) {
+        seenTurns.add(b.turn);
+        opportunities.push({ turn: b.turn, incoming, energy: b.energy, resonance: b.spark, molt: b.flock.molt,
+          hand: b.hand.map((c: any) => ({ id: c.id, branch: c.preenBranch, affordable: b.effectiveCost(c) <= b.energy,
+            effects: b.activeCardContract(c).effects })) });
+      }
       const value = (card: any, enemy: any) => {
         const contract = b.activeCardContract(card), outcome = b.simulateCardOutcome(card, enemy.id);
         // A deliberately conservative comparison policy: honor the game's
@@ -104,6 +114,8 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
       const pick = candidates[0];
       decisions.push({ turn: b.turn, card: pick?.card.id ?? 'ROOST', target: pick?.enemy.id, hp: b.flock.hp,
         molt: b.flock.molt, energy: b.energy, resonance: b.spark });
+      const before = { hp: b.flock.hp, damage: b.statDealt, blocked: b.statBlocked, molt: b.flock.molt,
+        resonance: b.flyway.resonanceSpent ?? 0, cover: b.flock.block, combos: b.flightCombat.combos.length };
       if (pick) b.playCard(pick.card, pick.enemy.id, { resolveDelayMs: 0 });
       else {
         const alive = b.enemies.filter((e: any) => e.hp > 0);
@@ -111,11 +123,17 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
         b.endTurn();
       }
       resolveChoices();
+      contributions.push({ turn: decisions[decisions.length - 1].turn, card: pick?.card.id ?? 'ROOST',
+        branch: pick?.card.preenBranch, molt: before.molt, enteredMolt: !before.molt && b.flock.molt,
+        cohesion: b.flock.hp - before.hp, cover: b.flock.block - before.cover,
+        damage: b.statDealt - before.damage, blocked: b.statBlocked - before.blocked,
+        resonanceSpent: (b.flyway.resonanceSpent ?? 0) - before.resonance,
+        combinations: b.flightCombat.combos.length - before.combos });
       b.retireCombatFxForOutcome();
     }
   } finally { b.renderAll = render; b.renderAll(); }
   return { mode: b.mode, turn: b.turn, hp: b.flock.hp, deck: b.allDeckCards().length,
-    decisions, choices, supplyUses, owned, cleanupRoosts, blocked: b.statBlocked, plan,
+    decisions, choices, supplyUses, owned, opportunities, contributions, cleanupRoosts, blocked: b.statBlocked, plan,
     resonanceSpent: (b.flyway.resonanceSpent ?? 0) - resonanceBefore,
     combinations: [...b.flightCombat.combos],
     blockMoment: b.flyway.blockMoment, comboMoment: b.flyway.comboMoment,
