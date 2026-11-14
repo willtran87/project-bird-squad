@@ -1,7 +1,7 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
-## 2026-11-14 — Coherent City polish (verification in progress)
-- Accepted the 48-item visual/coherence/play-experience list. Working on
+## 2026-11-14 — Coherent City polish (qualified; not published)
+- Accepted the 48-item visual/coherence/play-experience list. Implemented on
   `codex/coherent-city-polish` from `6cd75264`; user changes to AGENTS.md excluded.
 - Added shared illustrated lesson briefings and immediate retries, district
   framing/ambience, action-priority weather, explicit forecast estimates, causal
@@ -15,10 +15,24 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Native cold/warm profiling and a separate CPU capture recorded loading stalls;
   the old 1.7-second outlier did not reproduce, but is not declared fixed.
   Source/content checks and unchanged delivery ceilings pass after consolidating
-  duplicated decks, gain factors and text styles. Full regression work continues.
+  duplicated decks, gain factors and text styles. Full regression qualification passed.
 - Scope/evidence ledger: `docs/game/coherent-city-polish.md`. Five-player and
   physical-device/assistive-technology acceptance remain the explicit handoff.
   This candidate has not been published.
+- Initial runtime commit `7619e9a8`; qualification candidate `0f06630b`. Local validation
+  passed all 75 sequencing checks, and the final focused npm test passed 17.
+  Full CI caught three stale text assertions (corrected in two test-only
+  commits), then a journal test racing the lazy outcome panel. That boundary is
+  now deliberately held/released and passes twice in each browser. Retained
+  failed runs: `43640332553`, `43642388459`; cancelled queued intermediate:
+  `43641927840`. Workflow `43645099978` passed all 1,187 core and 582 browser
+  cases, then caught a menu chunk overrun in the Pages build. Consolidated
+  settings callbacks and tooltip styles; Pages delivery/cache checks, its
+  real subdirectory smoke test and three focused settings/tooltip tests pass.
+  Final workflow `43649956534` passed all 30 verification jobs at `0f06630b`:
+  1,187 core cases, 582 browser cases, 33 unit/policy checks and the Pages smoke.
+  No failed, flaky, retried or skipped gameplay/browser cases. Deployment was
+  skipped on this feature branch. Human acceptance and cold stalls remain open.
 
 ## 2026-11-11 — Tactical payoffs and survival (in progress)
 - Accepted survival forecast, measured stall investigation, earned strategy

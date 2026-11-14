@@ -3057,3 +3057,22 @@ Evidence: `.artifacts/coherent-city/entry-profile.json`, `entry-cpu.json` and
 No animation pause, art-quality reduction or rules change was used to improve
 these numbers. Remaining cold-start stalls stay explicit in the acceptance
 ledger; subsequent device testing should repeat the same protocol.
+
+Profiled runtime `7619e9a8` (`index-BN_F8hep.js`) repeated the isolated four-context
+protocol: cold interaction times 4,259 / 3,119 / 3,354 / 2,756 ms; maximum RAF
+intervals 616.6 / 316.7 / 383.3 / 266.6 ms. Warm interaction times were
+1,950 / 1,955 / 1,913 / 1,869 ms, with maximum intervals 83.4 / 66.7 / 66.6 /
+50.1 ms and zero new requests. No page errors occurred. Evidence is
+`.artifacts/coherent-city/entry-final.json`. These headless desktop samples are
+an investigation, not a device-wide performance guarantee or a causal speedup
+comparison. Cold stalls remain open. Root-path combined boot is 698.3 KiB against
+the unchanged 700 KiB cap; existing lazy-module caps also pass.
+
+Pages qualification later exposed an optional-menu chunk overrun caused by the
+longer deployment base path. Commit `0f06630b` shares settings callback wrappers
+and tooltip style fields; it changes no district-entry behavior. The actual
+`/project-bird-squad/` build now passes at 699.4 KiB combined boot and 6,131 bytes
+for optional menu UI against its unchanged 6,144-byte cap. Cache validation and
+the Pages title/lazy-scene/combat/checkpoint-reload smoke test pass locally.
+The native timing samples above belong to `7619e9a8`, not this later menu-only
+consolidation; no additional performance improvement is inferred from it.
