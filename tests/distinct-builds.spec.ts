@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { buildPreens } from '../src/game/flyway-rules';
 import { settleCanvas } from './helpers/settled-canvas';
@@ -122,6 +122,11 @@ test('Distinct Builds canonical bodies keep identity through action phases and s
 });
 
 test('Distinct Builds flight highlights use actual combinations and survive the journal archive',async({page},info)=>{
+  // Force the lazy outcome boundary: a visible launcher can precede its next
+  // position refresh, but the pending panel still owns keyboard input.
+  let holdOutcome!: (request: Route) => void;
+  const outcomeRequest = new Promise<Route>(resolve => { holdOutcome = resolve; });
+  await page.route('**/boss-dossier-*.js', request => holdOutcome(request));
   await route(page);await battle(page);
   const evidence=await page.evaluate(()=>{
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),cards=b.allDeckCards(),nest=cards.find((c:any)=>c.runtime.suit==='nests'),quill=cards.find((c:any)=>c.id==='swords_ace');
@@ -132,6 +137,11 @@ test('Distinct Builds flight highlights use actual combinations and survive the 
   });
   expect(evidence.moment.id).toBe('brace-cut');expect(evidence.moment.damage).toBeGreaterThan(0);expect(evidence.card.plays).toBeGreaterThan(0);expect(evidence.summary.comboMoment).toEqual(evidence.moment);
   expect(evidence.archive).toEqual(evidence.summary);
+  const held = await outcomeRequest;
+  await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('pending-overlay')?.active);
+  await page.keyboard.press('j');await expect(page.locator('#flyway-book')).toHaveCount(0);
+  await held.continue();await page.unroute('**/boss-dossier-*.js');
+  await page.waitForFunction(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.bossDossierModule&&!b.root.getByName('pending-overlay')?.active;});
   await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
   await expect(page.locator('#flyway-book')).toContainText('most-played recorded bird');await expect(page.locator('#flyway-book')).toContainText('claimed its Guard');
   await page.screenshot({path:info.outputPath('flight-highlights.png')});
