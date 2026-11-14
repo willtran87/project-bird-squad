@@ -5576,7 +5576,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(coverGuardResult.combatCoverBlockBurst.rendered).toBe(true);
   expect(coverGuardResult.combatCoverBlockBurst.count).toBeGreaterThanOrEqual(1);
   expect(coverGuardResult.combatCoverBlockBurst.bursts).toBeGreaterThanOrEqual(1);
-  expect(coverGuardResult.log).toContain("Roof Rat's hit is blocked.");
+  expect(coverGuardResult.log).toContain(`Roof Rat's hit is blocked. Strike 6: Cover absorbed ${99 - coverGuardResult.flockBlock}; no Cohesion lost.`);
   expect(coverGuardResult.log.some((entry: string) => entry.includes('hits the flock for 0'))).toBe(false);
   expect(coverBuildResult.flockBlock).toBeGreaterThanOrEqual(6);
   expect(coverBuildResult.combatCoverGuard.loaded).toBe(true);
@@ -33510,7 +33510,8 @@ test('enemy phase stops after lethal Cohesion damage and enemy Cover expires', a
   expect(r.taken).toBe(1); // telemetry records Cohesion actually lost, not overkill damage
   expect(r.blocksAfter.every((block: number) => block === 0)).toBe(true);
   expect(r.intentsAfter).toEqual([r.intentsBefore[0] + 1, r.intentsBefore[1], r.intentsBefore[2]]);
-  expect(r.log).toEqual(expect.arrayContaining(['Gutter Baron hits the flock for 11.']));
+  expect(r.log).toEqual(expect.arrayContaining([expect.stringContaining('Gutter Baron hits the flock for 11.')]));
+  expect(r.log).toEqual(expect.arrayContaining([expect.stringContaining('Cover absorbed 0; 1 Cohesion lost.')]));
   expect(r.log.some((entry: string) => entry.includes('Roof Rat A hits'))).toBe(false);
 });
 
