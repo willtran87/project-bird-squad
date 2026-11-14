@@ -1,6 +1,6 @@
 import type { SynthAudioCue } from './audio-sfx';
 
-const supporting = new Set<SynthAudioCue>(['draw', 'discard', 'shuffle', 'flow', 'cover', 'heal', 'bank', 'spend', 'moltPower', 'rooftopAir']);
+const supporting = new Set<SynthAudioCue>(['draw', 'discard', 'shuffle', 'flow', 'cover', 'heal', 'bank', 'spend', 'moltPower', 'rooftopAir', 'canalAir', 'spireAir', 'roostAir']);
 const essential = new Set<SynthAudioCue>(['attack', 'heavyAttack', 'hitConfirm', 'coverBreak', 'threat', 'enemyCommitment',
   'locked', 'victory', 'victoryFanfare', 'defeat', 'roostHandoff', 'playerTurnRally']);
 

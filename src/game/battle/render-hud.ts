@@ -192,7 +192,7 @@ export function formatBattleSelectionOutcome(
       cost: `Wingbeats ${outcome.flockBefore.energy} → ${outcome.flockAfter.energy}`,
       impact,
       protection: `Cover ${outcome.flockBefore.block} → ${outcome.flockAfter.block}`,
-      notice: warnings.join(' · ') || 'Card-only forecast · Full rules for every effect',
+      notice: warnings.join(' · ') || 'Card-only forecast · Full rules',
       critical: warnings.length > 0,
     },
     target: outcome.contract.target === 'enemy'
@@ -408,6 +408,7 @@ export function renderBattleSelectionPreview(
   preview: BattleSelectionPreviewView,
 ) {
   const { scene, root, gameWidth, fontFamily, boldFontStyle } = context;
+  const textStyle = { fontFamily, fontSize: '19px', resolution: 2 };
   // A new decision takes precedence over the previous hit's decoration.
   for (const layer of scene.children.list) {
     if (!(layer instanceof Phaser.GameObjects.Container)) continue;
@@ -459,13 +460,11 @@ export function renderBattleSelectionPreview(
   // real forecast to two rows, below the crowded enemy-status lane.
   if (!preview.fields) {
     const title = scene.add.text(gameWidth / 2 - 284, titleY, '', {
-      fontFamily,
-      fontSize: '19px',
+      ...textStyle,
       fontStyle: boldFontStyle,
       color: '#ffe7a8',
       fixedWidth: 368,
       wordWrap: { width: 368, useAdvancedWrap: true },
-      resolution: 2,
       align: 'left',
       maxLines: 1,
     }).setOrigin(0, 0.5).setName('combat-selection-card-target');
@@ -479,9 +478,7 @@ export function renderBattleSelectionPreview(
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame'));
   container.add(scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
-    fontFamily,
-    fontSize: '19px',
-    resolution: 2,
+    ...textStyle,
     fontStyle: boldFontStyle,
     color: '#dffbff',
   }).setOrigin(0.5).setName('combat-selection-command'));
@@ -489,15 +486,21 @@ export function renderBattleSelectionPreview(
     const { cost, impact, protection, notice, critical } = preview.fields;
     for (const [index, value] of [cost, impact, protection].entries()) {
       container.add(scene.add.text(gameWidth / 2 - 190 + index * 190, y - 13, value, {
-        fontFamily, fontSize: '19px', fontStyle: boldFontStyle, color: '#dffbff', resolution: 2,
+        ...textStyle, fontStyle: boldFontStyle, color: '#dffbff',
       }).setOrigin(0.5).setName(['combat-selection-summary', 'combat-selection-impact', 'combat-selection-protection'][index]));
     }
-    container.add(scene.add.text(gameWidth / 2, y + 13, notice, {
-      fontFamily, fontSize: '19px', color: critical ? '#ffe08a' : '#a6c7d6', resolution: 2,
+    const survival = preview.survival;
+    const reason = survival?.uncertainty[0];
+    const estimate = !survival ? notice : survival.after === undefined
+      ? 'Then ? · Full rules: check cost and choices'
+      : reason ? `Forecast ~ ${(reason.match(/draw|Waymark|Leader/i)?.[0] ?? 'conditional').toLowerCase()} effects · Full rules`
+      : notice;
+    container.add(scene.add.text(gameWidth / 2, y + 13, critical ? notice : estimate, {
+      ...textStyle, color: critical ? '#ffe08a' : '#a6c7d6',
     }).setOrigin(0.5).setName('combat-selection-notice').setData('critical', critical));
   } else {
     const summary = scene.add.text(gameWidth / 2, y + 13, '', {
-      fontFamily, fontSize: '19px', resolution: 2, fontStyle: boldFontStyle,
+      ...textStyle, fontStyle: boldFontStyle,
       color: '#dffbff', fixedWidth: 570, wordWrap: { width: 570, useAdvancedWrap: true },
       align: 'center', maxLines: 1,
     }).setOrigin(0.5).setName('combat-selection-summary');

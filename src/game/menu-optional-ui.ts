@@ -40,11 +40,13 @@ export async function renderSetupLeaderPortraits(scene: any) {
 export function renderResumeContext(scene: any, run: {
   leaderId?: string; pendingDistrictPreens?: number; completedRouteNodeIds: string[];
   pendingCombatReward?: { stage: string };
+  flyway?: { rooftopPlan?: string };
 }, district: { name: string; bossNodeId: string }) {
   scene.children.getByName('title-resume-context')?.destroy();
   const next = run.pendingCombatReward ? 'Rewards ready · fight cleared' : run.pendingDistrictPreens ? 'Free Preen ready'
     : run.completedRouteNodeIds.includes(district.bossNodeId) ? 'District cleared' : 'Reach the boss';
-  scene.add.text(260, 316, `${getLeader(run.leaderId).name}\n${district.name} · ${next}`, {
+  const plan = ({ shelter: 'Hold & Answer', tempo: 'Chorus Engine', molt: 'Storm Window' } as Record<string, string>)[run.flyway?.rooftopPlan ?? ''];
+  scene.add.text(260, 316, `${getLeader(run.leaderId).name}\n${district.name} · ${next}${plan ? `\nYour plan: ${plan}` : ''}`, {
     fontFamily: UI_FONT, fontSize: '20px', color: '#bfcbd0', align: 'center',
     wordWrap: { width: 410 }, lineSpacing: 5,
   }).setResolution(2).setOrigin(0.5, 0).setName('title-resume-context').setVisible(!scene.setupOpen);

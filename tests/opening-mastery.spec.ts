@@ -64,7 +64,8 @@ test('Opening mastery full block reports actual prevented damage in one lane',as
   for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);expect(await page.locator('#identity-sequence').evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await page.screenshot({path:info.outputPath(`blocked-${size.width}.png`)});}
 });
 
-for(const [name,id] of [['Hold & Answer','enc_canal_alternating_watch'],['Chorus Engine','enc_canal_open_perch'],['Storm Window','enc_spire_quiet_beat']])
+for(const [name,id] of [['Hold & Answer','enc_canal_alternating_watch'],['Chorus Engine','enc_canal_open_perch'],['Storm Window','enc_spire_quiet_beat'],
+  ['Ferry Defender','enc_signature_ferry'],['Relay Interceptor','enc_signature_relay'],['Rooftop Escape','enc_signature_watch']])
 test(`Opening mastery ${name} challenge uses real rules, retries and preserves the saved flight`,async({page},info)=>{
   test.setTimeout(120000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await route(page);

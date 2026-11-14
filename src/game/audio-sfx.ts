@@ -3,7 +3,7 @@ import { AudioCueBudget } from './audio-cue-budget';
 const cueBudgets = new WeakMap<AudioContext, AudioCueBudget>();
 
 export type SynthAudioCue =
-  | 'flockSparrow' | 'flockChorus' | 'flockShrike' | 'flockHeron' | 'flockWeaver' | 'flockJackdaw' | 'rooftopAir'
+  | 'flockSparrow' | 'flockChorus' | 'flockShrike' | 'flockHeron' | 'flockWeaver' | 'flockJackdaw' | 'rooftopAir' | 'canalAir' | 'spireAir' | 'roostAir'
   | 'spireAnswer'
   | 'spireBroadcast'
   | 'spireRepair'
@@ -143,237 +143,239 @@ export function playAudioCue(
   const budget = cueBudgets.get(ctx) ?? new AudioCueBudget();
   cueBudgets.set(ctx, budget);
   if (!budget.accepts(cue, ctx.currentTime * 1000)) return false;
-  const audio = { ctx, master, sfxVolume };
-  const loudness = clamp(intensity, 0.45, 1.8);
+  const audio = { ctx, master, sfxVolume: sfxVolume * clamp(intensity, 0.45, 1.8) };
   switch (cue) {
     case 'flockSparrow': case 'flockChorus': case 'flockShrike': case 'flockHeron': case 'flockWeaver': case 'flockJackdaw': {
       const notes = {flockSparrow:[1100,1600],flockChorus:[740,1110],flockShrike:[1800,900],flockHeron:[240,320],flockWeaver:[1300,1900],flockJackdaw:[420,260]}[cue];
-      tone(audio,notes[0],notes[1],.11,'sine',.014*loudness,-.15);
-      tone(audio,notes[1],notes[0]*1.05,.20,'triangle',.006*loudness,.15);
+      tone(audio,notes[0],notes[1],.11,'sine',.014,-.15);
+      tone(audio,notes[1],notes[0]*1.05,.20,'triangle',.006,.15);
       break;
     }
-    case 'rooftopAir': noise(audio,.65,280,.004*loudness); break;
+    case 'rooftopAir': noise(audio,.65,280,.004); break;
+    case 'canalAir': noise(audio,.8,180,.004); break;
+    case 'spireAir': noise(audio,.7,620,.003); break;
+    case 'roostAir': noise(audio,1.1,360,.003); break;
     case 'spireAnswer':
-      tone(audio, 740, 760, .14, 'sine', .010 * loudness, -.3);
-      tone(audio, 1110, 1080, .24, 'sine', .008 * loudness, .3);
+      tone(audio, 740, 760, .14, 'sine', .010, -.3);
+      tone(audio, 1110, 1080, .24, 'sine', .008, .3);
       break;
     case 'spireBroadcast':
-      noise(audio, .18, 650, .012 * loudness);
-      tone(audio, 185, 370, .25, 'triangle', .012 * loudness);
+      noise(audio, .18, 650, .012);
+      tone(audio, 185, 370, .25, 'triangle', .012);
       break;
     case 'spireRepair':
-      chord(audio, [370, 554, 740], .25, 'triangle', .011 * loudness);
+      chord(audio, [370, 554, 740], .25, 'triangle', .011);
       break;
     case 'canalBell':
-      tone(audio, 660, 658, .22, 'sine', .012 * loudness, -.12);
-      tone(audio, 990, 988, .16, 'sine', .008 * loudness, .12);
+      tone(audio, 660, 658, .22, 'sine', .012, -.12);
+      tone(audio, 990, 988, .16, 'sine', .008, .12);
       break;
     case 'canalSurge':
-      noise(audio, .24, 380, .015 * loudness);
-      tone(audio, 110, 165, .26, 'triangle', .014 * loudness);
+      noise(audio, .24, 380, .015);
+      tone(audio, 110, 165, .26, 'triangle', .014);
       break;
     case 'canalRepair':
-      chord(audio, [330, 440, 660], .3, 'triangle', .012 * loudness);
-      noise(audio, .045, 1200, .006 * loudness);
+      chord(audio, [330, 440, 660], .3, 'triangle', .012);
+      noise(audio, .045, 1200, .006);
       break;
     case 'confirm':
-      tone(audio, 420, 610, 0.09, 'sine', 0.036 * loudness);
+      tone(audio, 420, 610, 0.09, 'sine', 0.036);
       break;
     case 'close':
-      tone(audio, 280, 190, 0.1, 'triangle', 0.03 * loudness);
+      tone(audio, 280, 190, 0.1, 'triangle', 0.03);
       break;
     case 'locked':
-      tone(audio, 145, 118, 0.13, 'triangle', 0.026 * loudness);
+      tone(audio, 145, 118, 0.13, 'triangle', 0.026);
       break;
     case 'route':
-      chord(audio, [220, 330, 440], 0.16, 'triangle', 0.018 * loudness);
+      chord(audio, [220, 330, 440], 0.16, 'triangle', 0.018);
       break;
     case 'routeChoice':
-      noise(audio, 0.035, 1460, 0.008 * loudness);
-      tone(audio, 330, 520, 0.1, 'triangle', 0.012 * loudness, -0.08);
-      tone(audio, 660, 820, 0.12, 'sine', 0.012 * loudness, 0.12);
+      noise(audio, 0.035, 1460, 0.008);
+      tone(audio, 330, 520, 0.1, 'triangle', 0.012, -0.08);
+      tone(audio, 660, 820, 0.12, 'sine', 0.012, 0.12);
       break;
     case 'districtAdvance':
-      noise(audio, 0.06, 1720, 0.012 * loudness);
-      tone(audio, 220, 340, 0.14, 'triangle', 0.014 * loudness, -0.12);
-      tone(audio, 440, 760, 0.16, 'sine', 0.016 * loudness, 0.04);
+      noise(audio, 0.06, 1720, 0.012);
+      tone(audio, 220, 340, 0.14, 'triangle', 0.014, -0.12);
+      tone(audio, 440, 760, 0.16, 'sine', 0.016, 0.04);
       break;
     case 'profileRecord':
-      noise(audio, 0.035, 1280, 0.008 * loudness);
-      tone(audio, 250, 360, 0.12, 'triangle', 0.012 * loudness, -0.1);
-      tone(audio, 500, 760, 0.15, 'sine', 0.014 * loudness, 0.08);
+      noise(audio, 0.035, 1280, 0.008);
+      tone(audio, 250, 360, 0.12, 'triangle', 0.012, -0.1);
+      tone(audio, 500, 760, 0.15, 'sine', 0.014, 0.08);
       break;
     case 'objectiveComplete':
-      noise(audio, 0.04, 1760, 0.009 * loudness);
-      tone(audio, 330, 520, 0.11, 'triangle', 0.013 * loudness, -0.12);
-      tone(audio, 660, 990, 0.14, 'sine', 0.015 * loudness, 0.08);
+      noise(audio, 0.04, 1760, 0.009);
+      tone(audio, 330, 520, 0.11, 'triangle', 0.013, -0.12);
+      tone(audio, 660, 990, 0.14, 'sine', 0.015, 0.08);
       break;
     case 'objectiveMissed':
-      noise(audio, 0.035, 620, 0.007 * loudness);
-      tone(audio, 360, 250, 0.13, 'triangle', 0.012 * loudness, -0.1);
-      tone(audio, 240, 165, 0.16, 'sine', 0.009 * loudness, 0.12);
+      noise(audio, 0.035, 620, 0.007);
+      tone(audio, 360, 250, 0.13, 'triangle', 0.012, -0.1);
+      tone(audio, 240, 165, 0.16, 'sine', 0.009, 0.12);
       break;
     case 'marketPurchase':
-      noise(audio, 0.045, 1680, 0.012 * loudness);
-      tone(audio, 360, 620, 0.11, 'triangle', 0.018 * loudness, -0.12);
-      tone(audio, 720, 980, 0.1, 'sine', 0.014 * loudness, 0.1);
+      noise(audio, 0.045, 1680, 0.012);
+      tone(audio, 360, 620, 0.11, 'triangle', 0.018, -0.12);
+      tone(audio, 720, 980, 0.1, 'sine', 0.014, 0.1);
       break;
     case 'encounter':
-      noise(audio, 0.055, 1320, 0.013 * loudness);
-      tone(audio, 164, 246, 0.16, 'sawtooth', 0.014 * loudness, -0.14);
-      tone(audio, 328, 492, 0.14, 'triangle', 0.011 * loudness, 0.1);
-      tone(audio, 720, 540, 0.1, 'sine', 0.007 * loudness, 0.18);
+      noise(audio, 0.055, 1320, 0.013);
+      tone(audio, 164, 246, 0.16, 'sawtooth', 0.014, -0.14);
+      tone(audio, 328, 492, 0.14, 'triangle', 0.011, 0.1);
+      tone(audio, 720, 540, 0.1, 'sine', 0.007, 0.18);
       break;
     case 'supplyUse':
-      noise(audio, 0.055, 1860, 0.014 * loudness);
-      tone(audio, 260, 390, 0.1, 'triangle', 0.012 * loudness, -0.14);
-      tone(audio, 520, 880, 0.12, 'sine', 0.017 * loudness, 0.08);
-      tone(audio, 1180, 760, 0.08, 'triangle', 0.01 * loudness, 0.16);
+      noise(audio, 0.055, 1860, 0.014);
+      tone(audio, 260, 390, 0.1, 'triangle', 0.012, -0.14);
+      tone(audio, 520, 880, 0.12, 'sine', 0.017, 0.08);
+      tone(audio, 1180, 760, 0.08, 'triangle', 0.01, 0.16);
       break;
     case 'spend':
-      noise(audio, 0.045, 1560, 0.01 * loudness);
-      tone(audio, 720, 460, 0.09, 'triangle', 0.016 * loudness, -0.1);
-      tone(audio, 1040, 760, 0.07, 'sine', 0.01 * loudness, 0.14);
+      noise(audio, 0.045, 1560, 0.01);
+      tone(audio, 720, 460, 0.09, 'triangle', 0.016, -0.1);
+      tone(audio, 1040, 760, 0.07, 'sine', 0.01, 0.14);
       break;
     case 'attack':
-      noise(audio, 0.08, 680, 0.035 * loudness);
-      tone(audio, 150, 82, 0.1, 'sawtooth', 0.024 * loudness);
+      noise(audio, 0.08, 680, 0.035);
+      tone(audio, 150, 82, 0.1, 'sawtooth', 0.024);
       break;
     case 'heavyAttack':
-      noise(audio, 0.12, 520, 0.045 * loudness);
-      tone(audio, 110, 48, 0.16, 'sawtooth', 0.034 * loudness);
+      noise(audio, 0.12, 520, 0.045);
+      tone(audio, 110, 48, 0.16, 'sawtooth', 0.034);
       break;
     case 'hitConfirm':
-      noise(audio, 0.055, 1780, 0.018 * loudness);
-      tone(audio, 610, 940, 0.08, 'triangle', 0.016 * loudness, -0.08);
-      tone(audio, 1220, 680, 0.07, 'sine', 0.01 * loudness, 0.14);
+      noise(audio, 0.055, 1780, 0.018);
+      tone(audio, 610, 940, 0.08, 'triangle', 0.016, -0.08);
+      tone(audio, 1220, 680, 0.07, 'sine', 0.01, 0.14);
       break;
     case 'playerCommitment':
-      noise(audio, 0.052, 1620, 0.013 * loudness);
-      tone(audio, 360, 620, 0.14, 'triangle', 0.017 * loudness, -0.12);
-      tone(audio, 720, 1180, 0.12, 'sine', 0.014 * loudness, 0.08);
-      tone(audio, 1080, 760, 0.08, 'triangle', 0.008 * loudness, 0.16);
+      noise(audio, 0.052, 1620, 0.013);
+      tone(audio, 360, 620, 0.14, 'triangle', 0.017, -0.12);
+      tone(audio, 720, 1180, 0.12, 'sine', 0.014, 0.08);
+      tone(audio, 1080, 760, 0.08, 'triangle', 0.008, 0.16);
       break;
     case 'coverBlock':
-      noise(audio, 0.07, 1260, 0.022 * loudness);
-      tone(audio, 340, 210, 0.09, 'square', 0.014 * loudness, -0.1);
-      tone(audio, 760, 520, 0.06, 'triangle', 0.008 * loudness, 0.12);
+      noise(audio, 0.07, 1260, 0.022);
+      tone(audio, 340, 210, 0.09, 'square', 0.014, -0.1);
+      tone(audio, 760, 520, 0.06, 'triangle', 0.008, 0.12);
       break;
     case 'block':
-      noise(audio, 0.08, 1150, 0.026 * loudness);
-      tone(audio, 310, 250, 0.07, 'square', 0.016 * loudness);
+      noise(audio, 0.08, 1150, 0.026);
+      tone(audio, 310, 250, 0.07, 'square', 0.016);
       break;
     case 'cover':
-      chord(audio, [196, 247, 330], 0.12, 'triangle', 0.014 * loudness);
+      chord(audio, [196, 247, 330], 0.12, 'triangle', 0.014);
       break;
     case 'heal':
-      chord(audio, [330, 495, 660], 0.18, 'sine', 0.014 * loudness);
+      chord(audio, [330, 495, 660], 0.18, 'sine', 0.014);
       break;
     case 'enemyHeal':
-      noise(audio, 0.07, 980, 0.014 * loudness);
-      tone(audio, 260, 390, 0.15, 'triangle', 0.014 * loudness, -0.1);
-      tone(audio, 620, 460, 0.1, 'sawtooth', 0.009 * loudness, 0.12);
+      noise(audio, 0.07, 980, 0.014);
+      tone(audio, 260, 390, 0.15, 'triangle', 0.014, -0.1);
+      tone(audio, 620, 460, 0.1, 'sawtooth', 0.009, 0.12);
       break;
     case 'enemyCover':
-      noise(audio, 0.08, 740, 0.018 * loudness);
-      tone(audio, 190, 150, 0.13, 'square', 0.014 * loudness, -0.08);
-      tone(audio, 410, 290, 0.09, 'triangle', 0.01 * loudness, 0.12);
+      noise(audio, 0.08, 740, 0.018);
+      tone(audio, 190, 150, 0.13, 'square', 0.014, -0.08);
+      tone(audio, 410, 290, 0.09, 'triangle', 0.01, 0.12);
       break;
     case 'coverBreak':
-      noise(audio, 0.09, 1450, 0.024 * loudness);
-      tone(audio, 520, 260, 0.1, 'square', 0.016 * loudness, -0.12);
-      tone(audio, 980, 620, 0.08, 'triangle', 0.011 * loudness, 0.14);
+      noise(audio, 0.09, 1450, 0.024);
+      tone(audio, 520, 260, 0.1, 'square', 0.016, -0.12);
+      tone(audio, 980, 620, 0.08, 'triangle', 0.011, 0.14);
       break;
     case 'draw':
-      noise(audio, 0.045, 1800, 0.01 * loudness);
-      tone(audio, 420, 780, 0.1, 'sine', 0.017 * loudness, -0.14);
-      tone(audio, 760, 1120, 0.09, 'triangle', 0.012 * loudness, 0.1);
+      noise(audio, 0.045, 1800, 0.01);
+      tone(audio, 420, 780, 0.1, 'sine', 0.017, -0.14);
+      tone(audio, 760, 1120, 0.09, 'triangle', 0.012, 0.1);
       break;
     case 'discard':
-      noise(audio, 0.06, 1220, 0.014 * loudness);
-      tone(audio, 520, 310, 0.1, 'triangle', 0.014 * loudness, -0.12);
-      tone(audio, 760, 420, 0.08, 'sine', 0.009 * loudness, 0.12);
+      noise(audio, 0.06, 1220, 0.014);
+      tone(audio, 520, 310, 0.1, 'triangle', 0.014, -0.12);
+      tone(audio, 760, 420, 0.08, 'sine', 0.009, 0.12);
       break;
     case 'shuffle':
-      noise(audio, 0.085, 1720, 0.015 * loudness);
-      tone(audio, 320, 620, 0.13, 'triangle', 0.016 * loudness, -0.12);
-      tone(audio, 690, 1040, 0.12, 'sine', 0.012 * loudness, 0.1);
-      tone(audio, 1040, 760, 0.08, 'triangle', 0.008 * loudness, 0.18);
+      noise(audio, 0.085, 1720, 0.015);
+      tone(audio, 320, 620, 0.13, 'triangle', 0.016, -0.12);
+      tone(audio, 690, 1040, 0.12, 'sine', 0.012, 0.1);
+      tone(audio, 1040, 760, 0.08, 'triangle', 0.008, 0.18);
       break;
     case 'drain':
-      noise(audio, 0.1, 760, 0.024 * loudness);
-      tone(audio, 420, 148, 0.16, 'triangle', 0.026 * loudness, -0.08);
-      tone(audio, 760, 210, 0.08, 'sine', 0.012 * loudness, 0.14);
+      noise(audio, 0.1, 760, 0.024);
+      tone(audio, 420, 148, 0.16, 'triangle', 0.026, -0.08);
+      tone(audio, 760, 210, 0.08, 'sine', 0.012, 0.14);
       break;
     case 'flow':
-      tone(audio, 380, 620, 0.12, 'sine', 0.02 * loudness, -0.08);
-      tone(audio, 760, 1040, 0.1, 'triangle', 0.012 * loudness, 0.12);
-      noise(audio, 0.05, 1450, 0.01 * loudness);
+      tone(audio, 380, 620, 0.12, 'sine', 0.02, -0.08);
+      tone(audio, 760, 1040, 0.1, 'triangle', 0.012, 0.12);
+      noise(audio, 0.05, 1450, 0.01);
       break;
     case 'moltPower':
-      noise(audio, 0.055, 2140, 0.009 * loudness);
-      tone(audio, 310, 540, 0.11, 'triangle', 0.014 * loudness, -0.12);
-      tone(audio, 620, 930, 0.13, 'sine', 0.013 * loudness, 0.1);
-      tone(audio, 1240, 880, 0.07, 'triangle', 0.007 * loudness, 0.18);
+      noise(audio, 0.055, 2140, 0.009);
+      tone(audio, 310, 540, 0.11, 'triangle', 0.014, -0.12);
+      tone(audio, 620, 930, 0.13, 'sine', 0.013, 0.1);
+      tone(audio, 1240, 880, 0.07, 'triangle', 0.007, 0.18);
       break;
     case 'cleanse':
-      noise(audio, 0.06, 1900, 0.012 * loudness);
-      tone(audio, 520, 860, 0.14, 'sine', 0.018 * loudness, -0.08);
-      tone(audio, 1040, 720, 0.09, 'triangle', 0.011 * loudness, 0.14);
+      noise(audio, 0.06, 1900, 0.012);
+      tone(audio, 520, 860, 0.14, 'sine', 0.018, -0.08);
+      tone(audio, 1040, 720, 0.09, 'triangle', 0.011, 0.14);
       break;
     case 'bank':
-      tone(audio, 260, 420, 0.13, 'triangle', 0.016 * loudness, -0.12);
-      tone(audio, 520, 780, 0.11, 'sine', 0.014 * loudness, 0.08);
-      noise(audio, 0.045, 1320, 0.008 * loudness);
+      tone(audio, 260, 420, 0.13, 'triangle', 0.016, -0.12);
+      tone(audio, 520, 780, 0.11, 'sine', 0.014, 0.08);
+      noise(audio, 0.045, 1320, 0.008);
       break;
     case 'threat':
-      noise(audio, 0.08, 620, 0.02 * loudness);
-      tone(audio, 180, 120, 0.15, 'sawtooth', 0.018 * loudness, -0.12);
-      tone(audio, 420, 250, 0.1, 'triangle', 0.012 * loudness, 0.14);
+      noise(audio, 0.08, 620, 0.02);
+      tone(audio, 180, 120, 0.15, 'sawtooth', 0.018, -0.12);
+      tone(audio, 420, 250, 0.1, 'triangle', 0.012, 0.14);
       break;
     case 'enemyCommitment':
-      noise(audio, 0.07, 920, 0.018 * loudness);
-      tone(audio, 210, 96, 0.18, 'sawtooth', 0.02 * loudness, -0.14);
-      tone(audio, 520, 270, 0.12, 'triangle', 0.012 * loudness, 0.12);
-      tone(audio, 880, 410, 0.08, 'sine', 0.007 * loudness, 0.18);
+      noise(audio, 0.07, 920, 0.018);
+      tone(audio, 210, 96, 0.18, 'sawtooth', 0.02, -0.14);
+      tone(audio, 520, 270, 0.12, 'triangle', 0.012, 0.12);
+      tone(audio, 880, 410, 0.08, 'sine', 0.007, 0.18);
       break;
     case 'formation':
-      noise(audio, 0.055, 1560, 0.012 * loudness);
-      tone(audio, 260, 420, 0.13, 'triangle', 0.015 * loudness, -0.12);
-      tone(audio, 520, 880, 0.16, 'sine', 0.014 * loudness, 0.1);
-      tone(audio, 1040, 760, 0.11, 'triangle', 0.008 * loudness, 0.16);
+      noise(audio, 0.055, 1560, 0.012);
+      tone(audio, 260, 420, 0.13, 'triangle', 0.015, -0.12);
+      tone(audio, 520, 880, 0.16, 'sine', 0.014, 0.1);
+      tone(audio, 1040, 760, 0.11, 'triangle', 0.008, 0.16);
       break;
     case 'turn':
-      tone(audio, 250, 390, 0.11, 'triangle', 0.022 * loudness);
+      tone(audio, 250, 390, 0.11, 'triangle', 0.022);
       break;
     case 'roostHandoff':
-      noise(audio, 0.08, 1180, 0.016 * loudness);
-      tone(audio, 196, 330, 0.16, 'triangle', 0.018 * loudness, -0.12);
-      tone(audio, 392, 620, 0.12, 'sine', 0.014 * loudness, 0.08);
-      tone(audio, 784, 520, 0.1, 'triangle', 0.009 * loudness, 0.16);
+      noise(audio, 0.08, 1180, 0.016);
+      tone(audio, 196, 330, 0.16, 'triangle', 0.018, -0.12);
+      tone(audio, 392, 620, 0.12, 'sine', 0.014, 0.08);
+      tone(audio, 784, 520, 0.1, 'triangle', 0.009, 0.16);
       break;
     case 'playerTurnRally':
-      noise(audio, 0.045, 1840, 0.01 * loudness);
-      tone(audio, 330, 520, 0.14, 'triangle', 0.016 * loudness, -0.12);
-      tone(audio, 660, 1040, 0.16, 'sine', 0.015 * loudness, 0.08);
-      tone(audio, 990, 780, 0.1, 'triangle', 0.009 * loudness, 0.16);
+      noise(audio, 0.045, 1840, 0.01);
+      tone(audio, 330, 520, 0.14, 'triangle', 0.016, -0.12);
+      tone(audio, 660, 1040, 0.16, 'sine', 0.015, 0.08);
+      tone(audio, 990, 780, 0.1, 'triangle', 0.009, 0.16);
       break;
     case 'reward':
-      chord(audio, [392, 494, 659], 0.22, 'sine', 0.017 * loudness);
+      chord(audio, [392, 494, 659], 0.22, 'sine', 0.017);
       break;
     case 'victory':
-      chord(audio, [330, 415, 554, 659], 0.52, 'sine', 0.02 * loudness);
+      chord(audio, [330, 415, 554, 659], 0.52, 'sine', 0.02);
       break;
     case 'victoryFanfare':
-      noise(audio, 0.12, 1900, 0.012 * loudness);
-      tone(audio, 196, 294, 0.18, 'triangle', 0.018 * loudness, -0.18);
-      window.setTimeout(() => tone(audio, 330, 494, 0.2, 'sine', 0.018 * loudness, 0.12), 95);
-      window.setTimeout(() => chord(audio, [392, 494, 659, 784], 0.46, 'sine', 0.022 * loudness), 190);
-      window.setTimeout(() => noise(audio, 0.08, 2600, 0.008 * loudness), 280);
+      noise(audio, 0.12, 1900, 0.012);
+      tone(audio, 196, 294, 0.18, 'triangle', 0.018, -0.18);
+      window.setTimeout(() => tone(audio, 330, 494, 0.2, 'sine', 0.018, 0.12), 95);
+      window.setTimeout(() => chord(audio, [392, 494, 659, 784], 0.46, 'sine', 0.022), 190);
+      window.setTimeout(() => noise(audio, 0.08, 2600, 0.008), 280);
       break;
     case 'defeat':
-      tone(audio, 196, 82, 0.62, 'triangle', 0.038 * loudness);
-      noise(audio, 0.28, 360, 0.016 * loudness);
+      tone(audio, 196, 82, 0.62, 'triangle', 0.038);
+      noise(audio, 0.28, 360, 0.016);
       break;
     default: {
       const exhaustiveCue: never = cue;

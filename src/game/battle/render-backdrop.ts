@@ -81,7 +81,8 @@ function renderAtmosphere(context: BattleBackdropRenderContext) {
       atmosphere.add(tile);
     }
   });
-  target.add(atmosphere);
+  // Separate the ambient movement owner from action-priority opacity.
+  target.add(scene.add.container(0, 0, [atmosphere]).setName('combat-weather-priority'));
 
   if (reducedMotion || leanEffects) return;
   scene.tweens.add({

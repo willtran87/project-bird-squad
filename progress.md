@@ -1,5 +1,25 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-14 — Coherent City polish (verification in progress)
+- Accepted the 48-item visual/coherence/play-experience list. Working on
+  `codex/coherent-city-polish` from `6cd75264`; user changes to AGENTS.md excluded.
+- Added shared illustrated lesson briefings and immediate retries, district
+  framing/ambience, action-priority weather, explicit forecast estimates, causal
+  damage history, saved strategy/resident context and three mastery practices.
+- Retained canonical art. Reviewed five Leader pairs, five residents, four
+  district pairs and all 110 approved card portraits beside hand-size references.
+  Added reproducible gallery and district/effect/screen direction sheets.
+- Corrected practice encounter allowlist and Watch's district. All six practice
+  rematches pass both mechanical policies without changing saved progression.
+  Corrected test setup for briefings and bounds serialization; failed runs kept.
+- Native cold/warm profiling and a separate CPU capture recorded loading stalls;
+  the old 1.7-second outlier did not reproduce, but is not declared fixed.
+  Source/content checks and unchanged delivery ceilings pass after consolidating
+  duplicated decks, gain factors and text styles. Full regression work continues.
+- Scope/evidence ledger: `docs/game/coherent-city-polish.md`. Five-player and
+  physical-device/assistive-technology acceptance remain the explicit handoff.
+  This candidate has not been published.
+
 ## 2026-11-11 — Tactical payoffs and survival (in progress)
 - Accepted survival forecast, measured stall investigation, earned strategy
   tuning, ordinary encounter decisions and restrained action feedback, followed

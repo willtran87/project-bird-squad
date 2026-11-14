@@ -4043,7 +4043,7 @@ class BirdAudioDirector {
       }
       this.sfxStatus = 'ready';
       if ((!this.muted || playThroughMute) && this.master) {
-        const volume = cue === 'rooftopAir' ? this.ambienceVolume : cue.startsWith('flock') ? this.voiceVolume : this.sfxVolume;
+        const volume = cue.endsWith('Air') ? this.ambienceVolume : cue.startsWith('flock') ? this.voiceVolume : this.sfxVolume;
         if (module.playAudioCue(ctx, this.master, volume, cue, intensity)) this.sfxPlayed += 1;
       }
     });
@@ -6930,10 +6930,11 @@ class RouteScene extends Phaser.Scene {
 
   private renderDistrictContractChoice() {
     const choices = this.districtContractChoices();
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82)
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.72)
       .setInteractive()
       .setDepth(24000)
       .setName('district-contract-choice');
+    this.routeMapRendererModule?.renderDistrictFraming(this, activeMapIndex);
     this.add.rectangle(GAME_WIDTH / 2, 356, 1120, 438, DECISION_UI.surface, 1)
       .setStrokeStyle(1, DECISION_UI.border, 0.8)
       .setDepth(24001)
@@ -11927,7 +11928,7 @@ class BattleScene extends Phaser.Scene {
     this.registry.set(controlPanelRegistryKey(this), false);
     this.registry.remove(controlCaptureRegistryKey(this));
     const runState = cloneRunState(data.runState ?? createInitialRunState());
-    practiceEncounterId = this.practiceRematch && ['enc_canal_open_perch', 'enc_canal_alternating_watch', 'enc_spire_quiet_beat'].includes(data.practiceEncounterId ?? '') ? data.practiceEncounterId : undefined;
+    practiceEncounterId = this.practiceRematch && ['enc_canal_open_perch', 'enc_canal_alternating_watch', 'enc_spire_quiet_beat', 'enc_signature_ferry', 'enc_signature_relay', 'enc_signature_watch'].includes(data.practiceEncounterId ?? '') ? data.practiceEncounterId : undefined;
     this.battleStartingData = { runState: cloneRunState(runState), routeNodeId: data.routeNodeId, practiceEncounterId };
     this.runLeaderId = runState.leaderId;
     this.resolvingCard = undefined;
@@ -19981,8 +19982,8 @@ private playBattleIntro(onComplete?: () => void) {
     pressure.hitCount += 1;
     this.statDamageTakenByMove.set(pressureKey, pressure);
     this.logEvent(damage > 0
-      ? `${enemy.name} hits the flock for ${damage}.`
-      : `${enemy.name}'s hit is blocked.`);
+      ? `${enemy.name} hits the flock for ${damage}. ${moveLabel}: Cover absorbed ${blocked}; ${cohesionLost} Cohesion lost.`
+      : `${enemy.name}'s hit is blocked. ${moveLabel}: Cover absorbed ${blocked}; no Cohesion lost.`);
     this.triggerRoostkeeperPerfectBrace(blocked, damage);
     // An unblocked hit shatters formation Flow; damage fully absorbed by Cover
     // keeps the flock together (Cover earns a second job: holding formation).

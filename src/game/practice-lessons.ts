@@ -39,6 +39,9 @@ const lessons = [
 ] as const;
 type Lesson = typeof lessons[number];
 
+const lessonRun = (lesson: Lesson) => createInitialRunState('fledgling', 0, 'quick', `lesson-${lesson.id}`,
+  lesson.cards.map(id => ({ id, upgraded: false })));
+
 function button(scene: Phaser.Scene, root: Phaser.GameObjects.Container, x: number, y: number, width: number, label: string, run: () => void) {
   const hit = quietButton(scene, { x, y, width, label, name: 'practice-lesson-action', onActivate: run });
   hit.setData('label', label);
@@ -46,7 +49,7 @@ function button(scene: Phaser.Scene, root: Phaser.GameObjects.Container, x: numb
   return { hit, label, run };
 }
 
-export function openPracticeLessons(menu: any) {
+export function openPracticeLessons(menu: any, initialFocus = 0) {
   menu.closeHelpOverlay();
   const root = menu.add.container(0, 0).setDepth(80);
   menu.helpOverlay = root;
@@ -64,14 +67,14 @@ export function openPracticeLessons(menu: any) {
   let launching = false;
   const actions = lessons.map((lesson, index) => {
     const y = 230 + index * 78;
-    const action = button(menu, root, 340, y, 320, lesson.title, () => {
+    const action = button(menu, root, 340, y, 320, lesson.title, () => openLessonBriefing(menu, lesson, index, () => {
       if (launching) return;
       launching = true;
       const cards = lesson.cards.map(id => ({ id, upgraded: false }));
       if (!beginPracticeSession(cards)) { launching = false; return; }
       try {
         skipFirstFlightGuide();
-        const runState = createInitialRunState('fledgling', 0, 'quick', `lesson-${lesson.id}`, cards);
+        const runState = lessonRun(lesson);
         if (lesson.id === 'preen' || lesson.id === 'deck') {
           const key = 'GuidedDeckPracticeScene';
           if (!menu.game.scene.getScene(key)) menu.game.scene.add(key, GuidedDeckPracticeScene, false);
@@ -87,7 +90,7 @@ export function openPracticeLessons(menu: any) {
         announceScreenReader('The lesson could not open. Please try again.');
         console.warn('Practice lesson could not open', error);
       }
-    });
+    }));
     root.add(menu.add.text(548, y, lesson.description, {
       fontFamily: TOKEN_FONT, fontSize: '22px', color: DECISION_UI.secondary,
       wordWrap: { width: 540 }, lineSpacing: 4,
@@ -95,8 +98,38 @@ export function openPracticeLessons(menu: any) {
     return action;
   });
   actions.push(button(menu, root, 640, 635, 240, 'Back to guide', back));
+  bindActionFocus(menu, root, actions, back, { exclusive: true, initialIndex: initialFocus });
+  menu.updateMenuTextState();
+}
+
+/** A single illustrated introduction for every lesson. No saved state changes
+ * until Start; Back restores the exact lesson selection. Art is already loaded. */
+function openLessonBriefing(menu: any, lesson: Lesson, index: number, start: () => void) {
+  menu.closeHelpOverlay();
+  const root = menu.add.container(0, 0).setDepth(80);
+  menu.helpOverlay = root; menu.menuFocusRing?.setVisible(false);
+  const back = () => openPracticeLessons(menu, index);
+  root.setData('onBack', back).setData('topic', `Lesson ${index + 1}: ${lesson.title}. ${lesson.description} First: ${lesson.steps[0]} Nothing is saved.`);
+  root.add(menu.add.rectangle(640, 360, 1280, 720, DECISION_UI.surface, 1).setInteractive());
+  if (menu.textures.exists('splash')) root.add(menu.add.image(440, 360, 'splash').setDisplaySize(1280, 720).setName('lesson-briefing-art'));
+  root.add(menu.add.rectangle(930, 360, 700, 720, DECISION_UI.surface, .98).setName('lesson-briefing-panel'));
+  const text = (y: number, value: string, size = 22, color: string = DECISION_UI.text) => {
+    const label = menu.add.text(630, y, value, { fontFamily: TOKEN_FONT, fontSize: `${size}px`, color,
+      wordWrap: { width: 570 }, lineSpacing: 6, resolution: 2 }).setName('lesson-briefing-copy');
+    root.add(label); return label;
+  };
+  text(80, `PRACTICE · LESSON ${index + 1} / ${lessons.length}`, 20, DECISION_UI.secondary);
+  text(122, lesson.title, 36).setFontFamily(TOKEN_DISPLAY_FONT);
+  text(193, lesson.description, 24);
+  text(286, 'YOUR FIRST ACTION', 20, '#e8c985');
+  text(324, lesson.steps[0]);
+  text(444, 'Use the real rules in a safe practice flight. Your active flight and collection stay unchanged.', 20, DECISION_UI.secondary);
+  const actions = [button(menu, root, 810, 562, 330, 'Start lesson', start),
+    button(menu, root, 1098, 562, 200, 'Back to lessons', back)];
+  text(623, `${controlBindingLabel('confirm')} / A: choose · ${controlBindingLabel('back')} / B: back · Nothing saved`, 18, DECISION_UI.secondary);
   bindActionFocus(menu, root, actions, back, { exclusive: true });
   menu.updateMenuTextState();
+  announceScreenReader(root.getData('topic'));
 }
 
 /** Disposable route exercise using the same inspection and commitment controls. */
@@ -144,13 +177,15 @@ class GuidedDeckPracticeScene extends Phaser.Scene {
     r.scene.pause(); this.children.removeAll(true);
     const root = this.add.container(0, 0);
     root.add(this.add.rectangle(640, 360, 1280, 720, DECISION_UI.surface, 1).setInteractive());
-    const instruction = complete ? this.lesson.conclusion : 'You can replay this lesson from How to Play. Read the full impact, then select and confirm a card to try the change.';
+    const instruction = complete ? this.lesson.conclusion : `Try this first: ${this.lesson.steps[0]} Retry here; your saved flight is unchanged.`;
     root.add(this.add.text(640, 230, complete ? 'Lesson complete' : 'Give it another try', { fontFamily: TOKEN_DISPLAY_FONT, fontSize: '36px', color: DECISION_UI.text }).setOrigin(0.5).setResolution(2));
     root.add(this.add.text(640, 340, instruction, { fontFamily: TOKEN_FONT, fontSize: '24px', color: DECISION_UI.secondary,
       wordWrap: { width: 800 }, align: 'center', lineSpacing: 6 }).setOrigin(0.5).setResolution(2));
     const back = () => { r.scene.start('MenuScene', { reopenHelp: true }); this.scene.stop(); };
-    const action = button(this, root, 640, 510, 320, 'Back to How to Play', back);
-    bindActionFocus(this, root, [action], back);
+    const retry = () => { r.scene.restart({ runState: lessonRun(this.lesson) }); this.scene.restart({ id: this.lesson.id }); };
+    const actions = [button(this, root, 450, 510, 320, 'Back to How to Play', back),
+      button(this, root, 830, 510, 280, 'Retry lesson', retry)];
+    bindActionFocus(this, root, actions, back, { initialIndex: complete ? 0 : 1 });
     this.registry.set(STATE, { id: this.lesson.id, title: this.lesson.title, instruction, complete, finished: true });
     announceScreenReader(`${complete ? 'Lesson complete.' : 'Give it another try.'} ${instruction}`);
   }
@@ -168,6 +203,7 @@ class GuidedPracticeScene extends Phaser.Scene {
   private protectedTurn = -1;
   private blockedBefore = 0;
   private finished = false;
+  private battleShutdown?: () => void;
 
   constructor() { super(KEY); }
 
@@ -184,6 +220,7 @@ class GuidedPracticeScene extends Phaser.Scene {
     }).setResolution(2).setOrigin(0.5).setName('practice-lesson-instruction');
     this.prompt.add(this.copy);
     const exit = () => this.scene.stop();
+    this.battleShutdown = exit;
     this.battle.events.once('shutdown', exit);
     this.events.once('shutdown', () => {
       this.battle.events.off('shutdown', exit);
@@ -233,18 +270,26 @@ class GuidedPracticeScene extends Phaser.Scene {
       fontFamily: TOKEN_DISPLAY_FONT, fontSize: '36px', color: DECISION_UI.text,
     }).setResolution(2).setOrigin(0.5));
     const instruction = complete ? this.lesson.conclusion
-      : 'Follow the lesson prompts to try this mechanic. You can replay any lesson from How to Play.';
+      : `Try this first: ${this.lesson.steps[0]} Retry here; your saved flight is unchanged.`;
     root.add(this.add.text(640, 340, instruction, {
       fontFamily: TOKEN_FONT, fontSize: '24px', color: DECISION_UI.secondary,
       wordWrap: { width: 740 }, align: 'center', lineSpacing: 8,
     }).setResolution(2).setOrigin(0.5));
     const back = () => this.battle.scene.start('MenuScene', { reopenHelp: true });
-    const action = button(this, root, 640, 478, 300, 'Back to How to Play', back);
-    bindActionFocus(this, root, [action], back);
+    const retry = () => {
+      // Restart both scenes in order without letting the outgoing battle stop
+      // the new lesson. The existing in-memory practice session stays isolated.
+      this.battle.events.off('shutdown', this.battleShutdown);
+      this.battle.scene.restart({ runState: lessonRun(this.lesson), routeNodeId: 'm1_entry' });
+      this.scene.restart({ id: this.lesson.id });
+    };
+    const actions = [button(this, root, 450, 478, 320, 'Back to How to Play', back),
+      button(this, root, 830, 478, 280, 'Retry lesson', retry)];
+    bindActionFocus(this, root, actions, back, { initialIndex: complete ? 0 : 1 });
     root.add(this.add.text(640, 550, `${controlBindingLabel('confirm')} / A: Continue  ·  Nothing saved`, {
       fontFamily: TOKEN_FONT, fontSize: '18px', color: DECISION_UI.secondary,
     }).setOrigin(0.5).setResolution(2));
     this.registry.set(STATE, { id: this.lesson.id, title: this.lesson.title, instruction, complete, finished: true });
-    announceScreenReader(`${complete ? 'Lesson complete.' : 'Give it another try.'} ${instruction} Confirm returns to How to Play.`);
+    announceScreenReader(`${complete ? 'Lesson complete.' : 'Give it another try.'} ${instruction} ${complete ? 'Confirm returns to How to Play.' : 'Confirm retries the lesson.'}`);
   }
 }

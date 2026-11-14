@@ -70,6 +70,7 @@ export default defineConfig(({ command }) => ({
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.endsWith('/src/main.ts')) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
+          if (moduleId.endsWith('/src/game/district-framing.ts')) return 'district-framing';
           if (moduleId.endsWith('/src/game/build-guidance.ts')) return 'build-guidance';
           if (moduleId.endsWith('/src/game/flight-highlights.ts')) return 'flight-highlights';
           if (moduleId.endsWith('/src/game/opening-district.ts')) return 'opening-district';

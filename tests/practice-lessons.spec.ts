@@ -42,6 +42,9 @@ for (const [index, id] of ['cover', 'flow', 'molt'].entries()) {
       await expect.poll(async () => (await state(page)).helpFocus?.index).toBe(i + 1);
     }
     await page.keyboard.press('Enter');
+    await expect.poll(async () => (await state(page)).helpFocus?.label).toBe('Start lesson');
+    expect(await disk(page)).toEqual(before);
+    await page.keyboard.press('Enter');
     await page.waitForFunction(id => JSON.parse((window as any).render_game_to_text?.() ?? '{}').practiceLesson?.id === id, id);
     await page.waitForFunction(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

@@ -3035,3 +3035,25 @@ existing budget. No asset quality reduction, new dependency, eager preload or
 budget increase was introduced. Production-byte and browser-decode checks cover
 296 card, enemy and district images; recovery and scene reuse pass in Chromium
 and Firefox, including all four district entry/boss transitions.
+### 2026-11-14: Coherent City entry investigation
+
+`node tools/profile-district-entry.mjs` records native RAF intervals, long tasks
+and requested resources, with four fresh browser contexts and one warm entry in
+each. At 1440×900, cold entry-to-interaction measured 3,040–4,760 ms, including
+the authored encounter introduction. Cold maximum RAF intervals were 716.5,
+333.3, 616.6 and 350 ms. Warm entries requested no new resources; maximum RAF
+intervals were 116.7, 83.3, 83.4 and 66.6 ms. There were no page errors.
+
+The earlier 1,700 ms interval did not reproduce in these four contexts. This
+does not establish that it is fixed, or that cold loading is smooth. A separate
+CPU-instrumented run (`BIRD_SQUAD_ENTRY_CPU=1`) recorded a 966.6 ms cold interval;
+its sampled work includes texture upload and serialization (`texImage2D`,
+`typedArrayToBase64`) plus browser program/idle time. Do not treat the instrumented
+run as comparable native timing or assign the old outlier to a particular game
+function without a reproducing trace. No controller stub was enabled.
+
+Evidence: `.artifacts/coherent-city/entry-profile.json`, `entry-cpu.json` and
+`entry-cpu.json.cpuprofile`. Profiling was isolated from browser test runs.
+No animation pause, art-quality reduction or rules change was used to improve
+these numbers. Remaining cold-start stalls stay explicit in the acceptance
+ledger; subsequent device testing should repeat the same protocol.

@@ -37,6 +37,9 @@ for (const [offset, id] of ['preen', 'deck'].entries()) test(`guided ${id} decis
     await page.waitForFunction(index => JSON.parse((window as any).render_game_to_text()).helpFocus?.index === index, i + 1);
   }
   await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text()).helpFocus?.label === 'Start lesson');
+  expect(await disk(page)).toEqual(before);
+  await page.keyboard.press('Enter');
   await page.waitForFunction(id => (window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson')?.id === id, id);
   for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
@@ -82,12 +85,14 @@ for (const [offset, id] of ['preen', 'deck'].entries()) test(`guided ${id} decis
     await page.waitForFunction(index => JSON.parse((window as any).render_game_to_text()).helpFocus?.index === index, i + 1);
   }
   await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text()).helpFocus?.label === 'Start lesson');
+  await page.keyboard.press('Enter');
   await page.waitForFunction(id => (window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson')?.id === id, id);
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => (window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson')?.finished);
   expect(await page.evaluate(() => (window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson').complete)).toBe(false);
   await settleCanvas(page); // The new action-focus owner is installed on the next frame.
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape'); // Failure now focuses Retry; Back still exits.
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.isActive('MenuScene'));
   expect(await disk(page)).toEqual(before); expect(errors).toEqual([]);
 });

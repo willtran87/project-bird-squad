@@ -8,6 +8,7 @@ const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/bu
 const kb = 1024;
 
 const budgets = [
+  { label: 'district arrival framing lazy module', pattern: /^district-framing-.*\.js$/, maxKb: 2, hard: true },
   { label: 'hand rule formatting shared lazy module', pattern: /^hand-rule-summary-.*\.js$/, maxKb: 3, hard: true },
   { label: 'strategy showcase lazy module', pattern: /^strategy-showcase-.*\.js$/, maxKb: 4, hard: true },
   { label: 'flight workshop lazy module', pattern: /^flight-workshop-.*\.js$/, maxKb: 6, hard: true },

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+export { renderDistrictFraming } from './district-framing';
 export { renderDistrictAdvanceFlourish, routeCommitStreakFx, renderRouteBossBeaconRing } from './route-transition-fx';
 export { renderUnifiedRunHud, renderRouteGuidance, renderRouteMapFrame, renderRouteDistrictBanner } from './run-hud';
 import { UI_TYPE } from './theme';
@@ -139,11 +140,10 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
 
   const visualState = node.current ? 'current' : node.completed ? 'completed' : node.selected ? 'selected' : node.selectable ? 'selectable' : 'future';
   const visualAlpha = node.current ? 1 : node.completed ? 0.32 : node.selected ? 1 : node.selectable ? 0.96 : 0.9;
-  hitTarget.setData('routeNodeId', node.id).setData('routeNodeState', visualState);
+  hitTarget.setData({ routeNodeId: node.id, routeNodeState: visualState });
   context.renderNodeIcon(node, visualAlpha)
     .setName('route-node-icon')
-    .setData('routeNodeId', node.id)
-    .setData('routeNodeState', visualState);
+    .setData({ routeNodeId: node.id, routeNodeState: visualState });
 
   if (node.completed) {
     const x = node.x + node.radius * 0.65, y = node.y + node.radius * 0.65;
