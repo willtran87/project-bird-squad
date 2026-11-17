@@ -442,9 +442,11 @@ function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjec
 const GRAIN = 'spectacle-grain';
 
 /** A fine, shifting film grain over the whole frame binds painted art and
- * vector panels into one image. Still under Reduced Motion; absent when Lean. */
+ * vector panels into one image. Still under Reduced Motion. A full-screen
+ * blended layer doubles a software renderer's frame time, so it follows the
+ * same gate as the shader passes (and so is absent under Lean). */
 function filmGrain(scene: Phaser.Scene) {
-  if (prefersLeanEffects()) return;
+  if (!spectacleFiltersEnabled(scene)) return;
   if (!scene.textures.exists(GRAIN)) {
     const canvas = scene.textures.createCanvas(GRAIN, 128, 128);
     const context = canvas?.getContext();
