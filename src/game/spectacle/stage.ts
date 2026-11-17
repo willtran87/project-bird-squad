@@ -439,6 +439,35 @@ function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjec
   });
 }
 
+const GRAIN = 'spectacle-grain';
+
+/** A fine, shifting film grain over the whole frame binds painted art and
+ * vector panels into one image. Still under Reduced Motion; absent when Lean. */
+function filmGrain(scene: Phaser.Scene) {
+  if (prefersLeanEffects()) return;
+  if (!scene.textures.exists(GRAIN)) {
+    const canvas = scene.textures.createCanvas(GRAIN, 128, 128);
+    const context = canvas?.getContext();
+    if (!canvas || !context) return;
+    const pixels = context.createImageData(128, 128);
+    for (let index = 0; index < pixels.data.length; index += 4) {
+      const value = Math.random() < 0.5 ? 0 : 255;
+      pixels.data[index] = pixels.data[index + 1] = pixels.data[index + 2] = value;
+      pixels.data[index + 3] = Math.floor(Math.random() * 255);
+    }
+    context.putImageData(pixels, 0, 0);
+    canvas.refresh();
+  }
+  const { width, height } = scene.scale.gameSize;
+  const grain = scene.add.tileSprite(width / 2, height / 2, width, height, GRAIN)
+    .setAlpha(0.045).setDepth(9500).setName('spectacle-grain');
+  if (prefersReducedMotion()) return;
+  scene.time.addEvent({
+    delay: 90, loop: true,
+    callback: () => { if (grain.active) grain.setTilePosition(Math.random() * 128, Math.random() * 128); },
+  });
+}
+
 /** A soft band of light crossing the screen as a scene arrives. */
 function arrivalSweep(scene: Phaser.Scene) {
   if (prefersLeanEffects() || prefersReducedMotion()) return;
@@ -534,6 +563,7 @@ export function installSpectacle(game: Phaser.Game) {
     const dress = (arriving: boolean) => {
       DRESSERS[scene.scene.key]?.(scene);
       if (arriving && scene.scene.key !== 'BootScene') arrivalSweep(scene);
+      if (scene.scene.key !== 'BootScene') filmGrain(scene);
     };
     scene.events.on(Phaser.Scenes.Events.CREATE, () => dress(true));
     if (scene.sys.isActive()) dress(false);

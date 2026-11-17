@@ -238,3 +238,34 @@ canvas {
     transition: none;
   }
 }
+
+/* Boot screen: the first thing seen should already look like the game. */
+#boot-shell {
+  gap: 18px;
+  background:
+    radial-gradient(60% 34% at 50% 64%, rgb(255 160 70 / 13%), transparent 70%),
+    radial-gradient(circle at 50% 35%, rgb(47 198 201 / 12%), transparent 20rem),
+    radial-gradient(ellipse at 50% 55%, #16233f 0%, #0a1322 50%, #04070d 100%);
+  animation: boot-arrive 420ms ease-out both;
+}
+.boot-title {
+  font-size: clamp(34px, 5vw, 56px);
+  letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #fff1c7 0%, #ffd27a 45%, #c98a2e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 12px rgb(255 170 60 / 28%));
+}
+.boot-support { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: #8fa3b6; }
+.boot-line { width: 220px; height: 3px; border-radius: 3px; background: rgb(255 225 163 / 14%); }
+.boot-line::before { width: 88px; border-radius: 3px; background: linear-gradient(90deg, transparent, #ffd27a, transparent); }
+@keyframes boot-line {
+  0% { transform: translateX(-88px); }
+  100% { transform: translateX(220px); }
+}
+@keyframes boot-arrive { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  #boot-shell { animation: none; }
+  .boot-line::before { animation: none; width: 100%; opacity: 0.5; }
+}

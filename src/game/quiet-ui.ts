@@ -74,7 +74,11 @@ export function quietButton(scene: Phaser.Scene, options: {
         if (!parent.active || !parent.visible) return;
         parent = parent.parentContainer;
       }
-      if (hit.active && hit.visible && hit.input?.enabled && hit.getData('enabled') !== false) onActivate();
+      if (!(hit.active && hit.visible && hit.input?.enabled && hit.getData('enabled') !== false)) return;
+      // A brief press: the control dips, then recovers if it survives the action.
+      hit.setAlpha(0.8);
+      scene.time.delayedCall(90, () => { if (hit.active) hit.setAlpha(1); });
+      onActivate();
     });
   if (enabled) hit.setInteractive({ useHandCursor: true });
   paint();

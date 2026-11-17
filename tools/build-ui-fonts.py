@@ -6,7 +6,8 @@ Sources are the SIL OFL 1.1 "latin" subsets published by Fontsource
 vertical metrics: each face adopts the ascent/descent of the system face it
 replaces (Arial for UI text, Georgia for display text), so authored 1280x720
 layouts keep their measured line heights. Glyph outlines and advance widths
-are untouched.
+are untouched, except that tabular figures become the default
+digits where the face provides them.
 
 Usage:
   python tools/build-ui-fonts.py <dir containing the extracted fontsource packages>
@@ -31,6 +32,32 @@ FACES = [
 ]
 
 
+def freeze_tabular_figures(font: TTFont) -> None:
+    """Make tabular figures the default digits.
+
+    Canvas text cannot request OpenType features, so counters and costs would
+    otherwise jitter as proportional digits change. Faces without a `tnum`
+    feature are left as they are.
+    """
+    gsub = font.get('GSUB')
+    if gsub is None:
+        return
+    mapping = {}
+    for record in gsub.table.FeatureList.FeatureRecord:
+        if record.FeatureTag != 'tnum':
+            continue
+        for index in record.Feature.LookupListIndex:
+            for subtable in gsub.table.LookupList.Lookup[index].SubTable:
+                mapping.update(getattr(subtable, 'mapping', {}))
+    if not mapping:
+        return
+    for table in font['cmap'].tables:
+        for codepoint in range(0x30, 0x3A):
+            glyph = table.cmap.get(codepoint)
+            if glyph in mapping:
+                table.cmap[codepoint] = mapping[glyph]
+
+
 def build(source_root: Path) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for source, output, (ascent, descent) in FACES:
@@ -41,6 +68,7 @@ def build(source_root: Path) -> None:
         hhea.ascent, hhea.descent, hhea.lineGap = up, -down, 0
         os2.sTypoAscender, os2.sTypoDescender, os2.sTypoLineGap = up, -down, 0
         os2.usWinAscent, os2.usWinDescent = up, down
+        freeze_tabular_figures(font)
         font.flavor = 'woff2'
         font.save(OUT / output)
         print(f'{output}: {(OUT / output).stat().st_size} bytes')
