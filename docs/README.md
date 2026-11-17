@@ -25,6 +25,7 @@ should be recorded.
 | Plan future imagegen/chroma-key asset packs | `docs/art/imagegen-asset-roadmap.md` |
 | Generate or review enemy art | `docs/art/enemy-art-bible.md` |
 | Adapt external implementation patterns | `docs/game/spire-codex-adaptation-study.md` |
+| Review the visual spectacle and modern polish scope, status and evidence | `docs/game/visual-spectacle.md` |
 | Review historical decisions and handoff notes | `docs/project/progress.md` |
 
 ## Canonical Design Sources

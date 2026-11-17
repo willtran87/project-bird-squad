@@ -25,6 +25,7 @@ the design specs, not a replacement for them:
 | Route maps | Authored district maps feed seeded generated maps per run. |
 | Persistence | Active run, account unlocks, and run summaries use `localStorage`. |
 | Test harness | `window.__birdSquadState()` and `render_game_to_text()` drive Playwright smoke tests. |
+| Presentation | Lazy `src/game/spectacle/` for lighting, weather and impact dressing; self-hosted Barlow and Fraunces UI faces. |
 
 ## Code And Data Flow
 
@@ -286,6 +287,33 @@ contract are part of the shipped runtime.
 - Generated/source art belongs under `.generated/`; optimized runtime assets
   belong under `assets/runtime/` and should be referenced through manifests or
   Vite-managed imports.
+
+## Spectacle boundary
+
+`src/game/spectacle/` is lazy presentation that never changes game state. It
+loads beside the game (`installSpectacle` in `main.ts`), and boot waits for it
+together with the UI fonts, capped at 1.5 seconds.
+
+- `stage.ts`: adopts scenes as they are created. Battle gets per-district
+  lights and weather on its own layer above the backdrop, bloom and grade on
+  the backdrop, a targeting arc and an outcome grade. Title and route get
+  rain, glow and bloom. Every scene gets an arrival sweep and film grain.
+- `punch.ts`: camera punch, edge flashes and the defeat stagger.
+- `impact.ts`: suit-shaped impacts, feathers, impact light, block sparks,
+  rising motes, danger lines and floor marks, on layers it owns.
+
+Two global patches live in `stage.ts` and affect every scene:
+
+- `roundPanels` rounds rectangles created through the factory, except
+  hairlines, meters and full-screen shades.
+- `keepAuthoredLineMetrics` gives text in the new faces the line metrics of
+  its system fallback; see `docs/game/visual-spectacle.md`.
+
+Gates: Lean graphics removes stage dressing; Reduced Motion keeps still
+lighting only; shader passes and film grain need hardware WebGL (`?fx=full`
+forces them on, `?fx=off` off). WebKit masks its renderer string, so the
+software check does not catch it. Never put a non-solid page background behind
+the canvas: WebKit recomposites it every frame.
 
 ## Flyway expansion boundary
 

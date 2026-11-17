@@ -55,7 +55,8 @@ const STAGES: Record<string, StagePlan> = {
     ],
   },
   'battlefield-high-roost': {
-    rain: 0.6, motes: 0, fog: 0x4a5fa0, wind: 20,
+    // The climb ends in clear air (art bible: clear High Roost dawn): no rain.
+    rain: 0, motes: 0, fog: 0x4a5fa0, wind: 20,
     lights: [
       [605, 140, WARM, 40], [671, 140, WARM, 40], [754, 140, WARM, 40], [829, 140, WARM, 40], [315, 164, WARM, 30],
       [345, 189, WARM, 30], [414, 165, WARM, 30], [278, 210, WARM, 32], [193, 257, WARM, 34], [972, 171, WARM, 30],

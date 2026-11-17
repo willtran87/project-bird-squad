@@ -47,6 +47,7 @@ The short version:
 | --- | --- |
 | `src/` | Runtime TypeScript and CSS for the playable build. |
 | `assets/splash/` | Splash and promotional images used by the menu or presentation. |
+| `assets/fonts/ui/` | Runtime UI faces (Barlow, Fraunces; SIL OFL), rebuilt by `tools/build-ui-fonts.py`. |
 | `.generated/` | Ignored generated/source masters for imagegen, concept art, screenshots, and raw art pipeline outputs. |
 | `assets/runtime/` | Runtime asset manifests and optimized derived card, enemy, and backdrop targets. |
 | `assets/concept-art/backdrops/`, `assets/concept-art/route-events/`, `assets/concept-art/route-event-centerpieces/` | Current editable world-demo source art; exact allowed generations are defined by `docs/art/world-asset-contract.md`. |
