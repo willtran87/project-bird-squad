@@ -115,13 +115,13 @@ export function renderBattleBackdrop(context: BattleBackdropRenderContext) {
   // bands through the district artwork. Four static quads; no new animation.
   const ink = 0x02060c;
   if (scene.game.renderer.type === Phaser.WEBGL) {
-    shade.fillGradientStyle(ink, ink, ink, ink, 0.6, 0.6, 0, 0);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0.44, 0.44, 0, 0);
     shade.fillRect(0, 0, width, height * 0.26);
-    shade.fillGradientStyle(ink, ink, ink, ink, 0, 0, 0.78, 0.78);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0, 0, 0.64, 0.64);
     shade.fillRect(0, height * 0.55, width, height * 0.45);
-    shade.fillGradientStyle(ink, ink, ink, ink, 0.46, 0, 0.46, 0);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0.3, 0, 0.3, 0);
     shade.fillRect(0, 0, width * 0.2, height);
-    shade.fillGradientStyle(ink, ink, ink, ink, 0, 0.46, 0, 0.46);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0, 0.3, 0, 0.3);
     shade.fillRect(width * 0.8, 0, width * 0.2, height);
   }
   target.add(shade);

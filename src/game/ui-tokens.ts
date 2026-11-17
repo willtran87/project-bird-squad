@@ -1,7 +1,15 @@
 // Shared dark urban/tarot palette. Menus deliberately use the quieter variant;
 // combat reserves the brighter accents for resources and immediate decisions.
-export const UI_FONT = 'Arial';
-export const UI_DISPLAY_FONT = 'Georgia, serif';
+// Self-hosted faces with Arial/Georgia-matched vertical metrics, so authored
+// layouts measure the same; the system faces remain the fallback.
+export const UI_FONT = 'BirdSquadUI, Arial, sans-serif';
+export const UI_DISPLAY_FONT = 'BirdSquadDisplay, Georgia, serif';
+/** Resolves once the UI faces can be drawn to canvas text (or after a short cap). */
+export const uiFontsReady = (alongside?: Promise<unknown>) => Promise.race([
+  Promise.all(['', 'bold ', 'italic '].flatMap(style => [UI_FONT, UI_DISPLAY_FONT].map(family =>
+    document.fonts.load(`${style}21px ${family}`))).concat(alongside as Promise<FontFace[]>)),
+  new Promise(resolve => setTimeout(resolve, 1500)),
+]).catch(() => undefined);
 export const UI_BOLD = 'bold';
 export const UI_GOLD = '#ffe1a3';
 export const UI_BODY = '#cdd9e6';

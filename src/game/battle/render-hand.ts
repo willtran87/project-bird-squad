@@ -4,7 +4,7 @@ import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
 import { renderRewardHoverPreview } from '../reward-card-inspection';
 import { readableHandRules, actionFirstHandRules, fitHandRules, wrapHandRules } from './hand-rule-summary';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_DISPLAY_FONT, UI_TYPE } from '../theme';
 import { itemKeywordSections } from '../keyword-definitions';
 import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
 
@@ -189,22 +189,69 @@ function addCardArt(
   target.add(scene.add.rectangle(x, y, width, height, 0x141d2b, 0.92));
 }
 
+const CARD_RADIUS = 9;
+const CARD_ART_INSET = 4;
+const CARD_GLOW_TEXTURE = 'combat-hand-card-glow';
+const CARD_GLOW_PAD = 22;
+
+/** One soft rounded halo, generated once and tinted per card state. */
+function ensureGlowTexture(scene: Phaser.Scene, cardWidth: number, cardHeight: number) {
+  if (scene.textures.exists(CARD_GLOW_TEXTURE)) return;
+  const width = cardWidth + CARD_GLOW_PAD * 2, height = cardHeight + CARD_GLOW_PAD * 2;
+  const glow = scene.make.graphics({ x: 0, y: 0 }, false);
+  for (let step = 0; step < CARD_GLOW_PAD; step += 2) {
+    glow.fillStyle(0xffffff, 0.05 + step * 0.004);
+    glow.fillRoundedRect(step, step, width - step * 2, height - step * 2, CARD_RADIUS + CARD_GLOW_PAD - step);
+  }
+  glow.generateTexture(CARD_GLOW_TEXTURE, width, height);
+  glow.destroy();
+}
+
+type GlowState = Pick<BattleHandCardView, 'selected' | 'guideCard' | 'guideMolt' | 'accent' | 'canPay'>
+  & Partial<Pick<BattleHandCardView, 'discardSelected' | 'discardFocused' | 'discardSelectable'>>;
+
+function glowStyle(card: GlowState) {
+  if (card.discardSelected) return { tint: 0xff6b57, alpha: 0.9 };
+  if (card.discardFocused) return { tint: 0xd8a840, alpha: 0.85 };
+  if (card.selected) return { tint: 0x24d0d6, alpha: 0.95 };
+  if (card.guideMolt) return { tint: 0xff9d4d, alpha: 0.8 };
+  if (card.guideCard) return { tint: 0xd8a840, alpha: 0.8 };
+  const live = card.discardSelectable ?? card.canPay;
+  return { tint: card.accent, alpha: live ? 0.34 : 0 };
+}
+
+/** Hover answers with light, not movement: card bounds are a layout contract
+ * (forecast clearance, touch separation, pile motion), so the halo brightens
+ * and nothing shifts. */
+function hoverCard(rect: Phaser.GameObjects.Rectangle, hovered: boolean) {
+  const glow = rect.getData('halo') as Phaser.GameObjects.Image | undefined;
+  if (!glow?.active) return;
+  const rest = (rect.getData('haloAlpha') as number | undefined) ?? glow.alpha;
+  glow.setAlpha(hovered ? Math.max(rest, 0.78) : rest);
+}
+
 export function renderBattleHandCardArt(
   context: BattleHandRenderContext,
   target: Phaser.GameObjects.Container,
   card: BattleHandCardView,
   centerX: number,
 ) {
+  const live = card.discardSelectable ?? card.canPay;
+  // The full portrait is the card face. Prefer the detailed texture once it
+  // has loaded; the compact thumbnail keeps the first frame complete.
+  const detailed = card.preview.artKey && textureReady(context.scene, card.preview.artKey) ? card.preview.artKey : card.artKey;
   addCardArt(
     context,
     target,
-    card,
-    centerX - context.cardWidth / 2 + 32,
-    context.handY - context.cardHeight / 2 + 50,
-    60,
-    90,
-    card.discardSelectable !== undefined ? card.discardSelectable ? 1 : 0.42 : card.canPay ? 1 : 0.55,
+    { ...card, artKey: detailed },
+    centerX,
+    context.handY,
+    context.cardWidth - CARD_ART_INSET * 2,
+    context.cardHeight - CARD_ART_INSET * 2,
+    live ? 1 : 0.78,
   );
+  const art = target.getByName('combat-hand-illustration') as Phaser.GameObjects.Image | null;
+  if (art && !live) art.setTint(0x7c8794);
 }
 
 
@@ -219,9 +266,17 @@ function renderCard(
   const centerX = left + cardWidth / 2;
   const top = handY - cardHeight / 2;
   const bottom = handY + cardHeight / 2;
+  ensureGlowTexture(scene, cardWidth, cardHeight);
+  target.add(scene.add.image(centerX, handY + 7, CARD_GLOW_TEXTURE).setTint(0x000000).setAlpha(0.6)
+    .setName('combat-hand-card-shadow'));
+  const glowState = glowStyle(card);
+  const glow = scene.add.image(centerX, handY, CARD_GLOW_TEXTURE).setTint(glowState.tint).setAlpha(glowState.alpha)
+    .setBlendMode(Phaser.BlendModes.ADD).setName('combat-hand-card-glow');
+  target.add(glow);
   const rect = scene.add.rectangle(centerX, handY, cardWidth, cardHeight, 0x0a0f18, 1)
+    .setRounded(CARD_RADIUS)
     .setStrokeStyle(
-      card.discardSelected ? 3 : card.discardFocused ? 3 : card.selected ? 3 : card.guideMolt || card.guideCard ? 3 : 1,
+      card.discardSelected ? 3 : card.discardFocused ? 3 : card.selected ? 3 : card.guideMolt || card.guideCard ? 3 : 2,
       card.discardSelected ? 0xff6b57 : card.discardFocused ? 0xd8a840 : card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     )
@@ -230,8 +285,16 @@ function renderCard(
     event?.stopPropagation();
     context.onCardClick(card.instanceId);
   });
-  rect.on('pointerover', () => context.onCardHover(card.instanceId));
-  rect.on('pointerout', context.onCardOut);
+  rect.on('pointerover', () => {
+    hoverCard(rect, true);
+    context.onCardHover(card.instanceId);
+  });
+  rect.on('pointerout', () => {
+    hoverCard(rect, false);
+    context.onCardOut();
+  });
+  // The halo travels with its card; the raster pulse map stays reserved.
+  rect.setData('halo', glow).setData('haloAlpha', glowState.alpha);
   target.add(rect);
   result.rects.set(card.instanceId, rect);
 
@@ -250,19 +313,22 @@ function renderCard(
     result.frames.set(card.instanceId, frame);
   }
 
-  // A reserved portrait beside the name keeps the entire illustration visible.
-  // Text and state badges must never turn it into an accidental cropped strip.
-  target.add(scene.add.rectangle(left + 64 + (cardWidth - 68) / 2, top + 50, cardWidth - 68, 90, 0x081624, 0.98)
-    .setName('combat-card-title-panel'));
-  const title = scene.add.text(left + 64, top + 5, card.name, {
-    fontFamily,
+  // The portrait fills the card. A name banner and the rules panel bracket an
+  // unobstructed window onto the illustration; neither may grow into it.
+  const title = scene.add.text(left + 42, top + 5, card.name, {
+    fontFamily: UI_DISPLAY_FONT,
     fontSize: '21px',
     fontStyle: boldFontStyle,
-    color: card.canPay ? '#ffe7b0' : '#9aa7b6',
-    wordWrap: { width: cardWidth - 68, useAdvancedWrap: true }, maxLines: 3, resolution: 2,
+    color: card.canPay ? '#ffe7b0' : '#aab5c1',
+    wordWrap: { width: cardWidth - 48, useAdvancedWrap: true }, maxLines: 2, resolution: 2,
   }).setName('combat-card-title');
-  fitCardText(title, card.name, 3);
-  title.setY(top + 50 - title.height / 2);
+  fitCardText(title, card.name, 2);
+  const bannerHeight = Math.max(38, Math.ceil(title.height) + 8);
+  target.add(scene.add.rectangle(centerX, top + CARD_ART_INSET + bannerHeight / 2, cardWidth - CARD_ART_INSET * 2, bannerHeight, 0x081624, 0.94)
+    .setName('combat-card-title-panel'));
+  target.add(scene.add.rectangle(centerX, top + CARD_ART_INSET + bannerHeight, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
+    .setName('combat-card-title-rule'));
+  title.setY(top + CARD_ART_INSET + bannerHeight / 2 - title.height / 2);
   target.add(title);
   // Two reserved rows between title and rules: identity/choice, then Flow.
   // Their geometry never depends on which other badges happen to be active.
@@ -317,26 +383,37 @@ function renderCard(
       iconOnly: true,
     });
   }
-  target.add(scene.add.circle(left + 16, top + 141, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
-  target.add(scene.add.text(left + 16, top + 141, `${card.cost}`, {
+  // The cost sits in the banner as a recessed coin: dark face, bright rim.
+  const coinY = top + CARD_ART_INSET + 19;
+  target.add(scene.add.circle(left + 22, coinY, 15, 0x05080e, 1)
+    .setStrokeStyle(2, card.cost === 0 ? 0x24d0d6 : 0xe8b830, card.canPay ? 1 : 0.5)
+    .setName('combat-card-cost-coin'));
+  target.add(scene.add.text(left + 22, coinY, `${card.cost}`, {
     fontFamily,
     fontSize: '21px',
     fontStyle: boldFontStyle,
-    color: '#06101c', resolution: 2,
-  }).setOrigin(0.5));
+    color: card.cost === 0 ? '#8df4ff' : card.canPay ? '#ffd76a' : '#b9a36a', resolution: 2,
+  }).setOrigin(0.5).setName('combat-card-cost'));
 
   const panelHeight = 110;
-  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x081624, 0.98)
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, panelHeight, 0x081624, 0.95)
     .setName('combat-card-rules-panel'));
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
+    .setName('combat-card-rules-rule'));
+  if (card.preview.upgraded) {
+    // A Preened card wears a gilt inner frame, so an upgrade reads at a glance.
+    target.add(scene.add.rectangle(centerX, handY, cardWidth - CARD_ART_INSET * 2 - 2, cardHeight - CARD_ART_INSET * 2 - 2)
+      .setRounded(CARD_RADIUS - 3).setStrokeStyle(2, 0xf0c36f, card.canPay ? 0.9 : 0.45).setName('combat-card-preen-gilt'));
+  }
   {
-    const summary = scene.add.text(left + 8, bottom - panelHeight + 6, '', {
+    const summary = scene.add.text(left + 10, bottom - panelHeight + 2, '', {
       fontFamily,
       fontSize: '21px', resolution: 2, lineSpacing: 1,
       color: card.canPay ? '#e5edf0' : '#a8b6bf',
       align: 'left',
       maxLines: 4,
-      wordWrap: { width: cardWidth - 16, callback: (text: string, label: Phaser.GameObjects.Text) =>
-        wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 16) },
+      wordWrap: { width: cardWidth - 20, callback: (text: string, label: Phaser.GameObjects.Text) =>
+        wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 20) },
     }).setName('combat-card-readable-summary');
     const readable = readableHandRules(card.summary.split('\n'));
     const excerpt = fitHandRules(actionFirstHandRules(readable), text => summary.getWrappedText(text).length <= 4);
@@ -349,9 +426,9 @@ function renderCard(
 
   if (card.buildsFlow) {
     const container = scene.add.container(0, 0);
-    const background = scene.add.rectangle(centerX + 14, top + 141, cardWidth - 36, 28, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
+    const background = scene.add.rectangle(centerX, top + 140, cardWidth - 16, 26, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
       .setStrokeStyle(1, card.surgeNext ? 0xd8a840 : 0x24d0d6, 0.82);
-    const label = scene.add.text(centerX + 14, top + 141, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
+    const label = scene.add.text(centerX, top + 140, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
       fontFamily,
       fontSize: UI_TYPE.secondary,
       resolution: UI_TYPE.resolution,
@@ -406,10 +483,13 @@ export function refreshBattleHandSelection(
     if (!rect?.scene) return;
     const guided = card.guideMolt || card.guideCard;
     rect.setStrokeStyle(
-      card.selected ? 3 : guided ? 3 : 1,
+      card.selected ? 3 : guided ? 3 : 2,
       card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     );
+    const glow = rect.getData('halo') as Phaser.GameObjects.Image | undefined;
+    if (glow?.scene) { const style = glowStyle(card); glow.setTint(style.tint).setAlpha(style.alpha); rect.setData('haloAlpha', style.alpha); }
+
     const frame = result.frames.get(card.instanceId);
     if (frame?.scene) {
       frame

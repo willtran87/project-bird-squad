@@ -89,7 +89,7 @@ import {
   loadAccount, recordRun, saveAccount, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
 } from './game/meta';
 import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, ROUTE_DECK_VISIBLE_ROWS, UI_TYPE, UI_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, UI_BOLD, UI_GOLD, UI_BODY, UI_MUTED, UI_SOFT, UI_CYAN, UI_FIELD } from './game/theme';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, ROUTE_DECK_VISIBLE_ROWS, UI_TYPE, UI_FONT, uiFontsReady, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, UI_BOLD, UI_GOLD, UI_BODY, UI_MUTED, UI_SOFT, UI_CYAN, UI_FIELD } from './game/theme';
 import { quietButton, quietText } from './game/quiet-ui';
 import { pendingOverlay, renderModuleStatus } from './game/pending-overlay';
 import {
@@ -4278,7 +4278,7 @@ class BootScene extends Phaser.Scene {
 
   create() {
     document.getElementById('boot-shell')?.remove();
-    this.scene.start('MenuScene');
+    void uiFontsReady(spectacleReady).then(() => this.scene.start("MenuScene"));
   }
 }
 
@@ -6397,7 +6397,7 @@ class RouteScene extends Phaser.Scene {
     renderFieldPanel(this, () => {}, layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, {
       accent: 0x49606d,
       fill: 0x07101a,
-      fillAlpha: 0.62,
+      fillAlpha: 0.44,
       showRails: false,
     });
     this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.14);
@@ -23617,6 +23617,7 @@ Phaser.GameObjects.GameObjectFactory.prototype.text = function (
 
 applyVisualContrastPreference();
 window.__birdSquadGame = new Phaser.Game(config);
+const spectacleReady = import("./game/spectacle/stage").then(m => m.installSpectacle(window.__birdSquadGame!), () => undefined);
 initializeScreenReaderAccessibility();
 window.__birdSquadEnsureScene = async (sceneKey: string) => {
   const game = window.__birdSquadGame;

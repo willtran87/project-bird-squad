@@ -237,13 +237,19 @@ export function playAudioCue(
       tone(audio, 720, 460, 0.09, 'triangle', 0.016, -0.1);
       tone(audio, 1040, 760, 0.07, 'sine', 0.01, 0.14);
       break;
+    // Three layers per blow: a low body thud, the mid crack, a bright tick.
     case 'attack':
       noise(audio, 0.08, 680, 0.035);
       tone(audio, 150, 82, 0.1, 'sawtooth', 0.024);
+      tone(audio, 78, 42, 0.13, 'sine', 0.05);
+      noise(audio, 0.03, 3400, 0.014);
       break;
     case 'heavyAttack':
       noise(audio, 0.12, 520, 0.045);
       tone(audio, 110, 48, 0.16, 'sawtooth', 0.034);
+      tone(audio, 62, 28, 0.24, 'sine', 0.075);
+      tone(audio, 196, 98, 0.09, 'square', 0.014);
+      noise(audio, 0.04, 3000, 0.02);
       break;
     case 'hitConfirm':
       noise(audio, 0.055, 1780, 0.018);
