@@ -100,19 +100,25 @@ test('requested filters grade the backdrop only, and the hand keeps full portrai
   expect(errors).toEqual([]);
 });
 
-test('hovering a card raises it and leaving settles it without changing selection', async ({ page }) => {
-  await openBattle(page, '', { 'birdsquad.motionPreference': 'reduced' });
-  const before = await page.evaluate(() => {
+test('hovering a card brightens its halo without moving it or changing selection', async ({ page }) => {
+  await openBattle(page, '');
+  const read = (id?: string) => page.evaluate(id => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    const [id, rect] = [...b.handCardRects.entries()][2];
-    const box = b.game.canvas.getBoundingClientRect(), scale = box.width / 1280;
-    return { id, y: rect.y, selected: b.selectedInstanceId, x: box.left + rect.x * scale, screenY: box.top + rect.y * scale };
-  });
-  await page.mouse.move(before.x, before.screenY);
-  await page.waitForFunction(({ id, y }) =>
-    (window as any).__birdSquadGame.scene.getScene('BattleScene').handCardRects.get(id).y < y, before);
+    const [cardId, rect] = id ? [id, b.handCardRects.get(id)] : [...b.handCardRects.entries()][2];
+    const box = b.game.canvas.getBoundingClientRect(), scale = box.width / 1280, bounds = rect.getBounds();
+    return { id: cardId, halo: rect.getData('halo').alpha, selected: b.selectedInstanceId,
+      bounds: [bounds.x, bounds.y, bounds.width, bounds.height],
+      x: box.left + rect.x * scale, y: box.top + rect.y * scale };
+  }, id);
+  const before = await read();
+  await page.mouse.move(before.x, before.y);
+  await page.waitForFunction(({ id, halo }) =>
+    (window as any).__birdSquadGame.scene.getScene('BattleScene').handCardRects.get(id).getData('halo').alpha > halo, before);
+  expect((await read(before.id)).bounds).toEqual(before.bounds);
   await page.mouse.move(4, 4);
-  await page.waitForFunction(({ id, y }) =>
-    (window as any).__birdSquadGame.scene.getScene('BattleScene').handCardRects.get(id).y === y, before);
-  expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').selectedInstanceId)).toBe(before.selected);
+  await page.waitForFunction(({ id, halo }) =>
+    (window as any).__birdSquadGame.scene.getScene('BattleScene').handCardRects.get(id).getData('halo').alpha === halo, before);
+  const after = await read(before.id);
+  expect(after.bounds).toEqual(before.bounds);
+  expect(after.selected).toBe(before.selected);
 });
