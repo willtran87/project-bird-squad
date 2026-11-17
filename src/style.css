@@ -238,3 +238,13 @@ canvas {
     transition: none;
   }
 }
+
+/* Letterbox atmosphere: when the display is not 16:9, the bands around the
+   stage carry the night-city palette instead of a flat fill. No image cost. */
+#game-container {
+  background:
+    radial-gradient(60% 38% at 50% 62%, rgb(255 160 70 / 9%), transparent 70%),
+    radial-gradient(40% 50% at 12% 20%, rgb(73 214 255 / 6%), transparent 70%),
+    radial-gradient(40% 50% at 88% 24%, rgb(255 79 163 / 5%), transparent 70%),
+    radial-gradient(ellipse at 50% 55%, #16233f 0%, #0a1322 48%, #04070d 100%);
+}

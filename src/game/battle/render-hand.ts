@@ -417,6 +417,11 @@ function renderCard(
     .setName('combat-card-rules-panel'));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
     .setName('combat-card-rules-rule'));
+  if (card.preview.upgraded) {
+    // A Preened card wears a gilt inner frame, so an upgrade reads at a glance.
+    target.add(scene.add.rectangle(centerX, handY, cardWidth - CARD_ART_INSET * 2 - 2, cardHeight - CARD_ART_INSET * 2 - 2)
+      .setRounded(CARD_RADIUS - 3).setStrokeStyle(2, 0xf0c36f, card.canPay ? 0.9 : 0.45).setName('combat-card-preen-gilt'));
+  }
   {
     const summary = scene.add.text(left + 10, bottom - panelHeight + 2, '', {
       fontFamily,

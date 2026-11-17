@@ -29,6 +29,8 @@ interface StagePlan {
   fog: number;
   /** Wind lean of the rain, degrees clockwise from vertical. */
   wind: number;
+  /** Left edge of the weather, for scenes whose painting shares the screen with a menu. */
+  left?: number;
 }
 
 // Light positions are authored against each 1280x720 district painting.
@@ -168,7 +170,7 @@ function addWeather(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, pl
   if (plan.rain > 0) {
     const lean = Math.tan(Phaser.Math.DegToRad(plan.wind));
     layer.add(scene.add.particles(0, 0, STREAK, {
-      x: { min: -40, max: width + height * lean + 40 }, y: -50,
+      x: { min: (plan.left ?? 0) - 40, max: width + height * lean + 40 }, y: -50,
       lifespan: 640,
       speedY: { min: 1080, max: 1320 }, speedX: { min: -1320 * lean, max: -1080 * lean },
       scaleX: 0.6, scaleY: { min: 0.6, max: 1.25 }, rotate: plan.wind,
@@ -178,7 +180,7 @@ function addWeather(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, pl
     }));
     // Splash rings where the rain lands on the open floor.
     layer.add(scene.add.particles(0, 0, RING, {
-      x: { min: 150, max: width - 150 }, y: { min: height * 0.3, max: height * 0.74 },
+      x: { min: (plan.left ?? 0) + 150, max: width - 150 }, y: { min: height * (plan.left ? 0.6 : 0.3), max: height * (plan.left ? 0.92 : 0.74) },
       lifespan: 560,
       scaleX: { start: 0.06, end: 0.5 }, scaleY: { start: 0.02, end: 0.17 },
       alpha: { start: 0.34, end: 0 }, tint: 0xa9c8ff,
@@ -250,8 +252,173 @@ function dressBattle(scene: Phaser.Scene) {
   });
 }
 
+type BattleRead = {
+  mode?: string; selectedInstanceId?: string; selectedEnemyId?: string;
+  hand?: Array<{ instanceId: string }>; enemies?: Array<{ id: string; hp: number }>;
+  handCardRects?: Map<string, Phaser.GameObjects.Rectangle>;
+  handLayer?: Phaser.GameObjects.Container;
+  activeCardContract?: (card: unknown) => { effects: string[] };
+  enemyView?: (enemy: unknown) => { x: number; y: number };
+};
+
+/** A travelling dotted arc from the chosen card to its target. Read-only: it
+ * mirrors the selection the scene already holds and draws nothing otherwise. */
+function dressTargeting(scene: Phaser.Scene) {
+  const battle = scene as unknown as BattleRead;
+  const arc = scene.add.graphics().setDepth(31).setName('spectacle-target-arc');
+  const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(), new Phaser.Math.Vector2(), new Phaser.Math.Vector2());
+  const point = new Phaser.Math.Vector2();
+  const draw = (time: number) => {
+    arc.clear();
+    if (prefersLeanEffects() || battle.mode !== 'battle' || !battle.handLayer?.visible) return;
+    const card = battle.hand?.find(candidate => candidate.instanceId === battle.selectedInstanceId);
+    const rect = card && battle.handCardRects?.get(card.instanceId);
+    const enemy = battle.enemies?.find(candidate => candidate.id === battle.selectedEnemyId && candidate.hp > 0);
+    if (!card || !rect?.active || !enemy || !battle.activeCardContract || !battle.enemyView) return;
+    if (!battle.activeCardContract(card).effects.some(effect => /damage|winded|expos|pin|strip/i.test(effect))) return;
+    const to = battle.enemyView(enemy);
+    const fromY = rect.y - rect.height / 2 - 4;
+    curve.p0.set(rect.x, fromY);
+    curve.p2.set(to.x, to.y + 6);
+    curve.p1.set((rect.x + to.x) / 2, Math.min(fromY, to.y) - 90);
+    const phase = prefersReducedMotion() ? 0 : (time / 900) % 1;
+    const dots = 18;
+    for (let index = 0; index < dots; index += 1) {
+      const t = (index + phase) / dots;
+      curve.getPoint(t, point);
+      arc.fillStyle(0x8df4ff, 0.25 + t * 0.6);
+      arc.fillCircle(point.x, point.y, 2 + t * 2.4);
+    }
+    arc.lineStyle(2, 0x8df4ff, 0.9);
+    arc.strokeCircle(to.x, to.y + 6, 9 + Math.sin(time / 180) * (prefersReducedMotion() ? 0 : 1.5));
+  };
+  scene.events.on(Phaser.Scenes.Events.UPDATE, draw);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.UPDATE, draw);
+    arc.destroy();
+  });
+}
+
+/** Drain the colour from a lost fight; warm a won one. */
+function dressOutcomeGrade(scene: Phaser.Scene) {
+  if (!spectacleFiltersEnabled(scene)) return;
+  const battle = scene as unknown as BattleRead;
+  let graded = '';
+  let filter: Phaser.Filters.ColorMatrix | undefined;
+  const sync = () => {
+    const mode = battle.mode === 'defeat' || battle.mode === 'runComplete' ? battle.mode : '';
+    if (mode === graded) return;
+    graded = mode;
+    filter?.destroy();
+    filter = undefined;
+    if (!mode) return;
+    filter = scene.cameras.main.filters.internal.addColorMatrix();
+    if (mode === 'defeat') filter.colorMatrix.saturate(-0.65);
+    else filter.colorMatrix.saturate(0.2);
+  };
+  scene.events.on(Phaser.Scenes.Events.UPDATE, sync);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.UPDATE, sync);
+    filter?.destroy();
+  });
+}
+
+function findImage(scene: Phaser.Scene, match: (image: Phaser.GameObjects.Image) => boolean) {
+  let found: Phaser.GameObjects.Image | undefined;
+  const visit = (object: Phaser.GameObjects.GameObject, depth: number) => {
+    if (found) return;
+    if (object instanceof Phaser.GameObjects.Image && match(object)) found = object;
+    else if (depth < 2 && object instanceof Phaser.GameObjects.Container) object.list.forEach(child => visit(child, depth + 1));
+  };
+  scene.children.list.forEach(child => visit(child, 0));
+  return found;
+}
+
+function bloom(scene: Phaser.Scene, object: Phaser.GameObjects.Image, amount: number) {
+  if (!spectacleFiltersEnabled(scene) || object.getData('spectacle-graded')) return;
+  object.setData('spectacle-graded', true);
+  object.enableFilters();
+  const filters = object.filters?.internal;
+  if (!filters) return;
+  const glow = filters.addParallelFilters();
+  glow.top.addThreshold(0.5, 0.92);
+  glow.top.addBlur(1, 2, 2, 1.5);
+  glow.blend.blendMode = Phaser.BlendModes.ADD;
+  glow.blend.amount = amount;
+}
+
+/** Place a layer directly above one object, wherever that object lives. */
+function layerAbove(scene: Phaser.Scene, object: Phaser.GameObjects.GameObject) {
+  const layer = scene.add.container(0, 0).setName('spectacle-ambient');
+  const parent = object.parentContainer;
+  if (parent) parent.addAt(layer, parent.getIndex(object) + 1);
+  else {
+    layer.setDepth((object as unknown as Phaser.GameObjects.Components.Depth).depth);
+    scene.children.moveAbove(layer as Phaser.GameObjects.GameObject, object);
+  }
+  return layer;
+}
+
+const NEON = 0xff4fa3;
+// Authored against the title splash: the signal lamp, the neon signs, the
+// horizon and the two puddles the birds stand in.
+const TITLE_PLAN: StagePlan = {
+  rain: 0.5, motes: 0, fog: 0, wind: 9, left: 520,
+  lights: [[1158, 222, PANEL, 46], [1252, 236, NEON, 60], [1222, 394, NEON, 40], [797, 468, PANEL, 54],
+    [1043, 592, PANEL, 60], [700, 372, WARM, 90]],
+};
+
+function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjects.Image) => boolean, plan: StagePlan, bloomAmount: number) {
+  let painting: Phaser.GameObjects.Image | undefined;
+  let layer: Phaser.GameObjects.Container | undefined;
+  let signature = '';
+  const clear = () => {
+    if (layer) { scene.tweens.killTweensOf(layer.list); layer.destroy(); }
+    layer = undefined;
+  };
+  const sync = () => {
+    if (!painting?.active) painting = findImage(scene, match);
+    const lean = prefersLeanEffects(), reduced = prefersReducedMotion();
+    const next = painting && !lean ? `${painting.texture.key}|${reduced}` : '';
+    if (next === signature && (!next || layer?.active)) return;
+    signature = next;
+    clear();
+    if (!next || !painting) return;
+    ensureSpectacleTextures(scene);
+    layer = layerAbove(scene, painting);
+    addLights(scene, layer, plan.lights, !reduced);
+    if (!reduced) addWeather(scene, layer, plan);
+    bloom(scene, painting, bloomAmount);
+  };
+  scene.events.on(Phaser.Scenes.Events.UPDATE, sync);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.UPDATE, sync);
+    clear();
+    painting = undefined;
+    signature = '';
+  });
+}
+
+/** A soft band of light crossing the screen as a scene arrives. */
+function arrivalSweep(scene: Phaser.Scene) {
+  if (prefersLeanEffects() || prefersReducedMotion()) return;
+  ensureSpectacleTextures(scene);
+  const { width, height } = scene.scale.gameSize;
+  const band = scene.add.image(-width * 0.3, height / 2, GLOW).setBlendMode(Phaser.BlendModes.ADD)
+    .setDisplaySize(width * 0.6, height * 2.6).setAngle(18).setTint(0xffe1a3).setAlpha(0.13)
+    .setDepth(9000).setName('spectacle-arrival-sweep');
+  scene.tweens.add({
+    targets: band, x: width * 1.3, alpha: 0.02, duration: 520, ease: 'Quad.easeOut',
+    onComplete: () => band.destroy(),
+  });
+}
+
+const isBackdrop = (image: Phaser.GameObjects.Image) => image.displayWidth >= 1200 && image.displayHeight >= 650;
+
 const DRESSERS: Record<string, (scene: Phaser.Scene) => void> = {
-  BattleScene: dressBattle,
+  BattleScene: (scene) => { dressBattle(scene); dressTargeting(scene); dressOutcomeGrade(scene); },
+  MenuScene: (scene) => dressBackdropScene(scene, image => image.texture.key === 'splash' && isBackdrop(image), TITLE_PLAN, 0.6),
+  RouteScene: (scene) => dressBackdropScene(scene, isBackdrop, { ...FALLBACK_STAGE, rain: 0.35 }, 0.7),
 };
 
 const PANEL_RADIUS = 8;
@@ -281,10 +448,12 @@ export function installSpectacle(game: Phaser.Game) {
   const adopt = (scene: Phaser.Scene) => {
     if (adopted.has(scene)) return;
     adopted.add(scene);
-    const dress = DRESSERS[scene.scene.key];
-    if (!dress) return;
-    scene.events.on(Phaser.Scenes.Events.CREATE, () => dress(scene));
-    if (scene.sys.isActive()) dress(scene);
+    const dress = (arriving: boolean) => {
+      DRESSERS[scene.scene.key]?.(scene);
+      if (arriving && scene.scene.key !== 'BootScene') arrivalSweep(scene);
+    };
+    scene.events.on(Phaser.Scenes.Events.CREATE, () => dress(true));
+    if (scene.sys.isActive()) dress(false);
   };
   const scan = () => game.scene.scenes.forEach(adopt);
   scan();
