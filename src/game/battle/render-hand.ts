@@ -193,8 +193,7 @@ const CARD_RADIUS = 9;
 const CARD_ART_INSET = 4;
 const CARD_GLOW_TEXTURE = 'combat-hand-card-glow';
 const CARD_GLOW_PAD = 22;
-const HOVER_LIFT = 10;
-const SELECTED_LIFT = 12;
+const HOVER_LIFT = 8;
 
 /** One soft rounded halo, generated once and tinted per card state. */
 function ensureGlowTexture(scene: Phaser.Scene, cardWidth: number, cardHeight: number) {
@@ -222,11 +221,13 @@ function glowStyle(card: GlowState) {
   return { tint: card.accent, alpha: live ? 0.34 : 0 };
 }
 
-/** Raise or settle one card. Every presentation object moves with its hit
- * rectangle, and the hit area grows downward so a raised card cannot slip out
- * from under the pointer and flicker. */
-function liftCard(scene: Phaser.Scene, rect: Phaser.GameObjects.Rectangle, cardHeight: number, reducedMotion: boolean) {
-  const lift = rect.getData('selected') ? SELECTED_LIFT : rect.getData('hovered') ? HOVER_LIFT : 0;
+/** Raise or settle one card under the pointer. Every presentation object
+ * moves with the card, while its hit area is offset back so the touch target
+ * stays exactly where it was authored: a raised card cannot slip out from
+ * under the pointer, nor crowd the controls above the hand. Selection itself
+ * never lifts; the space above the hand belongs to the forecast. */
+function liftCard(scene: Phaser.Scene, rect: Phaser.GameObjects.Rectangle, reducedMotion: boolean) {
+  const lift = rect.getData('hovered') ? HOVER_LIFT : 0;
   if (rect.getData('liftTarget') === lift) return;
   rect.setData('liftTarget', lift);
   (rect.getData('liftTween') as Phaser.Tweens.Tween | undefined)?.stop();
@@ -237,7 +238,7 @@ function liftCard(scene: Phaser.Scene, rect: Phaser.GameObjects.Rectangle, cardH
     rect.setData('lift', value);
     objects.forEach((object) => { object.y -= delta; });
     const hitArea = rect.input?.hitArea as Phaser.Geom.Rectangle | undefined;
-    if (hitArea) hitArea.height = cardHeight + value;
+    if (hitArea) hitArea.y = value;
   };
   if (reducedMotion) { apply(lift); return; }
   rect.setData('liftTween', scene.tweens.addCounter({
@@ -289,7 +290,6 @@ function renderCard(
   const glow = scene.add.image(centerX, handY, CARD_GLOW_TEXTURE).setTint(glowState.tint).setAlpha(glowState.alpha)
     .setBlendMode(Phaser.BlendModes.ADD).setName('combat-hand-card-glow');
   target.add(glow);
-  result.selectionPulses.set(card.instanceId, glow);
   const rect = scene.add.rectangle(centerX, handY, cardWidth, cardHeight, 0x0a0f18, 1)
     .setRounded(CARD_RADIUS)
     .setStrokeStyle(
@@ -304,14 +304,16 @@ function renderCard(
   });
   rect.on('pointerover', () => {
     rect.setData('hovered', true);
-    liftCard(scene, rect, cardHeight, context.reducedMotion);
+    liftCard(scene, rect, context.reducedMotion);
     context.onCardHover(card.instanceId);
   });
   rect.on('pointerout', () => {
     rect.setData('hovered', false);
-    liftCard(scene, rect, cardHeight, context.reducedMotion);
+    liftCard(scene, rect, context.reducedMotion);
     context.onCardOut();
   });
+  // The halo travels with its card; the raster pulse map stays reserved.
+  rect.setData('halo', glow);
   target.add(rect);
   result.rects.set(card.instanceId, rect);
 
@@ -458,13 +460,6 @@ function renderCard(
     result.flowIndicators.set(card.instanceId, { container, background, label });
   }
   rect.setData('presentation', target.list.slice(presentationStart));
-  rect.setData('selected', card.selected);
-  if (card.selected) {
-    // Arrive already raised: a redraw must not replay the lift.
-    rect.setData('liftTarget', SELECTED_LIFT).setData('lift', SELECTED_LIFT);
-    (rect.getData('presentation') as Array<{ y: number }>).forEach((object) => { object.y -= SELECTED_LIFT; });
-    (rect.input?.hitArea as Phaser.Geom.Rectangle).height = cardHeight + SELECTED_LIFT;
-  }
 }
 
 export function renderBattleHand(context: BattleHandRenderContext): BattleHandRenderResult {
@@ -511,10 +506,9 @@ export function refreshBattleHandSelection(
       card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     );
-    const glow = result.selectionPulses.get(card.instanceId);
+    const glow = rect.getData('halo') as Phaser.GameObjects.Image | undefined;
     if (glow?.scene) { const style = glowStyle(card); glow.setTint(style.tint).setAlpha(style.alpha); }
-    rect.setData('selected', card.selected);
-    liftCard(context.scene, rect, context.cardHeight, context.reducedMotion);
+
     const frame = result.frames.get(card.instanceId);
     if (frame?.scene) {
       frame

@@ -6397,7 +6397,7 @@ class RouteScene extends Phaser.Scene {
     renderFieldPanel(this, () => {}, layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, {
       accent: 0x49606d,
       fill: 0x07101a,
-      fillAlpha: 0.62,
+      fillAlpha: 0.44,
       showRails: false,
     });
     this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.14);

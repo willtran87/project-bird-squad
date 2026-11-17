@@ -89,7 +89,7 @@ test('requested filters grade the backdrop only, and the hand keeps full portrai
       return {
         rounded: rect.isRounded === true || rect.radius > 0,
         fills: Boolean(art) && art.displayHeight >= rect.height - 16 && art.displayWidth >= rect.width - 16,
-        halo: Boolean(b.handCardSelectionPulses.get(id)),
+        halo: Boolean(rect.getData('halo')?.active),
       };
     });
   });

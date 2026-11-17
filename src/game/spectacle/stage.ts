@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { prefersReducedMotion } from '../../main';
 import { prefersLeanEffects } from '../graphics-quality';
+import { flashEffectsState } from '../visual-accessibility';
 
 /**
  * Living-stage dressing: light, weather and bloom layered over the authored
@@ -12,6 +13,7 @@ import { prefersLeanEffects } from '../graphics-quality';
 const GLOW = 'spectacle-glow';
 const STREAK = 'spectacle-streak';
 const RING = 'spectacle-ring';
+const FEATHER = 'spectacle-feather';
 const AMBIENT_DEPTH = -19;
 
 const WARM = 0xffb25a;
@@ -125,7 +127,27 @@ export function ensureSpectacleTextures(scene: Phaser.Scene) {
       canvas.refresh();
     }
   }
-  return { glow: GLOW, streak: STREAK, ring: RING };
+  if (!textures.exists(FEATHER)) {
+    const canvas = textures.createCanvas(FEATHER, 30, 12);
+    const context = canvas?.getContext();
+    if (canvas && context) {
+      // A vane tapering to the tip, with a darker shaft down the middle.
+      context.fillStyle = 'rgba(255,255,255,0.95)';
+      context.beginPath();
+      context.moveTo(1, 6);
+      context.quadraticCurveTo(10, -2, 29, 6);
+      context.quadraticCurveTo(10, 14, 1, 6);
+      context.fill();
+      context.strokeStyle = 'rgba(70,70,80,0.75)';
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(0, 6);
+      context.lineTo(29, 6);
+      context.stroke();
+      canvas.refresh();
+    }
+  }
+  return { glow: GLOW, streak: STREAK, ring: RING, feather: FEATHER };
 }
 
 function addLights(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, lights: readonly Light[], animate: boolean) {
@@ -219,6 +241,23 @@ function gradeBackdrop(scene: Phaser.Scene, backdrop: Phaser.GameObjects.Contain
   grade.colorMatrix.contrast(0.08, true);
 }
 
+/** Boss fights are fought under a storm: irregular double-flashes of sheet
+ * lightning. Follows the Flash Effects preference. */
+function addLightning(scene: Phaser.Scene, layer: Phaser.GameObjects.Container) {
+  const { width, height } = scene.scale.gameSize;
+  const sheet = scene.add.rectangle(width / 2, height / 2, width, height, 0xbcd4ff, 1)
+    .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0).setName('spectacle-lightning');
+  layer.add(sheet);
+  const strike = () => {
+    if (!sheet.active) return;
+    if (!flashEffectsState(prefersReducedMotion()).reduced) {
+      scene.tweens.add({ targets: sheet, alpha: { from: 0.2, to: 0 }, duration: 130, repeat: 1, repeatDelay: 70, ease: 'Quad.easeOut' });
+    }
+    scene.time.delayedCall(Phaser.Math.Between(7000, 15000), strike);
+  };
+  scene.time.delayedCall(Phaser.Math.Between(2500, 6000), strike);
+}
+
 function dressBattle(scene: Phaser.Scene) {
   let signature = '';
   let layer: Phaser.GameObjects.Container | undefined;
@@ -244,6 +283,7 @@ function dressBattle(scene: Phaser.Scene) {
     addLights(scene, layer, plan.lights, !reduced);
     if (!reduced) addWeather(scene, layer, plan);
     gradeBackdrop(scene, backdrop);
+    if (!reduced && /boss/.test(key)) addLightning(scene, layer);
   };
   scene.events.on(Phaser.Scenes.Events.UPDATE, sync);
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -440,10 +480,53 @@ function roundPanels() {
   };
 }
 
+/** Phaser sizes each line by scanning rendered glyphs, so a new typeface
+ * shifts line heights by a pixel either way. Authored layouts were measured
+ * against the system fallback; keep those line metrics and draw with the new
+ * glyphs. Advance widths still come from the face actually drawn. */
+function keepAuthoredLineMetrics() {
+  type Metrics = Phaser.Types.GameObjects.Text.TextMetrics;
+  type Style = {
+    fontFamily: string; fontStyle: string; fontSize: string; _font: string; metrics: Metrics;
+    parent: Phaser.GameObjects.Text;
+    setStyle: (source: unknown, updateText?: boolean, setDefaults?: boolean) => unknown;
+    update: (recalculate: boolean) => unknown;
+  };
+  const style = Phaser.GameObjects.TextStyle.prototype as unknown as Style;
+  const cache = new Map<string, Metrics>();
+  const authored = (target: Style) => {
+    const family = String(target.fontFamily);
+    const cut = /^BirdSquad(?:UI|Display), /.exec(family);
+    if (!cut) return false;
+    const font = [target.fontStyle, target.fontSize, family.slice(cut[0].length)].join(' ').trim();
+    let metrics = cache.get(font);
+    if (!metrics) {
+      const probe = Object.create(target) as Style;
+      probe._font = font;
+      metrics = Phaser.GameObjects.MeasureText(probe as unknown as Phaser.GameObjects.TextStyle);
+      cache.set(font, metrics);
+    }
+    target.metrics = { ...metrics };
+    return true;
+  };
+  const { setStyle, update } = style;
+  style.setStyle = function (this: Style, source: unknown, updateText?: boolean, setDefaults?: boolean) {
+    const result = setStyle.call(this, source, updateText, setDefaults);
+    if (authored(this) && (updateText ?? true)) this.parent.updateText();
+    return result;
+  };
+  style.update = function (this: Style, recalculate: boolean) {
+    const result = update.call(this, recalculate);
+    if (recalculate && authored(this)) this.parent.updateText();
+    return result;
+  };
+}
+
 /** Adopt every scene, including ones registered later, and dress it each time
  * it is created. Safe to call once per game. */
 export function installSpectacle(game: Phaser.Game) {
   roundPanels();
+  keepAuthoredLineMetrics();
   const adopted = new WeakSet<Phaser.Scene>();
   const adopt = (scene: Phaser.Scene) => {
     if (adopted.has(scene)) return;

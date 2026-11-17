@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { COMBAT_BANK_CACHE_TEXTURE, COMBAT_BOSS_PHASE_BREAK_TEXTURE, COMBAT_CACHE_CHOICE_REVEAL_TEXTURE, COMBAT_CARD_DRAW_TEXTURE, COMBAT_CLEANSE_BURST_TEXTURE, COMBAT_COVER_BLOCK_BURST_TEXTURE, COMBAT_COVER_GUARD_TEXTURE, COMBAT_COVER_SHATTER_TEXTURE, COMBAT_DEFEAT_BURST_TEXTURE, COMBAT_DISCARD_SWEEP_TEXTURE, COMBAT_ENEMY_ATTACK_TELL_TEXTURE, COMBAT_ENEMY_COVER_BLOCK_TEXTURE, COMBAT_ENEMY_COVER_TEXTURE, COMBAT_ENEMY_HEAL_BEAM_TEXTURE, COMBAT_ENEMY_HEAVY_CONTACT_TEXTURE, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE, COMBAT_ENEMY_MEND_TEXTURE, COMBAT_ENEMY_SUPPORT_CHARGE_TEXTURE, COMBAT_ENEMY_SUPPORT_TELL_TEXTURE, COMBAT_ENEMY_SWIPE_TEXTURE, COMBAT_FLOCK_IMPACT_BURST_TEXTURE, COMBAT_FLOW_SURGE_TEXTURE, COMBAT_FORMATION_SHIFT_TEXTURE, COMBAT_FOULED_PRESSURE_TEXTURE, COMBAT_HEAL_BLOOM_TEXTURE, COMBAT_IMPACT_FLASH_TEXTURE, COMBAT_MOLT_SHIFT_TEXTURE, COMBAT_MOLT_TRIGGER_CHOICE_TEXTURE, COMBAT_OPEN_SKY_BREAK_TEXTURE, COMBAT_OPEN_SKY_EXPOSURE_TEXTURE, COMBAT_OPEN_SKY_GUARD_TEXTURE, COMBAT_OVEREXTENSION_WARNING_TEXTURE, COMBAT_OVERFLOW_SHELTER_TEXTURE, COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE, COMBAT_PINNED_OPENING_STRIKE_TEXTURE, COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE, COMBAT_RESONANCE_SPEND_TEXTURE, COMBAT_RESONANCE_SURGE_TEXTURE, COMBAT_RESOURCE_OVERCAP_TEXTURE, COMBAT_RUFFLED_BREAK_TEXTURE, COMBAT_SHUFFLE_VORTEX_TEXTURE, COMBAT_SPARK_ECHO_TEXTURE, COMBAT_STATUS_CLEANSE_SPECIFIC_TEXTURE, COMBAT_SUPPLY_USE_BURST_TEXTURE, COMBAT_THREAT_CHARGE_TEXTURE, COMBAT_TURN_BANNER_TEXTURE, COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE, COMBAT_VICTORY_RALLY_TEXTURE, COMBAT_WINDED_GUST_TEXTURE, COMBAT_WINGBEAT_DRAIN_TEXTURE, COMBAT_WINGBEAT_SURGE_TEXTURE, ENEMY_ATTACK_WINDUP_MS, ENEMY_FX_X, ENEMY_FX_Y, FLOCK_FX_X, FLOCK_FX_Y, GAME_WIDTH, TOKEN_DISPLAY_FONT, banner, birdAudio, combatPacePreference, currentCombatNodes, currentFlashEffectsState, floatingText, prefersReducedMotion, suitFxMeta } from '../../main';
 import type { ActiveCardContract, Card, FlockState } from '../../main';
 import { cameraPunch, defeatGhost, edgeFlash } from '../spectacle/punch';
+import { blockSparks, dangerLine, featherBurst, impactLight, leaveMarks, risingMotes, suitImpact } from '../spectacle/impact';
 
 export function combatImpactFlash(this: any, x: number, y: number, color: number, direction: 1 | -1 = 1, heavy = false): any {
     if (!this.textures.exists(COMBAT_IMPACT_FLASH_TEXTURE)) return;
@@ -49,6 +50,9 @@ export function combatPlayerHitConfirm(this: any, x: number, y: number, color: n
     setTextureFilter(this.textures.get(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatPlayerHitConfirmBursts += 1;
     cameraPunch(this, heavy ? 0.022 : 0.012);
+    impactLight(this, x, y, color, heavy);
+    suitImpact(this, x, y, color, heavy);
+    featherBurst(this, x, y, heavy ? 10 : 5, 1, [0xe8e0d0, 0x9aa6b4, 0x5d6772]);
     const size = heavy ? 128 : 92;
     const reducedMotion = prefersReducedMotion();
     const reducedFlashes = currentFlashEffectsState().reduced;
@@ -141,6 +145,8 @@ export function combatEnemyImpactContact(this: any, x: number, y: number, fromX:
     this.combatEnemyImpactContactBursts += 1;
     cameraPunch(this, heavy ? 0.03 : 0.018);
     edgeFlash(this, this.fxLayer, 0xff3b30, heavy ? 0.4 : 0.26);
+    impactLight(this, x, y, 0xff5247, heavy);
+    featherBurst(this, x - 40, y - 20, heavy ? 9 : 4, -1, [0xc98a4b, 0x8a5a33, 0xe8d9c0]);
 
     const contact = this.add.image(x, y, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)
       .setDisplaySize(width, height)
@@ -206,6 +212,7 @@ export function combatEnemySwipe(this: any, fromX: number, fromY: number, toX: n
   }
 
 export function combatCoverGuard(this: any, x: number, y: number, scale = 1): any {
+    risingMotes(this, x, y, 0x7ab8d6, 9);
     if (!this.textures.exists(COMBAT_COVER_GUARD_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_COVER_GUARD_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverGuardBursts += 1;
@@ -233,6 +240,7 @@ export function combatCoverGuard(this: any, x: number, y: number, scale = 1): an
   }
 
 export function combatCoverBlockBurst(this: any, x: number, y: number, scale = 1): any {
+    blockSparks(this, x + 70, y, 0x9fd8ff);
     if (!this.textures.exists(COMBAT_COVER_BLOCK_BURST_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_COVER_BLOCK_BURST_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverBlockBurstBursts += 1;
@@ -272,6 +280,7 @@ export function combatCoverBlockBurst(this: any, x: number, y: number, scale = 1
   }
 
 export function combatEnemyCoverBlock(this: any, x: number, y: number, scale = 1): any {
+    blockSparks(this, x, y, 0x9fd8ff);
     if (!this.textures.exists(COMBAT_ENEMY_COVER_BLOCK_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_ENEMY_COVER_BLOCK_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyCoverBlockBursts += 1;
@@ -644,6 +653,7 @@ export function combatFourSuitRally(this: any, x: number, y: number, scale = 1):
   }
 
 export function combatHealBloom(this: any, x: number, y: number, scale = 1): any {
+    risingMotes(this, x, y, 0x8fd6a0, 14);
     if (!this.textures.exists(COMBAT_HEAL_BLOOM_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_HEAL_BLOOM_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatHealBloomBursts += 1;
@@ -814,6 +824,7 @@ export function combatEnemySupportCue(this: any, x: number, y: number, scale: nu
   }
 
 export function combatCoverShatter(this: any, x: number, y: number, scale = 1): any {
+    blockSparks(this, x, y, 0x9fd8ff, 22);
     if (!this.textures.exists(COMBAT_COVER_SHATTER_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_COVER_SHATTER_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverShatterBursts += 1;
@@ -1324,6 +1335,8 @@ export function combatDefeatBurst(this: any, x: number, y: number): any {
     cameraPunch(this, 0.032);
     edgeFlash(this, this.fxLayer, 0xffd37a, 0.2);
     defeatGhost(this, this.fxLayer, x, y + 12);
+    featherBurst(this, x, y - 16, 16, 1, [0xe8e0d0, 0x9aa6b4, 0x5d6772]);
+    leaveMarks(this, x, y, 6, [0xe8e0d0, 0x9aa6b4, 0x5d6772]);
     const burstImage = this.add.image(x, y, COMBAT_DEFEAT_BURST_TEXTURE)
       .setDisplaySize(316, 316)
       .setBlendMode(Phaser.BlendModes.ADD)
@@ -1602,8 +1615,6 @@ export function combatWindedGust(this: any, x: number, y: number, scale = 1): an
   }
 
 export function combatFlowSurge(this: any, x: number, y: number, scale = 1): any {
-    cameraPunch(this, 0.026);
-    edgeFlash(this, this.fxLayer, 0x24d0d6, 0.3);
     if (!this.textures.exists(COMBAT_FLOW_SURGE_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_FLOW_SURGE_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatFlowSurgeBursts += 1;
@@ -1845,6 +1856,7 @@ export function combatEnemySupportCharge(this: any, x: number, y: number, scale 
   }
 
 export function combatEnemyAttackTell(this: any, x: number, y: number, scale = 1): any {
+    dangerLine(this, x - 40, y + 10, FLOCK_FX_X + 70, FLOCK_FX_Y + 10, this.combatTimingDelay(ENEMY_ATTACK_WINDUP_MS));
     if (!this.textures.exists(COMBAT_ENEMY_ATTACK_TELL_TEXTURE)) return;
     setTextureFilter(this.textures.get(COMBAT_ENEMY_ATTACK_TELL_TEXTURE), Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyAttackTellBursts += 1;

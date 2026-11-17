@@ -1,8 +1,6 @@
 import Phaser from 'phaser';
 import { prefersReducedMotion } from '../../main';
-import { prefersLeanEffects } from '../graphics-quality';
 import { flashEffectsState, screenShakeState } from '../visual-accessibility';
-import { ensureSpectacleTextures } from './stage';
 
 /**
  * Impact weight. Each helper is a short, self-cleaning presentation beat that
@@ -92,16 +90,4 @@ export function defeatGhost(scene: Phaser.Scene, layer: Phaser.GameObjects.Conta
       if (ghost.active) ghost.setTint(Phaser.Display.Color.GetColor(value, value * 0.9, value * 0.95));
     },
   });
-  if (prefersLeanEffects()) return;
-  const { streak } = ensureSpectacleTextures(scene);
-  const feathers = scene.add.particles(x, y - 20, streak, {
-    lifespan: { min: 520, max: 900 },
-    speed: { min: 70, max: 230 }, angle: { min: 200, max: 340 }, gravityY: 420,
-    rotate: { start: 0, end: 300 }, scaleX: { min: 1.6, max: 2.6 }, scaleY: { min: 0.35, max: 0.6 },
-    alpha: { start: 0.9, end: 0 }, tint: [0xe8e0d0, 0x9aa6b4, 0x5d6772],
-    emitting: false,
-  });
-  layer.add(feathers);
-  feathers.explode(14);
-  scene.time.delayedCall(1000, () => feathers.destroy());
 }
