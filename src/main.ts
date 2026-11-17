@@ -89,7 +89,7 @@ import {
   loadAccount, recordRun, saveAccount, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
 } from './game/meta';
 import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, ROUTE_DECK_VISIBLE_ROWS, UI_TYPE, UI_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, UI_BOLD, UI_GOLD, UI_BODY, UI_MUTED, UI_SOFT, UI_CYAN, UI_FIELD } from './game/theme';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, ROUTE_DECK_VISIBLE_ROWS, UI_TYPE, UI_FONT, uiFontsReady, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, UI_BOLD, UI_GOLD, UI_BODY, UI_MUTED, UI_SOFT, UI_CYAN, UI_FIELD } from './game/theme';
 import { quietButton, quietText } from './game/quiet-ui';
 import { pendingOverlay, renderModuleStatus } from './game/pending-overlay';
 import {
@@ -4278,7 +4278,7 @@ class BootScene extends Phaser.Scene {
 
   create() {
     document.getElementById('boot-shell')?.remove();
-    this.scene.start('MenuScene');
+    void uiFontsReady(spectacleReady).then(() => this.scene.start("MenuScene"));
   }
 }
 
@@ -23617,6 +23617,7 @@ Phaser.GameObjects.GameObjectFactory.prototype.text = function (
 
 applyVisualContrastPreference();
 window.__birdSquadGame = new Phaser.Game(config);
+const spectacleReady = import("./game/spectacle/stage").then(m => m.installSpectacle(window.__birdSquadGame!), () => undefined);
 initializeScreenReaderAccessibility();
 window.__birdSquadEnsureScene = async (sceneKey: string) => {
   const game = window.__birdSquadGame;
