@@ -41,7 +41,8 @@ test('Signature Fights decisive calls suppress ambient and support cues without 
 
 test('completed synthesized cues disconnect their owned audio graph', () => {
   const nodes: any[] = [], sources: any[] = [];
-  const param = () => ({ setValueAtTime() {}, exponentialRampToValueAtTime() {} });
+  const param = () => ({ values: [] as number[], setValueAtTime(value:number) { this.values.push(value); },
+    exponentialRampToValueAtTime(value:number) { this.values.push(value); } });
   const node = (source = false) => {
     const result: any = { frequency: param(), gain: param(), Q: param(), pan: param(),
       connections: 0, connect() { this.connections++; }, disconnect() { this.connections = 0; }, start() {}, stop() {} };
@@ -54,8 +55,10 @@ test('completed synthesized cues disconnect their owned audio graph', () => {
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { StereoPannerNode: true } });
   try {
     const master = node();
-    expect(playAudioCue(ctx, master, 1, 'hitConfirm')).toBe(true);
+    expect(playAudioCue(ctx, master, .5, 'hitConfirm', 1.5)).toBe(true);
     expect(sources).toHaveLength(3);
+    const peaks=nodes.filter(n=>n.gain.values.length).map(n=>Math.max(...n.gain.values)).sort((a,b)=>a-b);
+    [.0075,.012,.0135].forEach((value,i)=>expect(peaks[i]).toBeCloseTo(value,6));
     expect(playAudioCue(ctx, master, 1, 'hitConfirm')).toBe(false);
     expect(sources).toHaveLength(3);
     sources.forEach(source => source.onended());

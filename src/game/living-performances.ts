@@ -72,7 +72,11 @@ export function installLivingPerformances(scene:Scene) {
       }
     }
     status.active=[...actions.values()].map(a=>({bird:a.bird,pose:phase(a)}));
-    if(scene.time.now>=ambientAt){ambientAt=scene.time.now+14000;if(!document.hidden&&!document.querySelector('dialog[open]')&&scene.mode==='battle'&&!scene.combatAnimationPending&&!scene.pauseOverlayOpen&&!scene.settingsOverlayOpen)birdAudio.play('rooftopAir',.45);}
+    // Weather yields to an action without owning its movement tween or hiding
+    // any tactical information. The outer container owns only this opacity.
+    const weather=scene.backdropLayer?.getByName('combat-weather-priority');
+    weather?.setAlpha(scene.combatAnimationPending||scene.combatIntroActive||scene.motionFocus?.active ? .25 : 1);
+    if(scene.time.now>=ambientAt){ambientAt=scene.time.now+14000;if(!document.hidden&&!document.querySelector('dialog[open]')&&scene.mode==='battle'&&!scene.combatAnimationPending&&!scene.pauseOverlayOpen&&!scene.settingsOverlayOpen)birdAudio.play((['rooftopAir','canalAir','spireAir','roostAir'] as const)[scene.flywayMapIndex??0]??'rooftopAir',.45);}
   };
   scene.events.on('living-cast',cast);scene.events.on('flyway-card',impact);scene.events.on('living-flock-cue',flockCue);
   scene.events.on('living-enemy-start',enemyStart);scene.events.on('living-enemy-impact',enemyImpact);scene.events.on('flyway-call',call);scene.events.on('postupdate',update);

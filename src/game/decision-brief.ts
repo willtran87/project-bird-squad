@@ -70,7 +70,7 @@ export function decisionBrief(card: Bird, deck: Bird[]) {
     const partner = own.find(b => b.runtime.suit === (before ? combo.first : card.runtime.suit === combo.first ? combo.second : undefined)
       && (before ? canSequence(b, card) : canSequence(card, b)));
     if (partner) return finish(`${before ? 'After' : 'Before'} ${partner.name}: ${combo.name}`,
-      `${combo.rule} Play consecutively while this combination is unused in the fight. Both base costs fit, including only guaranteed Wingbeat refunds.`);
+      `${combo.rule} Play consecutively while this combination is unused this turn. Roost resets the sequence. Both base costs fit, including only guaranteed Wingbeat refunds.`);
   }
   return finish('No verified owned pairing.', 'No supported pairing fits the checked normal-form budget. This is not a verdict on the card; inspect its complete rules and other resource sources.');
 }

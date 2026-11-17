@@ -40,11 +40,13 @@ export async function renderSetupLeaderPortraits(scene: any) {
 export function renderResumeContext(scene: any, run: {
   leaderId?: string; pendingDistrictPreens?: number; completedRouteNodeIds: string[];
   pendingCombatReward?: { stage: string };
+  flyway?: { rooftopPlan?: string };
 }, district: { name: string; bossNodeId: string }) {
   scene.children.getByName('title-resume-context')?.destroy();
   const next = run.pendingCombatReward ? 'Rewards ready · fight cleared' : run.pendingDistrictPreens ? 'Free Preen ready'
     : run.completedRouteNodeIds.includes(district.bossNodeId) ? 'District cleared' : 'Reach the boss';
-  scene.add.text(260, 316, `${getLeader(run.leaderId).name}\n${district.name} · ${next}`, {
+  const plan = ({ shelter: 'Hold & Answer', tempo: 'Chorus Engine', molt: 'Storm Window' } as Record<string, string>)[run.flyway?.rooftopPlan ?? ''];
+  scene.add.text(260, 316, `${getLeader(run.leaderId).name}\n${district.name} · ${next}${plan ? `\nYour plan: ${plan}` : ''}`, {
     fontFamily: UI_FONT, fontSize: '20px', color: '#bfcbd0', align: 'center',
     wordWrap: { width: 410 }, lineSpacing: 5,
   }).setResolution(2).setOrigin(0.5, 0).setName('title-resume-context').setVisible(!scene.setupOpen);
@@ -79,23 +81,25 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
   scene.settingsOverlay = overlay;
   scene.menuFocusRing?.setVisible(false);
   const update = (set: (value: any) => void) => (value: any) => { set(value); refreshSettingsOverlay(scene); };
+  const volume = (channel: 'Music' | 'Sfx' | 'Voice' | 'Ambience') => update(value => birdAudio[`set${channel}Volume`](value));
+  const particles = (set: (value: any) => void) => update(value => { set(value); scene.syncHomeParticles(); });
   renderSettingsMenuOverlay(scene, (obj) => overlay.add(obj), {
     title: 'Settings',
     subtitle: 'Title controls',
     onClose: () => scene.closeSettingsOverlay(),
     onToggleAudio: () => scene.updateMenuTextState(),
-    onSetMusicVolume: (value) => { birdAudio.setMusicVolume(value); refreshSettingsOverlay(scene); },
-    onSetSfxVolume: (value) => { birdAudio.setSfxVolume(value); refreshSettingsOverlay(scene); },
-    onSetVoiceVolume: (value) => { birdAudio.setVoiceVolume(value); refreshSettingsOverlay(scene); },
-    onSetAmbienceVolume: (value) => { birdAudio.setAmbienceVolume(value); refreshSettingsOverlay(scene); },
-    onSetMotionPreference: (value) => { setMotionPreference(value); scene.syncHomeParticles(); refreshSettingsOverlay(scene); },
+    onSetMusicVolume: volume('Music'),
+    onSetSfxVolume: volume('Sfx'),
+    onSetVoiceVolume: volume('Voice'),
+    onSetAmbienceVolume: volume('Ambience'),
+    onSetMotionPreference: particles(setMotionPreference),
     onSetVisualContrastPreference: update(setVisualContrastPreference),
     onSetColorCuePreference: update(setColorCuePreference),
     onSetScreenShakePreference: update(setScreenShakePreference),
     onSetFlashEffectsPreference: update(setFlashEffectsPreference),
-    onSetGraphicsQualityPreference: (value) => { setGraphicsQualityPreference(value); scene.syncHomeParticles(); refreshSettingsOverlay(scene); },
+    onSetGraphicsQualityPreference: particles(setGraphicsQualityPreference),
     onSetCombatPacePreference: update(setCombatPacePreference),
-    onSetAnimationPacePreference: (value) => { setAnimationPacePreference(scene, value); refreshSettingsOverlay(scene); },
+    onSetAnimationPacePreference: update(value => setAnimationPacePreference(scene, value)),
     onSetTextPacePreference: update(setTextPacePreference),
     onSetScreenReaderPreference: update(setScreenReaderPreference),
     onToggleFullscreen: () => scene.scale.toggleFullscreen(),
@@ -183,24 +187,19 @@ export function showLeaderTooltip(scene: any, id: string, _anchorX: number) {
   const leader = getLeader(id);
   const unlocked = isLeaderUnlocked(scene.menuAccount, leader.id);
   const tooltip = scene.add.container(GAME_WIDTH / 2, 350).setDepth(100);
+  const style = { fontFamily: UI_FONT, fontSize: '21px', align: 'center', wordWrap: { width: 1080 } };
   const title = scene.add.text(0, -24, unlocked
     ? `${leader.name} - ${leader.suit} / ${leader.bird}`
     : `${leader.name} - Locked`, {
-    fontFamily: UI_FONT,
-    fontSize: '21px',
+    ...style,
     fontStyle: UI_BOLD,
     color: unlocked ? '#dfc18b' : '#a4b6c2',
-    align: 'center',
-    wordWrap: { width: 1080 },
   }).setResolution(2).setOrigin(0.5).setName('title-leader-description-title');
   const body = scene.add.text(0, 0, unlocked
     ? `${leader.blurb} Signature: ${leader.signatureName} - ${leader.signatureText}`
     : leaderUnlockHints[leader.id] ?? 'Locked', {
-    fontFamily: UI_FONT,
-    fontSize: '21px',
+    ...style,
     color: unlocked ? '#c5d1d8' : '#a4b6c2',
-    align: 'center',
-    wordWrap: { width: 1080 },
   }).setResolution(2).setOrigin(0.5, 0).setName('title-leader-description-body');
   body.setLineSpacing(2);
   tooltip.add([title, body]);

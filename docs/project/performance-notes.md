@@ -3035,3 +3035,44 @@ existing budget. No asset quality reduction, new dependency, eager preload or
 budget increase was introduced. Production-byte and browser-decode checks cover
 296 card, enemy and district images; recovery and scene reuse pass in Chromium
 and Firefox, including all four district entry/boss transitions.
+### 2026-11-14: Coherent City entry investigation
+
+`node tools/profile-district-entry.mjs` records native RAF intervals, long tasks
+and requested resources, with four fresh browser contexts and one warm entry in
+each. At 1440×900, cold entry-to-interaction measured 3,040–4,760 ms, including
+the authored encounter introduction. Cold maximum RAF intervals were 716.5,
+333.3, 616.6 and 350 ms. Warm entries requested no new resources; maximum RAF
+intervals were 116.7, 83.3, 83.4 and 66.6 ms. There were no page errors.
+
+The earlier 1,700 ms interval did not reproduce in these four contexts. This
+does not establish that it is fixed, or that cold loading is smooth. A separate
+CPU-instrumented run (`BIRD_SQUAD_ENTRY_CPU=1`) recorded a 966.6 ms cold interval;
+its sampled work includes texture upload and serialization (`texImage2D`,
+`typedArrayToBase64`) plus browser program/idle time. Do not treat the instrumented
+run as comparable native timing or assign the old outlier to a particular game
+function without a reproducing trace. No controller stub was enabled.
+
+Evidence: `.artifacts/coherent-city/entry-profile.json`, `entry-cpu.json` and
+`entry-cpu.json.cpuprofile`. Profiling was isolated from browser test runs.
+No animation pause, art-quality reduction or rules change was used to improve
+these numbers. Remaining cold-start stalls stay explicit in the acceptance
+ledger; subsequent device testing should repeat the same protocol.
+
+Profiled runtime `7619e9a8` (`index-BN_F8hep.js`) repeated the isolated four-context
+protocol: cold interaction times 4,259 / 3,119 / 3,354 / 2,756 ms; maximum RAF
+intervals 616.6 / 316.7 / 383.3 / 266.6 ms. Warm interaction times were
+1,950 / 1,955 / 1,913 / 1,869 ms, with maximum intervals 83.4 / 66.7 / 66.6 /
+50.1 ms and zero new requests. No page errors occurred. Evidence is
+`.artifacts/coherent-city/entry-final.json`. These headless desktop samples are
+an investigation, not a device-wide performance guarantee or a causal speedup
+comparison. Cold stalls remain open. Root-path combined boot is 698.3 KiB against
+the unchanged 700 KiB cap; existing lazy-module caps also pass.
+
+Pages qualification later exposed an optional-menu chunk overrun caused by the
+longer deployment base path. Commit `0f06630b` shares settings callback wrappers
+and tooltip style fields; it changes no district-entry behavior. The actual
+`/project-bird-squad/` build now passes at 699.4 KiB combined boot and 6,131 bytes
+for optional menu UI against its unchanged 6,144-byte cap. Cache validation and
+the Pages title/lazy-scene/combat/checkpoint-reload smoke test pass locally.
+The native timing samples above belong to `7619e9a8`, not this later menu-only
+consolidation; no additional performance improvement is inferred from it.

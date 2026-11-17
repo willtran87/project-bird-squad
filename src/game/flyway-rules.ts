@@ -53,7 +53,7 @@ export const districts = [
   { name: 'Rooftop Blocks', color: '#edba72', tint: 0xe4a568, weather: 'Warm windows · drifting paper', restored: 'Neighbors cross the repaired clothesline. Window lanterns answer the first safe-flight call.' },
   { name: 'Canal Markets', color: '#86d8d4', tint: 0x72bfc4, weather: 'Canal rain · rippling reflections', restored: 'The sluice opens. Market awnings rise, and the water route carries food and shelter again.' },
   { name: 'Signal Spires', color: '#b5bcea', tint: 0xa8b2da, weather: 'Crosswinds · taut signal cables', restored: 'Calls leap from mast to mast. Couriers reclaim the high crossings above the city.' },
-  { name: 'High Roost', color: '#f3deb1', tint: 0xf0d6a0, weather: 'Clear dawn · a vast open sky', restored: 'The final call reaches every district. Four broken routes become one living flyway.' },
+  { name: 'High Roost', color: '#f3deb1', tint: 0xf0d6a0, weather: 'Before dawn · a vast open sky', restored: 'The final call reaches every district. Four broken routes become one living flyway.' },
 ] as const;
 export const conditions: Record<FlywayCondition, { name: string; rule: string; reward: number }> = {
   clear: { name: 'Sheltered approach', rule: 'Standard combat conditions.', reward: 0 },

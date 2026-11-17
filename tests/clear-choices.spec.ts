@@ -20,11 +20,11 @@ test('Clear choices advice rejects conditional sources and unaffordable sequence
   expect(decisionBrief(consumer, [bird('Loss', ['gainResonance(2)', 'loseWingbeat(1)'])]).pairing).toBe('No verified owned pairing.');
   expect(decisionBrief(bird('Unspent', ['if spentResonance then draw(1)']), [refunded]).pairing).toBe('No verified owned pairing.');
 });
-test('Clear choices advice preserves order, form and once-per-fight combination limits', () => {
+test('Clear choices advice preserves order, form and once-per-turn combination limits', () => {
   const nest = bird('Nest', ['gainCover(4)'], 1, 'nests'), quill = bird('Quill', ['damage(target, 4)'], 1, 'quills');
   expect(decisionBrief(quill, [nest]).pairing).toBe('After Nest: Brace & Cut');
   expect(decisionBrief(nest, [quill]).pairing).toBe('Before Quill: Brace & Cut');
-  expect(decisionBrief(quill, [nest]).details).toContain('unused in the fight');
+  expect(decisionBrief(quill, [nest]).details).toContain('unused this turn. Roost resets the sequence.');
   expect(decisionBrief(quill, [{ ...nest, runtime: { ...nest.runtime, effects: ['enterMolt()'] } }]).pairing).toBe('No verified owned pairing.');
   const winded = bird('Answer', ['if targetWinded then draw(1)']);
   expect(decisionBrief(winded, [bird('Setter', ['applyWinded(target, 1)'])]).details).toContain('same surviving target');

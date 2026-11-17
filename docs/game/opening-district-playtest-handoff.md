@@ -5,6 +5,14 @@ this handoff because no sessions are available yet. Existing release evidence
 waivers remain explicit; preparation does not count as passing human, device or
 assistive-technology evidence.
 
+Local November 14 candidate: [Coherent City polish](coherent-city-polish.md).
+Candidate revision: `0f06630b8a483e8ff1c53102339dfa279b70ae7e` on
+`codex/coherent-city-polish`; final qualification is recorded in its ledger.
+It is not the published revision listed below. When testing that candidate,
+also observe whether players can start/back/retry a practice lesson, explain
+the forecast's named uncertainty, and connect resident acknowledgement to their
+own saved action. Record the build used; do not mix candidate and live sessions.
+
 ## Current session kit
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.

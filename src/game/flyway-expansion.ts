@@ -328,7 +328,14 @@ export function installFlyway(raw: Phaser.Scene) {
     for (const resident of residents) {
       const trust = s.residents[resident.id] ?? 0; const visit = `${resident.id}:${index}`;
       const visited = s.visits.includes(visit);
-      const box = section(body, `${resident.name} · trust ${trust}`, trust ? `“I remember your help.” ${resident.line}` : resident.line);
+      const memory = resident.id === 'oren' && s.canalFerry?.rewarded ? `“Your pledge of ${s.canalFerry.pledge} keeps the ferry crossing.”`
+        : resident.id === 'oren' && s.canalFerry ? '“The repair crew is waiting for those crossings to clear.”'
+        : resident.id === 'ivo' && s.spireRelay?.delivered ? '“Your warning reached High Roost. The line held.”'
+        : resident.id === 'ivo' && s.spireRelay?.rewarded ? '“The relay is repaired. Carry its warning to the summit.”'
+        : resident.id === 'sella' && s.cityAid?.includes('sella') ? '“You kept our lanterns lit. I was glad to shelter you at the summit.”'
+        : visited ? '“We have already helped each other on this crossing.”'
+        : trust ? '“I remember your help.”' : '';
+      const box = section(body, `${resident.name} · trust ${trust}`, `${memory}${memory ? ' ' : ''}${resident.line}`);
       const portrait = routeSceneEventResidentAssets[({sella:'basin',ivo:'signal',oren:'nest'} as const)[resident.id as 'sella'|'ivo'|'oren']];
       if (portrait) { const img=element('img'); img.src=portrait.url; img.alt=resident.name; img.className='flyway-resident'; box.prepend(img); }
       box.append(button(resident.help, () => mutate(() => {
