@@ -225,7 +225,9 @@ export const achievements: Achievement[] = [
   { id: 'first_flight', name: 'First Flight', desc: 'Win your first run.', check: (_r, a) => a.wins >= 1 },
   { id: 'full_aviary', name: 'The Full Aviary', desc: 'Win with all five Flock Leaders.', check: (_r, a) => Object.keys(a.winsByLeader).length >= flockLeaders.length },
   { id: 'ascended', name: 'Ascended', desc: 'Win at Ascension Tier 3 or higher.', check: (r) => r.result === 'win' && r.difficulty >= 3 },
-  { id: 'summit', name: 'Summit Master', desc: 'Win at Ascension Tier 6.', check: (r) => r.result === 'win' && r.difficulty >= 6 },
+  // Top of the Ascension ladder. Players who earned it under the old Tier 6
+  // rule keep it: recordRun only checks achievements not yet in the account.
+  { id: 'summit', name: 'Summit Master', desc: `Win at Ascension Tier ${MAX_DIFFICULTY}, the top of the ladder.`, check: (r) => r.result === 'win' && r.difficulty >= MAX_DIFFICULTY },
   { id: 'iron_flock', name: 'Iron Flock', desc: 'Win with 30 or more Cohesion remaining.', check: (r) => r.result === 'win' && r.cohesion >= 30 },
   { id: 'swift_wings', name: 'Swift Wings', desc: 'Win a final fight in 5 beats or fewer.', check: (r) => r.result === 'win' && r.turns <= 5 },
   { id: 'lean_flock', name: 'Lean Flock', desc: 'Win with a deck of 12 cards or fewer.', check: (r) => r.result === 'win' && r.deckSize <= 12 },
