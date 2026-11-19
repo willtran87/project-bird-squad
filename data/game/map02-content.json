@@ -48,7 +48,7 @@
       "id": "canal_dock_warden",
       "name": "Dock Warden",
       "type": "elite",
-      "health": 46,
+      "health": 48,
       "lesson": "Elite: a lock-keeper bruiser that guards, then rams.",
       "description": "A broad canal coot that controls the dock gate and turns every crossing into a shove match.",
       "visualBrief": "Stocky black coot in a reinforced rain shell, rubberized talon bands, lock-chain clips, and a wet utility harness beside canal gates and warning buoys.",
@@ -79,9 +79,9 @@
         },
         {
           "id": "warden_ram_14",
-          "label": "Ram 14",
+          "label": "Ram 15",
           "effects": [
-            "damage(flock, 14)"
+            "damage(flock, 15)"
           ]
         }
       ],
@@ -108,7 +108,7 @@
       "id": "canal_dock_rat",
       "name": "Dock Rat",
       "type": "normal",
-      "health": 24,
+      "health": 29,
       "lesson": "Chip damage adds up; spend Cover before it stacks.",
       "description": "A canal rat that nips from between crates and turns small mistakes into steady attrition.",
       "visualBrief": "Damp brown rat in a tiny patched slicker, paw wraps, rope-belt harness, and bead-like rain drops on dock planks beside market crates.",
@@ -117,16 +117,16 @@
       "moves": [
         {
           "id": "gnaw_6_a",
-          "label": "Gnaw 6",
+          "label": "Gnaw 7",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 7)"
           ]
         },
         {
           "id": "gnaw_6_b",
-          "label": "Gnaw 6",
+          "label": "Gnaw 7",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 7)"
           ]
         },
         {
@@ -159,7 +159,7 @@
       "id": "canal_market_crow",
       "name": "Market Crow",
       "type": "normal",
-      "health": 26,
+      "health": 31,
       "roles": [
         "support",
         "saboteur"
@@ -172,9 +172,9 @@
       "moves": [
         {
           "id": "snatch_6",
-          "label": "Snatch 6",
+          "label": "Snatch 7",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 7)"
           ]
         },
         {
@@ -215,7 +215,7 @@
       "id": "canal_dredge_eel",
       "name": "Dredge Eel",
       "type": "normal",
-      "health": 28,
+      "health": 34,
       "lesson": "Winded throttles your tempo; plan around the lull.",
       "description": "A slick canal eel that coils around dredge ropes and slows the flock with wet, dragging pressure.",
       "visualBrief": "Long eel with a flexible waterproof strap harness, reflective canal tags, and cord loops sliding through muddy water beside dredge gear and algae nets.",
@@ -232,16 +232,16 @@
         },
         {
           "id": "lash_7",
-          "label": "Lash 7",
+          "label": "Lash 8",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 8)"
           ]
         },
         {
           "id": "thrash_8",
-          "label": "Thrash 8",
+          "label": "Thrash 9",
           "effects": [
-            "damage(flock, 8)"
+            "damage(flock, 9)"
           ]
         }
       ],
@@ -267,7 +267,7 @@
       "id": "canal_barge_gull",
       "name": "Barge Gull",
       "type": "normal",
-      "health": 30,
+      "health": 36,
       "lesson": "Heavy Strike rewards Cover banked in advance.",
       "description": "A barge gull that rides canal thermals, waits for a gap, and crashes down with dockside force.",
       "visualBrief": "Large gull in a loose canal-worker wind shell, cargo strap, bright talon bands, and rain-specked feathers over a barge rail and rope piles.",
@@ -276,16 +276,16 @@
       "moves": [
         {
           "id": "wheel_5",
-          "label": "Wheel 5",
+          "label": "Wheel 6",
           "effects": [
-            "damage(flock, 5)"
+            "damage(flock, 6)"
           ]
         },
         {
           "id": "dive_heavy_12",
-          "label": "Heavy Dive 12",
+          "label": "Heavy Dive 14",
           "effects": [
-            "damage(flock, 12)"
+            "damage(flock, 14)"
           ]
         },
         {
@@ -319,7 +319,7 @@
       "id": "canal_lock_keeper",
       "name": "Lock Keeper",
       "type": "normal",
-      "health": 32,
+      "health": 46,
       "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
       "description": "A patient moorhen lock keeper that hides behind the canal works and lets the water do half the fighting.",
       "visualBrief": "Dark moorhen in a hooded rain wrap, tiny key clips without readable marks, webbed-foot bands, and a compact utility pouch near a steel lock wheel.",
@@ -336,17 +336,17 @@
         },
         {
           "id": "press_7",
-          "label": "Twin Press 3 + 4",
+          "label": "Twin Press 4 + 6",
           "effects": [
-            "damage(flock, 3)",
-            "damage(flock, 4)"
+            "damage(flock, 4)",
+            "damage(flock, 6)"
           ]
         },
         {
           "id": "flood_winded",
           "label": "Flood",
           "effects": [
-            "damage(flock, 4)",
+            "damage(flock, 6)",
             "applyWinded(flock, 1)"
           ]
         }
@@ -373,7 +373,7 @@
       "id": "canal_ferry_cormorant",
       "name": "Ferry Cormorant",
       "type": "rival",
-      "health": 38,
+      "health": 48,
       "lesson": "Optional elite that grinds you down between Basins.",
       "description": "A canal cormorant ferryman that rows the route his way and punishes flocks that arrive tired.",
       "visualBrief": "Long-necked black cormorant in a slate rain shell, reflective teal sash, oar-strap harness, waterproof pouch, and orange webbed-foot bands on a narrow ferry deck in gray canal light.",
@@ -382,9 +382,9 @@
       "moves": [
         {
           "id": "twin_oars",
-          "label": "Oar Feint 7",
+          "label": "Oar Feint 8",
           "effects": [
-            "damage(flock, 7)",
+            "damage(flock, 8)",
             "applyWinded(flock, 1)"
           ]
         },
@@ -397,9 +397,9 @@
         },
         {
           "id": "ram_13",
-          "label": "Ram 13",
+          "label": "Ram 16",
           "effects": [
-            "damage(flock, 13)"
+            "damage(flock, 16)"
           ]
         }
       ],
@@ -425,7 +425,7 @@
       "id": "canal_toll_magpie",
       "name": "Toll Magpie",
       "type": "rival",
-      "health": 38,
+      "health": 48,
       "lesson": "Punishes a low Scrap economy by forcing Snags.",
       "description": "A toll magpie that knows every shortcut price and turns unpaid routes into tangles.",
       "visualBrief": "Black-and-white magpie in a sharp cropped rain jacket, shiny coin clips, sling pouch, and talon bands with toll-rail rope and wet-tag styling.",
@@ -434,9 +434,9 @@
       "moves": [
         {
           "id": "shake_down",
-          "label": "Shake Down 6",
+          "label": "Shake Down 7",
           "effects": [
-            "damage(flock, 6)",
+            "damage(flock, 7)",
             "applyOpenSky(1)",
             "if zeroCostCardsAtLeast(2) then addSnagToDiscard(tangled_line)"
           ]
@@ -453,7 +453,7 @@
           "id": "tangle_toss",
           "label": "Tangle Toss",
           "effects": [
-            "damage(flock, 9)",
+            "damage(flock, 11)",
             "addSnagToDiscard(wet_feathers)"
           ]
         }
@@ -586,7 +586,7 @@
       "id": "canal_otter",
       "name": "Canal Otter",
       "type": "normal",
-      "health": 30,
+      "health": 44,
       "lesson": "Water flanker: chips, shifts tempo, and rewards quick focus.",
       "description": "A slick canal runner that slides through wet lanes and appears where the flock thought the crossing was safe.",
       "visualBrief": "Streamlined otter in a fitted waterproof shell, clipped pouch harness, and close neck scarf on wet dock planks near lock water and rope coils.",
@@ -602,9 +602,9 @@
         },
         {
           "id": "otter_nip_7",
-          "label": "Nip 7",
+          "label": "Nip 10",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 10)"
           ]
         },
         {
@@ -616,11 +616,11 @@
         }
       ],
       "attackPattern": {
-        "type": "cycle",
-        "moveIds": [
-          "otter_slipstream",
-          "otter_nip_7",
-          "otter_dive_cover"
+        "type": "weighted",
+        "entries": [
+          { "moveId": "otter_slipstream", "weight": 1 },
+          { "moveId": "otter_nip_7", "weight": 2 },
+          { "moveId": "otter_dive_cover", "weight": 1 }
         ]
       },
       "rewards": {
@@ -637,7 +637,7 @@
       "id": "crab_dockguard",
       "name": "Crab Dockguard",
       "type": "normal",
-      "health": 34,
+      "health": 41,
       "lesson": "Dockguard tank: remove Cover before the dock lane locks down.",
       "description": "A dock crab that patrols sideways under mooring lines and makes narrow crossings awkward.",
       "visualBrief": "Crab with painted shell decals, cargo strap around the shell, tiny waterproof pouches, and natural claws free on wet pier boards.",
@@ -653,16 +653,16 @@
         },
         {
           "id": "crab_claw_6",
-          "label": "Claw 6",
+          "label": "Claw 7",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 7)"
           ]
         },
         {
           "id": "crab_sideways_8",
-          "label": "Sideways Shove 8",
+          "label": "Sideways Shove 9",
           "effects": [
-            "damage(flock, 8)",
+            "damage(flock, 9)",
             "if flockHasNoCover then applyWinded(flock, 1)"
           ]
         }
@@ -689,7 +689,7 @@
       "id": "frog_canal_jumper",
       "name": "Frog Canal Jumper",
       "type": "normal",
-      "health": 29,
+      "health": 42,
       "lesson": "Leaper: alternates small hits with Winded tempo pressure.",
       "description": "A bright canal frog that springs over clutter and splashes the flock out of clean formation.",
       "visualBrief": "Green frog in a short waterproof hood cape, flexible leg bands, and tiny belly-safe pouch beside puddles and algae-slick stone.",
@@ -698,9 +698,9 @@
       "moves": [
         {
           "id": "frog_splash_5",
-          "label": "Splash 5",
+          "label": "Splash 7",
           "effects": [
-            "damage(flock, 5)",
+            "damage(flock, 7)",
             "applyWinded(flock, 1)"
           ]
         },
@@ -713,9 +713,9 @@
         },
         {
           "id": "frog_jump_8",
-          "label": "Jump 8",
+          "label": "Jump 11",
           "effects": [
-            "damage(flock, 8)"
+            "damage(flock, 11)"
           ]
         }
       ],
@@ -741,7 +741,7 @@
       "id": "turtle_barricader",
       "name": "Turtle Barricader",
       "type": "normal",
-      "health": 36,
+      "health": 52,
       "lesson": "Slow barricade: break Cover before the canal lane locks down.",
       "description": "A stubborn canal turtle that turns dock clutter into a living roadblock while escorts work around it.",
       "visualBrief": "Pond turtle with shell-safe stickered cargo netting, small waterproof pouches, and strap clips that do not cover the legs or alter the shell.",
@@ -757,9 +757,9 @@
         },
         {
           "id": "turtle_snap_6",
-          "label": "Snap 6",
+          "label": "Snap 8",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 8)"
           ]
         },
         {
@@ -793,7 +793,7 @@
       "id": "cormorant_netter",
       "name": "Cormorant Netter",
       "type": "normal",
-      "health": 34,
+      "health": 41,
       "lesson": "Control netter: dock-line Snags and Winded turns tax slow hands.",
       "description": "A wet-winged canal netter that turns loose dock line into dragged, physical control.",
       "visualBrief": "Cormorant in a slate rain shell, oar-strap harness, dock-line loops clipped to body, and orange webbed-foot bands.",
@@ -816,9 +816,9 @@
         },
         {
           "id": "cormorant_peck_7",
-          "label": "Pier Peck 7",
+          "label": "Pier Peck 8",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 8)"
           ]
         }
       ],
@@ -844,7 +844,7 @@
       "id": "kingfisher_snapdiver",
       "name": "Kingfisher Snapdiver",
       "type": "rival",
-      "health": 40,
+      "health": 50,
       "lesson": "Water assassin: Open Sky setup into a burst dive if the flock stays exposed.",
       "description": "A sharp canal kingfisher that waits above the waterline and strikes exactly when the flock drifts.",
       "visualBrief": "Belted kingfisher in a close rain collar, tiny waterproof side pouch, and talon bands beside low canal posts and rippled water.",
@@ -861,17 +861,17 @@
         },
         {
           "id": "kingfisher_snap_dive_13",
-          "label": "Snap Dive 13",
+          "label": "Snap Dive 16",
           "effects": [
-            "damage(flock, 13)"
+            "damage(flock, 16)"
           ]
         },
         {
           "id": "kingfisher_flash_7",
-          "label": "Flash Strike 7",
+          "label": "Flash Strike 8",
           "effects": [
-            "damage(flock, 7)",
-            "if flockOpenSky then damage(flock, 5)"
+            "damage(flock, 8)",
+            "if flockOpenSky then damage(flock, 6)"
           ]
         },
         {
@@ -883,12 +883,12 @@
         }
       ],
       "attackPattern": {
-        "type": "cycle",
-        "moveIds": [
-          "kingfisher_perch_signal",
-          "kingfisher_snap_dive_13",
-          "kingfisher_flash_7",
-          "kingfisher_bank_cover"
+        "type": "weighted",
+        "entries": [
+          { "moveId": "kingfisher_perch_signal", "weight": 1 },
+          { "moveId": "kingfisher_snap_dive_13", "weight": 1 },
+          { "moveId": "kingfisher_flash_7", "weight": 2 },
+          { "moveId": "kingfisher_bank_cover", "weight": 1 }
         ]
       },
       "rewards": {
@@ -905,7 +905,7 @@
       "id": "heron_spearstepper",
       "name": "Heron Spearstepper",
       "type": "elite",
-      "health": 44,
+      "health": 55,
       "lesson": "Reach elite: long telegraphs combine Winded, Cover, and Open Sky punishment.",
       "description": "A still canal hunter that threatens from the edge of the water with patient, precise reach.",
       "visualBrief": "Tall heron in a tailored waterproof sash, pinned-close scarf, reflective leg bands, and small dock satchel beside a canal rail.",
@@ -914,9 +914,9 @@
       "moves": [
         {
           "id": "heron_long_jab_8",
-          "label": "Long Jab 8",
+          "label": "Long Jab 10",
           "effects": [
-            "damage(flock, 8)"
+            "damage(flock, 10)"
           ]
         },
         {
@@ -936,9 +936,9 @@
         },
         {
           "id": "heron_reach_12",
-          "label": "Reach Strike 12",
+          "label": "Reach Strike 14",
           "effects": [
-            "damage(flock, 12)",
+            "damage(flock, 14)",
             "if flockHasNoCover then applyOpenSky(1)"
           ]
         }
@@ -966,7 +966,7 @@
       "id": "opossum_decoy",
       "name": "Opossum Decoy",
       "type": "normal",
-      "health": 29,
+      "health": 42,
       "lesson": "Feint controller: ignored turns let it rebuild tempo before a startle snap.",
       "description": "A theatrical canal-market survivor that slumps beside curb stalls, watches through patched scarf layers, and snaps when the flock commits wrong.",
       "visualBrief": "Opossum in layered vintage scarf wraps, patched denim-like back cloth, tiny charm clips, close paw bands, and canal-market curb salvage with tail fully free.",
@@ -982,9 +982,9 @@
         },
         {
           "id": "opossum_startle_snap_7",
-          "label": "Startle Snap 7",
+          "label": "Startle Snap 10",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 10)"
           ]
         },
         {
@@ -1018,7 +1018,7 @@
       "id": "goose_bouncer",
       "name": "Goose Bouncer",
       "type": "elite",
-      "health": 43,
+      "health": 54,
       "lesson": "Space-control charger: loud lane denial into a heavy body check.",
       "description": "A canal-side bouncer that owns the crossing and forces the flock to respect its lane.",
       "visualBrief": "Canada goose in a varsity-style chest bib, bold color blocking, wing-safe bands, and dockside rain grit.",
@@ -1042,16 +1042,16 @@
         },
         {
           "id": "goose_body_charge_13",
-          "label": "Body Charge 13",
+          "label": "Body Charge 16",
           "effects": [
-            "damage(flock, 13)"
+            "damage(flock, 16)"
           ]
         },
         {
           "id": "goose_wing_shove_8",
-          "label": "Wing Shove 8",
+          "label": "Wing Shove 10",
           "effects": [
-            "damage(flock, 8)",
+            "damage(flock, 10)",
             "if flockHasNoCover then applyOpenSky(1)"
           ]
         }
@@ -1079,7 +1079,7 @@
       "id": "mantis_street_duelist",
       "name": "Mantis Street Duelist",
       "type": "elite",
-      "health": 44,
+      "health": 55,
       "lesson": "Precision elite: read, guard, then punish sloppy timing with clean cuts.",
       "description": "A poised mantis that reads the flock's rhythm and answers sloppy timing with clean precision.",
       "visualBrief": "Large mantis in sleek segmented wrap accents and a tiny thorax panel, limbs fully exposed, perched on cracked market tile.",
@@ -1095,9 +1095,9 @@
         },
         {
           "id": "mantis_duel_cut_12",
-          "label": "Duel Cut 12",
+          "label": "Duel Cut 14",
           "effects": [
-            "damage(flock, 12)"
+            "damage(flock, 14)"
           ]
         },
         {
@@ -1109,9 +1109,9 @@
         },
         {
           "id": "mantis_pinpoint_8",
-          "label": "Pinpoint 8",
+          "label": "Pinpoint 10",
           "effects": [
-            "damage(flock, 8)",
+            "damage(flock, 10)",
             "if notHitThisTurn then nextAttackBonus(3)"
           ]
         }

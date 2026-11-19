@@ -54,6 +54,13 @@ const profiles = (balanceConfig.maps as unknown as MapBalanceProfile[]).map((pro
 const byMapId = new Map<string, MapBalanceProfile>(profiles);
 const byIndex = new Map<number, MapBalanceProfile>(profiles.map(([, profile]) => [profile.index, profile]));
 
+// Card-reward rarity weights for the structured reward drafter (and the
+// weighted Market slot). Tuned with tools/simulate-combat.mjs so ~73% of
+// 3-card offers contain a non-common (was ~97% at 80/75/32/10). The structured
+// drafter's suit/role slots already surface uncommon+ cards whenever a slot's
+// commons run out, so per-card weights must lean hard on commons to land there.
+export const REWARD_RARITY_WEIGHTS: Readonly<Record<string, number>> = { common: 100, uncommon: 8, rare: 3, legendary: 1 };
+
 export function getMapBalanceProfile(mapId: string, index: number): MapBalanceProfile {
   return byMapId.get(mapId) ?? byIndex.get(index) ?? byIndex.get(1)!;
 }
