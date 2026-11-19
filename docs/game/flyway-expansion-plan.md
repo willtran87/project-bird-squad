@@ -51,7 +51,7 @@ Subjective player enjoyment is not established by automated tests.
   costs, progression, save reconstruction and durable settlement receipts.
 - [Adaptive music](../../src/game/adaptive-music.ts): item 11 and district audio.
 - [Focused browser tests](../../tests/flyway-expansion.spec.ts) and
-  [pure rule tests](../../tools/tests/flyway-rules.test.mjs).
+  [pure rule tests](../../src/game/flyway-rules.test.ts).
 
 ### Verified results
 
