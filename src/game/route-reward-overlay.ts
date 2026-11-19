@@ -67,10 +67,8 @@ export function renderRouteRewardOverlay(scene: any) {
   const left = frame.left + 54;
   // Cache drawers are listed by position (01, 02…): name the number the
   // player picked, not the drawer's lore id from the data label.
-  const drawer = node && pending.nodeType === 'cache'
-    ? scene.nodeChoiceList(node).findIndex((choice: { key: string }) => choice.key === pending.choiceKey) : -1;
-  const choiceText = drawer < 0 ? pending.choiceText
-    : pending.choiceText.replace(/^Claim Drawer \d+/, `Claim Drawer ${String(drawer + 1).padStart(2, '0')}`);
+  const choiceText = pending.choiceText.replace(/^(Claim Drawer )\d+/, (_: string, claim: string) =>
+    claim + `0${scene.nodeChoiceList(node).findIndex((c: any) => c.key === pending.choiceKey) + 1}`.slice(-2));
   decisionExcerpt(decisionText(scene, left, frame.top + 112, choiceText, 326, UI_TYPE.primary, UI_GOLD), 52).setName('route-decision-choice');
   decisionExcerpt(decisionText(scene, left, frame.top + 175, pending.effectText || 'No reward will be taken.', 326, UI_TYPE.primary), 68).setName('route-decision-summary');
   decisionText(scene, left, frame.top + 254, 'PROJECTED CHANGES', 326, UI_TYPE.secondary, DECISION_UI.secondary).setName('route-decision-section');
