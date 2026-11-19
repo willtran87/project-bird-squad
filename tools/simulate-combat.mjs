@@ -517,7 +517,7 @@ function simulateFight(encounter, mapIndex, enemyById, deckCards, rng, mods, lea
       case 'applyWinded': flock.weak += value; break;
       case 'applyFrail': flock.frail += value; break;
       case 'applyPoison': flock.fouled += value; break;
-      case 'loseWingbeat': energy = Math.max(0, energy - value); break;
+      case 'loseWingbeat': nextTurnEnergy -= value; break; // lands on the next player turn, like the runtime
       case 'addSnagToDiscard': case 'addSnagToDraw': {
         const snagId = parts[0];
         if (snagId && cardById.has(snagId) && !deckIds.has(snagId)) {
@@ -558,7 +558,7 @@ function simulateFight(encounter, mapIndex, enemyById, deckCards, rng, mods, lea
 
   const startTurn = () => {
     turn += 1;
-    energy = 3 + nextTurnEnergy;
+    energy = Math.max(0, 3 + nextTurnEnergy);
     nextTurnEnergy = 0;
     flock.block = Math.min(flock.block, keystone('nests') ? 8 : 0);
     combat.previousSuit = undefined;

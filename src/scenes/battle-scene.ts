@@ -2447,7 +2447,7 @@ private playBattleIntro(onComplete?: () => void) {
     return this.combatFxModule?.combatWingbeatDrain.call(this, x, y, scale);
   }
 
-  private wingbeatDrainFx(amount: number) {
+  private wingbeatDrainFx(amount: number, label = ' Wingbeat') {
     if (amount <= 0) return;
     const x = FLOCK_FX_X - 10;
     const y = FLOCK_FX_Y - 48;
@@ -2463,7 +2463,7 @@ private playBattleIntro(onComplete?: () => void) {
       spreadX: 10,
       spreadY: 8,
     });
-    this.presentFlockResult(-amount, ' Wingbeat', '#ffcf7a', 'wingbeat-drain');
+    this.presentFlockResult(-amount, label, '#ffcf7a', 'wingbeat-drain');
   }
 
   private combatMoltShift(x: number, y: number, scale = 1) {
@@ -3768,7 +3768,9 @@ private playBattleIntro(onComplete?: () => void) {
         moveLabel: move.label,
         incomingDamage,
         intent: enemyIntentLabel(move.effects, incomingDamage),
-        moveDescription: formatEffects(move.effects).replace(/Enter Open Sky/g, 'Flock enters Open Sky'),
+        moveDescription: formatEffects(move.effects)
+          .replace(/Enter Open Sky/g, 'Flock enters Open Sky')
+          .replace(/Lose (\d+) Wingbeat\./g, 'Flock starts next turn with $1 fewer Wingbeat.'),
         status: enemyStatus(enemy),
         objective: objectiveTarget
       };
@@ -7971,7 +7973,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.activeGeneratedFxSprites = 0;
     this.activeFxParticleBursts = 0;
     this.turn += 1;
-    this.energy = 3 + this.nextTurnEnergyBonus;
+    this.energy = Math.max(0, 3 + this.nextTurnEnergyBonus);
     this.nextTurnEnergyBonus = 0;
     // Nests keystone: Cover carries between turns (capped) instead of fully clearing.
     this.flock.block = Math.min(this.flock.block, this.flyway.relic === 'woven-roost' ? 8 : this.keystoneActive('nests') ? NESTS_COVER_CARRY_CAP : 0);
@@ -8155,9 +8157,11 @@ private playBattleIntro(onComplete?: () => void) {
         this.windedFx(FLOCK_FX_X, FLOCK_FX_Y);
         break;
       case 'loseWingbeat':
-        this.energy = Math.max(0, this.energy - value);
-        this.logEvent(`${enemy.name} taxes ${value} Wingbeat.`);
-        this.wingbeatDrainFx(value);
+        // The enemy phase ends before startPlayerTurn refills Wingbeats, so the
+        // tax lands on the NEXT player turn through the next-turn energy bank.
+        this.nextTurnEnergyBonus -= value;
+        this.logEvent(`${enemy.name} taxes ${value} Wingbeat from the next turn.`);
+        this.wingbeatDrainFx(value, ' next Wingbeat');
         break;
       case 'applyFrail':
         this.flock.frail += value;
