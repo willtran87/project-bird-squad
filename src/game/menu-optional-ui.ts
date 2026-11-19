@@ -107,7 +107,7 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
   scene.updateMenuTextState();
 }
 
-export function openHelpOverlay(scene: any, _queueAssets = true, initialFocus = 0, page: 'loop' | 'terms' = 'loop') {
+export function openHelpOverlay(scene: any, _queueAssets = true, initialFocus = 0, page?: 'loop' | 'terms') {
   if (scene.helpOverlay) return;
   scene.hideLeaderTooltip();
   if (scene.settingsOverlay) scene.closeSettingsOverlay();
