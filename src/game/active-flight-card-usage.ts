@@ -1,6 +1,4 @@
-import { readJournaledJson } from './safe-storage';
-
-const ACTIVE_RUN_KEY = 'birdsquad.run.active';
+import { readActiveRunCheckpoint } from './save-migration';
 
 export type ActiveFlightCardState = 'base' | 'preened';
 
@@ -16,7 +14,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function loadActiveFlightCardUsage(
   validCardIds: ReadonlySet<string>,
 ): ActiveFlightCardUsage | undefined {
-  return readJournaledJson(ACTIVE_RUN_KEY, (value) => {
+  // Migrated before validation; a checkpoint from a newer build is ignored
+  // here without being quarantined.
+  const checkpoint = readActiveRunCheckpoint((value) => {
     if (!isRecord(value) || !Array.isArray(value.deck)) return undefined;
     const cards: Record<string, ActiveFlightCardState> = {};
     value.deck.forEach((entry) => {
@@ -28,4 +28,5 @@ export function loadActiveFlightCardUsage(
     const deckSize = Object.keys(cards).length;
     return deckSize > 0 ? { deckSize, cards } : undefined;
   });
+  return checkpoint.status === 'ok' ? checkpoint.run : undefined;
 }
