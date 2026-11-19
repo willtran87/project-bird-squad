@@ -8,7 +8,7 @@ import cupsArcana from '../../data/cards/arcana/minor-arcana-cups.json';
 import swordsArcana from '../../data/cards/arcana/minor-arcana-swords.json';
 import pentaclesArcana from '../../data/cards/arcana/minor-arcana-pentacles.json';
 import type { CardFlavor, CardMeaning, ReserveEnemyContract } from './runtime-data';
-export { codexGlossaryTerms, type CodexGlossaryTerm } from './codex-glossary';
+export { codexGlossaryTerms, glossarySearchSynonyms, GLOSSARY_TIER_LABELS, glossaryTierCounts, type CodexGlossaryTerm } from './codex-glossary';
 
 export { getLeaderLore } from './leader-lore';
 

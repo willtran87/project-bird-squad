@@ -1345,6 +1345,8 @@ export class CodexScene extends Phaser.Scene {
       ...(card.runtime.moltEffects ?? []),
       ...(card.runtime.heldEffects ?? []),
       ...card.runtime.upgrade.effects,
+      // Glossary aliases/glosses: "energy" finds Wingbeat cards, "block" finds Cover.
+      this.codexData?.glossarySearchSynonyms([card.text, card.upgradedText, card.moltText].filter(Boolean).join(' ')),
     ].filter(Boolean).join(' '));
   }
 
@@ -1858,7 +1860,8 @@ export class CodexScene extends Phaser.Scene {
     if (this.activeSection === 'enemies') {
       return this.currentCodexEnemies().map((enemy) => ({ id: enemy.id, label: enemy.name, canOpen: true }));
     }
-    return this.glossaryTerms.map((term) => ({ id: term.term, label: `${term.term}. ${term.summary}`, canOpen: true }));
+    return this.glossaryTerms.map((term) => ({ id: term.term,
+      label: `${term.term}. ${term.summary}${term.aliases.length ? ` Also called ${term.aliases.join(', ')}.` : ''}`, canOpen: true }));
   }
 
   private codexFocusZones(): CodexFocusZone[] {
@@ -3175,7 +3178,11 @@ export class CodexScene extends Phaser.Scene {
       : itemMode
         ? `${itemAll.length} items (${waymarkAll.length} Waymarks / ${supplyAll.length} Supplies)`
         : glossaryMode
-          ? `${glossaryTerms.length} keywords`
+          ? (() => {
+            const tiers = this.codexData?.glossaryTierCounts();
+            return tiers ? `${glossaryTerms.length} keywords · ${tiers.core} core · ${tiers.intermediate} intermediate · ${tiers.advanced} advanced`
+              : `${glossaryTerms.length} keywords`;
+          })()
           : leaderMode
             ? `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length} / ${flockLeaders.length} Flock Leaders rallied`
             : this.codexDataPending()
@@ -3741,7 +3748,10 @@ export class CodexScene extends Phaser.Scene {
     const icon = addUiIconImage(this, term.icon, left + 36, top + 32, 14);
     if (icon) tile.add(icon.setName('codex-glossary-icon').setData('term', term.term).setData('icon', term.icon));
     this.codexPreviewText(tile, term.term, left + 64, top + 16, w - 232, 28, 21, UI_GOLD, 'codex-entry-title', true);
-    this.codexPreviewText(tile, term.category, left + w - 164, top + 18, 144, 24, 18, '#a9c5d5', 'codex-entry-meta');
+    // Tier tells a new player which terms matter first; category stays in the reader.
+    const tier = this.codexData?.GLOSSARY_TIER_LABELS[term.tier] ?? term.category;
+    this.codexPreviewText(tile, tier, left + w - 164, top + 18, 144, 24, 18,
+      term.tier === 'core' ? '#ffe7a8' : '#a9c5d5', 'codex-entry-meta');
     this.codexPreviewText(tile, term.summary, left + 20, top + 56, w - 40, h - 72, 18, UI_BODY, 'codex-entry-summary');
   }
 
@@ -3760,8 +3770,11 @@ export class CodexScene extends Phaser.Scene {
     let yy = viewTop - this.detailScroll;
     const icon = addUiIconImage(this, term.icon, tx + 24, yy + 18, 22);
     if (icon) reader.add(icon.setName('codex-glossary-detail-icon').setData('term', term.term).setData('icon', term.icon));
+    const tierLabel = this.codexData?.GLOSSARY_TIER_LABELS[term.tier];
+    const category = [tierLabel ? `${tierLabel} term` : '', term.category,
+      term.aliases.length ? `Also called ${term.aliases.join(', ')}` : ''].filter(Boolean).join(' · ');
     for (const [value, size, color, name] of [
-      [term.term, 28, UI_GOLD, 'title'], [term.category, 19, '#a9c5d5', 'category'],
+      [term.gloss ? `${term.term} (${term.gloss})` : term.term, 28, UI_GOLD, 'title'], [category, 19, '#a9c5d5', 'category'],
       [term.summary, 20, UI_BODY, 'summary'], [term.detail, 22, '#e4edf5', 'definition'],
     ] as const) {
       const headerOffset = name === 'title' || name === 'category' ? 64 : 0;
@@ -4526,7 +4539,7 @@ export class CodexScene extends Phaser.Scene {
       { title: 'TRIGGER', text: formatWaymarkTrigger(mark.trigger, mark.effects ?? (mark.effect ? [mark.effect] : [])) },
       { title: 'RULES', text: routeMarkEffectText(mark) },
       { title: 'BUILD SYNERGIES', text: waymarkSynergyTags(mark).join(' · '), secondary: true },
-      { title: 'FIELD NOTE', text: mark.flavorText ?? 'A real route artifact carried by the flock.', secondary: true },
+      { title: 'FIELD NOTE', text: mark.flavorText ?? 'A Waymark carried by the flock.', secondary: true },
     ];
     sections.push(...itemKeywordSections(sections));
     this.renderItemDossier({
