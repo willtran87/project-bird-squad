@@ -43,6 +43,7 @@
     "audit:balance": "node tools/balance-audit.mjs",
     "audit:content": "node tools/audit-content.mjs",
     "audit:economy": "node tools/simulate-run-economy.mjs",
+    "audit:combat": "node tools/simulate-combat.mjs",
     "diff:data": "node tools/diff-runtime-data.mjs",
     "stats:playtest": "node tools/playtest-stats.mjs --seeded-if-empty",
     "test:e2e": "playwright test",
