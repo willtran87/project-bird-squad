@@ -51,7 +51,7 @@
       "id": "roost_iron_talon",
       "name": "Iron Talon",
       "type": "elite",
-      "health": 54,
+      "health": 62,
       "lesson": "Elite: a High Roost enforcer that walls up before a crushing blow.",
       "description": "A massive eagle enforcer that turns high-roost scaffolds into walls before dropping a crushing blow.",
       "visualBrief": "Large eagle in reinforced urban workwear, heavy talon bands, broad utility straps, and battered metal-panel accents with high scaffold rail styling.",
@@ -60,9 +60,9 @@
       "moves": [
         {
           "id": "talon_rake_10",
-          "label": "Rake 10",
+          "label": "Rake 11",
           "effects": [
-            "damage(flock, 10)"
+            "damage(flock, 11)"
           ]
         },
         {
@@ -75,17 +75,17 @@
         },
         {
           "id": "talon_grip_8",
-          "label": "Grip 8",
+          "label": "Grip 9",
           "effects": [
-            "damage(flock, 8)",
+            "damage(flock, 9)",
             "applyWinded(flock, 1)"
           ]
         },
         {
           "id": "talon_crush_15",
-          "label": "Crushing Blow 15",
+          "label": "Crushing Blow 17",
           "effects": [
-            "damage(flock, 15)"
+            "damage(flock, 17)"
           ]
         }
       ],
@@ -112,7 +112,7 @@
       "id": "roost_perch_thug",
       "name": "Perch Thug",
       "type": "normal",
-      "health": 32,
+      "health": 45,
       "lesson": "Sustained Cover against a relentless basic attacker.",
       "description": "A rough city pigeon bruiser that owns the lower perch and keeps swinging until cover gives out.",
       "visualBrief": "Stocky pigeon in a scuffed zip hoodie, patched chest wrap, concrete-gray talon bands, and rain-grit feathers on a narrow high-roost ledge.",
@@ -121,16 +121,16 @@
       "moves": [
         {
           "id": "strike_9_a",
-          "label": "Strike 9",
+          "label": "Strike 11",
           "effects": [
-            "damage(flock, 9)"
+            "damage(flock, 11)"
           ]
         },
         {
           "id": "strike_9_b",
-          "label": "Strike 9",
+          "label": "Strike 11",
           "effects": [
-            "damage(flock, 9)"
+            "damage(flock, 11)"
           ]
         },
         {
@@ -163,7 +163,7 @@
       "id": "roost_wind_shrike",
       "name": "Wind Shrike",
       "type": "normal",
-      "health": 34,
+      "health": 48,
       "lesson": "Open Sky pressure forces Guard discipline.",
       "description": "A knife-fast shrike that rides scaffold wind corridors and torn billboard gaps to break formation discipline.",
       "visualBrief": "Lean shrike in a wind-cut cropped shell, narrow signal strap, white-black feather contrast, reflective talon wraps, and clipped route tabs over a high-roost scaffold gap with torn billboard frame lines.",
@@ -174,7 +174,7 @@
           "id": "buffet_winded",
           "label": "Buffet",
           "effects": [
-            "damage(flock, 6)",
+            "damage(flock, 8)",
             "applyWinded(flock, 1)"
           ]
         },
@@ -187,9 +187,9 @@
         },
         {
           "id": "dive_8",
-          "label": "Dive 8",
+          "label": "Dive 10",
           "effects": [
-            "damage(flock, 8)"
+            "damage(flock, 10)"
           ]
         }
       ],
@@ -215,7 +215,7 @@
       "id": "roost_tar_drifter",
       "name": "Tar Drifter",
       "type": "normal",
-      "health": 36,
+      "health": 59,
       "lesson": "Snags clog the draw under heavy follow-up.",
       "description": "A rooftop drifter in tar-stained gear, trailing tangled line and clogging the flock's rhythm before a heavy hit.",
       "visualBrief": "Ragged crow-like drifter in tar-stained streetwear layers, dangling line caught on a harness, dark rain shell, and sticky rooftop residue underfoot; the bird's feathers remain natural, not smeared with tar.",
@@ -226,16 +226,16 @@
           "id": "smear_snag",
           "label": "Smear",
           "effects": [
-            "damage(flock, 5)",
+            "damage(flock, 8)",
             "addSnagToDiscard(wet_feathers)",
             "applyFrail(1)"
           ]
         },
         {
           "id": "heavy_strike_12",
-          "label": "Heavy Strike 12",
+          "label": "Heavy Strike 19",
           "effects": [
-            "damage(flock, 12)"
+            "damage(flock, 19)"
           ]
         },
         {
@@ -268,7 +268,7 @@
       "id": "roost_relay_falcon",
       "name": "Relay Falcon",
       "type": "normal",
-      "health": 22,
+      "health": 31,
       "lesson": "Signal perch: stores 3 force on the front ally. Defeat it to prevent future charges; already stored force remains visible.",
       "description": "A relay falcon that marks the flock with a fast pass, then returns for the heavy strike it already signaled.",
       "visualBrief": "Sleek falcon in a tight relay jacket, racing straps, small beacon tabs, and reinforced talon bands above a high-roost signal gap.",
@@ -284,9 +284,9 @@
         },
         {
           "id": "heavy_strike_13",
-          "label": "Relay Strike 7",
+          "label": "Relay Strike 9",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 9)"
           ]
         },
         {
@@ -319,7 +319,7 @@
       "id": "roost_spire_sentinel",
       "name": "Spire Sentinel",
       "type": "normal",
-      "health": 24,
+      "health": 34,
       "lesson": "Shield perch: grants the front ally 8 Cover. Interrupt it to keep the Warden exposed.",
       "description": "A sentinel owl that anchors the old spire wall and punishes any flock caught without cover.",
       "visualBrief": "Broad owl in a heavy padded roost vest, quiet hood wrap, utility perch straps, and bright eyes between cracked signal panels.",
@@ -335,9 +335,9 @@
         },
         {
           "id": "spire_slam_10",
-          "label": "Spire Slam 10",
+          "label": "Spire Slam 8",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 8)"
           ]
         },
         {
@@ -370,7 +370,7 @@
       "id": "roost_kettle_harrier",
       "name": "Kettle Harrier",
       "type": "rival",
-      "health": 50,
+      "health": 73,
       "lesson": "Elite tempo: trade through winded and a snag while staying covered.",
       "description": "A rival harrier that rides warm rooftop currents, forcing tempo trades through wind, snags, and cover.",
       "visualBrief": "Lean high-roost harrier in layered rust-and-graphite windwear, pale thermal scarf, matte talon bands, clipped route cord, and compact scaffold repair pouch.",
@@ -379,9 +379,9 @@
       "moves": [
         {
           "id": "swarm_6_winded",
-          "label": "Thermal Pass 6",
+          "label": "Thermal Pass 8",
           "effects": [
-            "damage(flock, 6)",
+            "damage(flock, 8)",
             "applyWinded(flock, 1)"
           ]
         },
@@ -397,14 +397,14 @@
           "label": "Foul Line",
           "effects": [
             "addSnagToDiscard(tangled_line)",
-            "if flockOpenSky then damage(flock, 6)"
+            "if flockOpenSky then damage(flock, 8)"
           ]
         },
         {
           "id": "heavy_strike_14",
-          "label": "Heavy Strike 14",
+          "label": "Heavy Strike 18",
           "effects": [
-            "damage(flock, 14)"
+            "damage(flock, 18)"
           ]
         }
       ],
@@ -431,7 +431,7 @@
       "id": "roost_skyline_baron",
       "name": "Skyline Baron",
       "type": "rival",
-      "health": 50,
+      "health": 73,
       "lesson": "Elite Open Sky bully that bonuses into a heavy when you stay exposed.",
       "description": "A high-status raven that claims the skyline rail and grows more dangerous whenever the flock stays exposed.",
       "visualBrief": "Large raven in dark luxe roostwear, structured rain mantle, subtle chain clips, and talon bands with high skyline perch styling under hard wind.",
@@ -448,9 +448,9 @@
         },
         {
           "id": "talon_strike_11",
-          "label": "Talon Strike 11",
+          "label": "Talon Strike 14",
           "effects": [
-            "damage(flock, 11)"
+            "damage(flock, 14)"
           ]
         },
         {
@@ -462,9 +462,9 @@
         },
         {
           "id": "skyfall_9",
-          "label": "Skyfall 9",
+          "label": "Skyfall 12",
           "effects": [
-            "damage(flock, 9)",
+            "damage(flock, 12)",
             "if flockOpenSky then applyWinded(flock, 1)"
           ]
         }
@@ -492,7 +492,7 @@
       "id": "roost_warden",
       "name": "The Roost Warden",
       "type": "boss",
-      "health": 68,
+      "health": 85,
       "description": "The final guardian of the restored flyway, a huge raptor that binds routes, opens the sky, and tests the whole flock.",
       "visualBrief": "Massive eagle-owl boss in layered final-route workwear, heavy utility harness, worn roost mantle, snagged line accents, and talon bands on the citywide chokepoint tower.",
       "silhouette": "Largest enemy silhouette: broad wings, heavy head, deep talons, and a tower-filling final-boss stance.",
@@ -512,9 +512,9 @@
         },
         {
           "id": "iron_strike_12",
-          "label": "Iron Strike 12",
+          "label": "Iron Strike 14",
           "effects": [
-            "damage(flock, 12)"
+            "damage(flock, 14)"
           ]
         },
         {
@@ -528,7 +528,7 @@
           "id": "bind_the_routes",
           "label": "Bind the Routes",
           "effects": [
-            "damage(flock, 7)",
+            "damage(flock, 8)",
             "addSnagToDiscard(tangled_line)"
           ]
         },
@@ -542,17 +542,17 @@
         },
         {
           "id": "final_signal_18",
-          "label": "Final Signal 18",
+          "label": "Final Signal 22",
           "effects": [
-            "damage(flock, 18)",
-            "if flockOpenSky then damage(flock, 5)"
+            "damage(flock, 22)",
+            "if flockOpenSky then damage(flock, 6)"
           ]
         },
         {
           "id": "talon_volley_10",
-          "label": "Talon Volley 10",
+          "label": "Talon Volley 12",
           "effects": [
-            "damage(flock, 10)",
+            "damage(flock, 12)",
             "if flockCohesionBelowHalf then nextAttackBonus(3)"
           ]
         }
@@ -589,7 +589,7 @@
       "id": "vulture_cleanup_crew",
       "name": "Vulture Cleanup Crew",
       "type": "normal",
-      "health": 42,
+      "health": 59,
       "roles": [
         "support",
         "bruiser"
@@ -602,9 +602,9 @@
       "moves": [
         {
           "id": "vulture_pick_8",
-          "label": "Pick 8",
+          "label": "Pick 10",
           "effects": [
-            "damage(flock, 8)"
+            "damage(flock, 10)"
           ]
         },
         {
@@ -645,7 +645,7 @@
       "id": "woodpecker_riveter",
       "name": "Woodpecker Riveter",
       "type": "normal",
-      "health": 40,
+      "health": 56,
       "lesson": "Riveter: builds Cover and pounds harder when you cannot break it.",
       "description": "A precise signal-yard riveter that pecks loose brackets, stickered panels, and cover points until defenses give way.",
       "visualBrief": "Pileated woodpecker in a cropped utility bib, reflective work sash, tiny stickered rivet pouch, talon bands, and signal-panel repair props clipped to body near scaffold bolts and roofline junction boxes.",
@@ -661,17 +661,17 @@
         },
         {
           "id": "riveter_tap_7",
-          "label": "Tap 7",
+          "label": "Tap 9",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 9)"
           ]
         },
         {
           "id": "riveter_hammer_11",
-          "label": "Hammer 11",
+          "label": "Hammer 14",
           "effects": [
-            "damage(flock, 11)",
-            "if flockHasNoCover then damage(flock, 3)"
+            "damage(flock, 14)",
+            "if flockHasNoCover then damage(flock, 4)"
           ]
         }
       ],
@@ -697,7 +697,7 @@
       "id": "porcupine_bristleguard",
       "name": "Porcupine Bristleguard",
       "type": "elite",
-      "health": 52,
+      "health": 75,
       "lesson": "Bristleguard elite: punishes repeated pressure with guard and Winded.",
       "description": "A bristled defender that makes careless frontal pressure costly while it slowly advances.",
       "visualBrief": "Porcupine in a front-fastened utility harness, bright trim, and flexible pouch straps that leave quills and legs free on concrete.",
@@ -714,9 +714,9 @@
         },
         {
           "id": "bristle_stab_9",
-          "label": "Bristle Stab 9",
+          "label": "Bristle Stab 12",
           "effects": [
-            "damage(flock, 9)"
+            "damage(flock, 12)"
           ]
         },
         {
@@ -729,9 +729,9 @@
         },
         {
           "id": "bristle_heavy_14",
-          "label": "Heavy Bristle 14",
+          "label": "Heavy Bristle 18",
           "effects": [
-            "damage(flock, 14)"
+            "damage(flock, 18)"
           ]
         }
       ],
@@ -758,7 +758,7 @@
       "id": "fox_lookout",
       "name": "Fox Lookout",
       "type": "normal",
-      "health": 40,
+      "health": 66,
       "lesson": "Commander marker: setup turns and Cover pressure diversify High Roost streets.",
       "description": "A distant urban fox that reads the route from shadowed high ground and makes every escort smarter.",
       "visualBrief": "Red fox in a slim reflective collar, fitted shoulder cape lying along the back, and tiny route pouch near rooftop stairwell light.",
@@ -774,9 +774,9 @@
         },
         {
           "id": "fox_flank_8",
-          "label": "Flank 8",
+          "label": "Flank 12",
           "effects": [
-            "damage(flock, 8)",
+            "damage(flock, 12)",
             "if flockHasNoCover then applyFrail(1)"
           ]
         },
@@ -789,11 +789,11 @@
         }
       ],
       "attackPattern": {
-        "type": "cycle",
-        "moveIds": [
-          "fox_mark_route",
-          "fox_flank_8",
-          "fox_call_cover"
+        "type": "weighted",
+        "entries": [
+          { "moveId": "fox_mark_route", "weight": 1 },
+          { "moveId": "fox_flank_8", "weight": 2 },
+          { "moveId": "fox_call_cover", "weight": 1 }
         ]
       },
       "rewards": {
@@ -810,7 +810,7 @@
       "id": "peacock_intimidator",
       "name": "Peacock Intimidator",
       "type": "elite",
-      "health": 50,
+      "health": 73,
       "lesson": "Morale elite: display pressure turns passive turns into Frail and bigger hits.",
       "description": "A high-status rooftop venue intimidator that uses plumage, posture, and polished streetwear details to make nearby threats look bigger.",
       "visualBrief": "Peacock in a minimalist collar, polished talon cuffs, body-safe decorative clips, route-tag jewelry, and rooftop gala trim, with natural train fully visible and unaltered.",
@@ -834,27 +834,27 @@
         },
         {
           "id": "peacock_strut_9",
-          "label": "Strut Strike 9",
+          "label": "Strut Strike 12",
           "effects": [
-            "damage(flock, 9)"
+            "damage(flock, 12)"
           ]
         },
         {
           "id": "peacock_intimidate_8",
-          "label": "Intimidate 8",
+          "label": "Intimidate 10",
           "effects": [
-            "damage(flock, 8)",
+            "damage(flock, 10)",
             "if flockOpenSky then applyWinded(flock, 1)"
           ]
         }
       ],
       "attackPattern": {
-        "type": "cycle",
-        "moveIds": [
-          "peacock_display",
-          "peacock_fan_wall",
-          "peacock_strut_9",
-          "peacock_intimidate_8"
+        "type": "weighted",
+        "entries": [
+          { "moveId": "peacock_display", "weight": 1 },
+          { "moveId": "peacock_fan_wall", "weight": 1 },
+          { "moveId": "peacock_strut_9", "weight": 2 },
+          { "moveId": "peacock_intimidate_8", "weight": 1 }
         ]
       },
       "rewards": {
