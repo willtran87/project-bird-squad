@@ -37,6 +37,7 @@ import type { ScreenReaderPreference, ScreenReaderState } from './screen-reader-
 import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_TYPE, MENU_UI } from './theme';
 const { gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT, field: UI_FIELD } = MENU_UI;
 import { bindActionFocus } from './action-focus';
+import type { UiIconId } from '../art-assets';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
@@ -89,6 +90,11 @@ export interface HowToPlayOverlayOptions {
   guide: { enabled: boolean; completed: boolean };
   onGuideAction: () => void;
   onPractice?: () => void;
+  /** 'loop' (default): the six-step core loop. 'terms': the Map-1 core terms. */
+  page?: 'loop' | 'terms';
+  onPage?: (page: 'loop' | 'terms') => void;
+  /** Asked once per scene to fetch key-term icons that are not loaded yet. */
+  onMissingIcons?: (ids: UiIconId[]) => void;
 }
 
 export interface PauseOverlayOptions {
@@ -1618,12 +1624,122 @@ export function renderHowToPlayOverlay(
   addUi(addTo, scene.add.text(168, 98, 'How to Play', {
     fontFamily: TOKEN_DISPLAY_FONT, fontSize: '40px', color: UI_FIELD.text,
   }).setResolution(2));
-  addUi(addTo, scene.add.text(170, 158, 'Build a flock. Find your rhythm. Make every choice count.', {
+  const termsPage = options.page === 'terms';
+  addUi(addTo, scene.add.text(170, 158, termsPage
+    ? 'Key terms, basics first. Each themed name has a plain gloss.'
+    : 'Build a flock. Find your rhythm. Make every choice count.', {
     fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: UI_SOFT, wordWrap: { width: 940 },
   }).setResolution(2).setName('guide-download-status'));
   const close = renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
     () => { dependencies.playUiSound('close'); options.onClose(); });
+  const pageLabel = termsPage ? 'Core loop' : 'Key terms';
+  const pageToggle = options.onPage
+    ? renderQuietMenuButton(scene, addTo, frame.right - 226, 88, 180, pageLabel,
+      () => options.onPage?.(termsPage ? 'loop' : 'terms'))
+    : undefined;
+  pageToggle?.setData('page', termsPage ? 'terms' : 'loop');
 
+  if (termsPage) {
+    renderHowToPlayTerms(scene, addTo, frame);
+    const missing = HOW_TO_PLAY_TERMS.map((term) => term.icon).filter((id) => !scene.textures.exists(iconKey(id)));
+    if (missing.length && options.onMissingIcons && !termIconRequests.has(scene)) {
+      termIconRequests.add(scene);
+      options.onMissingIcons(missing);
+    }
+  } else renderHowToPlayLoop(scene, addTo, frame);
+
+  const tips: Array<[string, string]> = [
+    [
+      'Quick keys',
+      `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
+    ],
+    ['Waymarks', `Shift+${controlBindingLabel('skipReward')} or RT: read your Waymarks without spending a turn.`],
+  ];
+  renderHowToPlayTips(scene, addTo, frame, tips);
+
+  const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
+  const guide = renderQuietMenuButton(scene, addTo, options.onPractice ? 790 : frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
+  const actions = [{ hit: guide, label: guideLabel, run: options.onGuideAction }, { hit: close, label: 'Close', run: options.onClose }];
+  if (pageToggle) actions.push({ hit: pageToggle, label: pageLabel, run: () => options.onPage?.(termsPage ? 'loop' : 'terms') });
+  if (options.onPractice) {
+    const practice = renderQuietMenuButton(scene, addTo, 500, frame.bottom - 42, 230, 'Practice lessons', options.onPractice, true);
+    actions.unshift({ hit: practice, label: 'Practice lessons', run: options.onPractice });
+  }
+  bindActionFocus(scene, lifecycle, actions, options.onClose, { exclusive: true, initialIndex: options.initialFocus });
+}
+
+/** Map-1 core terms, basics to advanced. Icons appear once their art is loaded. */
+const termIconRequests = new WeakSet<Phaser.Scene>();
+const HOW_TO_PLAY_TERMS: Array<{ title: string; icon: UiIconId; body: string }> = [
+  { title: 'Cohesion (flock HP)', icon: 'flock-heart', body: 'Your health. At 0 the run ends; healing restores it.' },
+  { title: 'Wingbeats (energy)', icon: 'wingbeats', body: 'Spend them to play cards. They refill each turn.' },
+  { title: 'Cover (block)', icon: 'cover-shield', body: 'Absorbs hits before Cohesion. Clears next turn.' },
+  { title: 'Roost (end turn)', icon: 'roost-nest', body: 'Enemies act, then you draw a fresh hand.' },
+  { title: 'Flow / Surge / Scatter', icon: 'codex-momentum-medallion', body: 'Cards build Flow; full Flow is Surge. Low Cohesion: Scatter.' },
+  { title: 'Resonance', icon: 'resonance-battery', body: 'A combo charge you bank, then spend on payoffs.' },
+  { title: 'Winded (weak)', icon: 'codex-pressure-medallion', body: 'Its attacks deal 25% less while stacks last.' },
+  { title: 'Open Sky (vulnerable)', icon: 'open-sky-medallion', body: 'Exposed: incoming attacks hit harder for a while.' },
+  { title: 'Molt', icon: 'codex-molt-medallion', body: 'One turn of cheaper, alternate cards. Then Open Sky.' },
+  { title: 'Preen (upgrade)', icon: 'preen-kit', body: 'Improve a card for this run at Nests and markets.' },
+  { title: 'Waymarks (relics)', icon: 'waymark-compass', body: 'Lasting run modifiers that trigger on their own.' },
+  { title: 'Supplies (consumables)', icon: 'supply-pouch', body: 'Single-use tools for a fight or the route.' },
+];
+
+function renderHowToPlayTerms(scene: Phaser.Scene, addTo: UiAdd, frame: FieldFrame) {
+  HOW_TO_PLAY_TERMS.forEach((term, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const left = frame.left + 102 + column * 340;
+    const top = frame.top + 172 + row * 86;
+    const key = iconKey(term.icon);
+    let textLeft = left;
+    if (scene.textures.exists(key)) {
+      setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
+      addUi(addTo, scene.add.image(left + 14, top + 13, key).setDisplaySize(28, 28)
+        .setName('how-to-play-term-icon').setData('icon', term.icon));
+      textLeft = left + 38;
+    }
+    addUi(addTo, scene.add.text(textLeft, top, term.title, {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+      fixedWidth: 296 - (textLeft - left),
+      maxLines: 1,
+    }).setResolution(2).setName('how-to-play-term-title').setData('order', index + 1));
+    addUi(addTo, scene.add.text(left, top + 30, term.body, {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      color: '#c5d1d8',
+      lineSpacing: 1,
+      wordWrap: { width: 296 },
+    }).setResolution(2).setName('how-to-play-term-body'));
+  });
+}
+
+function renderHowToPlayTips(scene: Phaser.Scene, addTo: UiAdd, frame: FieldFrame, tips: Array<[string, string]>) {
+  tips.forEach(([label, value], index) => {
+    const y = frame.bottom - 124 + index * 30;
+    const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
+    addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      fontStyle: UI_BOLD,
+      color: textAccent,
+      fixedWidth: 118,
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
+    addUi(addTo, scene.add.text(frame.cx - 314, y, value, {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      color: UI_FIELD.text,
+      fixedWidth: 804,
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
+  });
+}
+
+function renderHowToPlayLoop(scene: Phaser.Scene, addTo: UiAdd, frame: FieldFrame) {
   const cards = [
     {
       title: '1 / Plan the Route',
@@ -1635,7 +1751,7 @@ export function renderHowToPlayOverlay(
       title: '2 / Read, Play, Roost',
       icon: 'release-card',
       accent: UI_FIELD.danger,
-      body: 'Read enemy intent. Spend Wingbeats on cards; Cover protects Cohesion. Roost ends your turn.',
+      body: 'Read enemy intent. Spend Wingbeats (energy) on cards; Cover (block) protects Cohesion (flock HP). Roost ends your turn.',
     },
     {
       title: '3 / Add or Skip',
@@ -1647,7 +1763,7 @@ export function renderHowToPlayOverlay(
       title: '4 / Preen a Card',
       icon: 'preen-kit',
       accent: UI_FIELD.brass,
-      body: 'Compare the exact upgrade before choosing. Preen improves a card for this flight without adding a copy.',
+      body: 'Preen (upgrade): compare the exact change before choosing. It improves a card for this flight without adding a copy.',
     },
     {
       title: '5 / Shape Your Deck',
@@ -1682,41 +1798,4 @@ export function renderHowToPlayOverlay(
       wordWrap: { width: 296 },
     }).setResolution(2).setName('how-to-play-readable'));
   });
-
-  const tips: Array<[string, string]> = [
-    [
-      'Quick keys',
-      `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
-    ],
-    ['Waymarks', `Shift+${controlBindingLabel('skipReward')} or RT: read artifacts without spending a turn.`],
-  ];
-  tips.forEach(([label, value], index) => {
-    const y = frame.bottom - 124 + index * 30;
-    const accent = index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass;
-    const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
-    addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: UI_TYPE.secondary,
-      fontStyle: UI_BOLD,
-      color: textAccent,
-      fixedWidth: 118,
-      maxLines: 1,
-    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
-    addUi(addTo, scene.add.text(frame.cx - 314, y, value, {
-      fontFamily: UI_FONT,
-      fontSize: UI_TYPE.secondary,
-      color: UI_FIELD.text,
-      fixedWidth: 804,
-      maxLines: 1,
-    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
-  });
-
-  const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
-  const guide = renderQuietMenuButton(scene, addTo, options.onPractice ? 790 : frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
-  const actions = [{ hit: guide, label: guideLabel, run: options.onGuideAction }, { hit: close, label: 'Close', run: options.onClose }];
-  if (options.onPractice) {
-    const practice = renderQuietMenuButton(scene, addTo, 500, frame.bottom - 42, 230, 'Practice lessons', options.onPractice, true);
-    actions.unshift({ hit: practice, label: 'Practice lessons', run: options.onPractice });
-  }
-  bindActionFocus(scene, lifecycle, actions, options.onClose, { exclusive: true, initialIndex: options.initialFocus });
 }

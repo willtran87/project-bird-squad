@@ -15581,7 +15581,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   ]);
   expect(helpFooter.values.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
     { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 19 },
-    { text: 'Shift+X or RT: read artifacts without spending a turn.', fontSize: 19 },
+    { text: 'Shift+X or RT: read your Waymarks without spending a turn.', fontSize: 19 },
   ]);
   expect(helpFooter.rows).toEqual([]);
   expect(helpFooter.values[1].bounds.top - helpFooter.values[0].bounds.bottom).toBeGreaterThanOrEqual(8);
