@@ -45,6 +45,7 @@ const bundle = buildSync({
       "export { playCombination } from './src/game/flyway-rules';",
       "export * as balanceModule from './src/game/balance';",
       "export { flockHandTarget } from './src/game/hand-size';",
+      "export { selectPatternMoveId } from './src/game/enemy-pattern';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',
@@ -176,31 +177,15 @@ function buildDeck(leader, mapIndex, boss, rng) {
   return deck;
 }
 
-// --- Enemy helpers (mirror main.ts currentMove / evaluateEnemyCondition) -------
+// --- Enemy helpers (mirror enemy-moves.ts currentMove / evaluateEnemyCondition) --
 function currentMove(enemy, ctx) {
   const { moves, attackPattern } = enemy.runtime;
   const byId = (id) => moves.find((move) => move.id === id) ?? moves[0];
   const i = enemy.intentIndex;
   const phaseIds = enemy.phase === 2 ? enemy.runtime.phaseTwoMoveIds : undefined;
   if (phaseIds?.length) return byId(phaseIds[i % phaseIds.length]);
-  switch (attackPattern.type) {
-    case 'cycle': return byId(attackPattern.moveIds[i % attackPattern.moveIds.length]);
-    case 'scripted': {
-      const ids = attackPattern.moveIds;
-      if (i < ids.length) return byId(ids[i]);
-      const loopFrom = attackPattern.loopFrom ?? 0;
-      return byId(ids[loopFrom + ((i - ids.length) % Math.max(1, ids.length - loopFrom))]);
-    }
-    case 'weighted': {
-      const expanded = attackPattern.entries.flatMap((entry) => Array(Math.max(1, entry.weight ?? 1)).fill(entry.moveId));
-      return byId(expanded[i % expanded.length]);
-    }
-    case 'conditional': {
-      const hit = attackPattern.entries.find((entry) => ctx && enemyCondition(entry.if, enemy, ctx));
-      return byId(hit ? hit.moveId : attackPattern.fallback);
-    }
-    default: return moves[i % moves.length];
-  }
+  const id = rt.selectPatternMoveId(attackPattern, i, (condition) => Boolean(ctx && enemyCondition(condition, enemy, ctx)));
+  return id ? byId(id) : moves[i % moves.length];
 }
 
 function enemyCondition(condition, enemy, ctx) {
