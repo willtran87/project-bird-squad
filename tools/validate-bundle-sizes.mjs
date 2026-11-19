@@ -76,7 +76,12 @@ const budgets = [
 const combinedBootBudget = {
   label: 'combined app boot code',
   patterns: [/^index-.*\.js$/, /^game-core-.*\.js$/, /^interaction-rules-.*\.js$/],
-  maxKb: 700,
+  // Raised from 700 KB: versioned save migration (~1.8 KB) and the enemy
+  // pattern engine are boot-critical (the title menu reads the checkpoint).
+  // The 700 KB target still warns. The real headroom fix is lazy-loading
+  // BattleScene (~246 KB of the index chunk); that needs the Playwright
+  // harness to stop calling scene.start('BattleScene') synchronously first.
+  maxKb: 708,
   targetKb: 700,
 };
 
