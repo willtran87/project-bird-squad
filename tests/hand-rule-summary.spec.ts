@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readableHandRules, fitHandRules, wrapHandRules } from '../src/game/battle/hand-rule-summary';
+import { readableHandRules, fitHandRules, wrapHandRules, compactHandRules, fitDeferredHandRules } from '../src/game/battle/hand-rule-summary';
 
 test('hand rules preserve ordered live conditions and explicit targets/spending', () => {
   const source = ['Deal 3.', 'If Resonance: Spend 1 Resonance.', 'If spent Resonance: Deal 2, ignoring Cover.',
@@ -51,4 +51,20 @@ test('hand conditions keep the engine threshold and time scope explicit', () => 
   }
   expect(readableHandRules(['If Molting: Gain 2 Cover.']))
     .toBe('While in Molt: Gain 2 Cover.');
+});
+
+test('compact face dialect keeps every clause and only groups stable conditions', () => {
+  const readable = readableHandRules(['Gain 6 Cover.', 'Retain 1 card.', 'If fully blocks next attack: Draw 1 next turn.']);
+  expect(compactHandRules(readable).split('\n')).toEqual(['Gain 6 Cover.', 'Retain 1 card.', 'Draw 1 next turn if next hit fully blocked.']);
+  // A run under an unchanging condition shares one heading.
+  expect(compactHandRules(readableHandRules(['If target attacks: Draw 1.', 'If target attacks: Apply 2 Winded.'])))
+    .toBe('If target attacks: Draw 1; apply 2 Winded.');
+  // A clause that can change its own predicate never merges with the next.
+  expect(compactHandRules(readableHandRules(['If Resonance: Spend 1 Resonance.', 'If Resonance: Deal 2.'])).split('\n'))
+    .toEqual(['Spend 1 Resonance if Resonance.', 'Deal 2 damage if Resonance.']);
+  // Only later-resolving clauses may ever yield to Inspect.
+  const source = 'Gain 6 Cover.\nRetain 1 card.\nDraw 1 next turn if next hit fully blocked.';
+  expect(fitDeferredHandRules(source, t => t.split('\n').length <= 3))
+    .toEqual({ text: 'Gain 6 Cover.\nRetain 1 card.\n+1 later · Inspect', omitted: 1 });
+  expect(fitDeferredHandRules('Deal 3 damage.\nGain 2 Cover.\nDraw 1.', () => false)).toBeUndefined();
 });

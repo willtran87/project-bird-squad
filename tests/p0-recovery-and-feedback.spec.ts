@@ -59,7 +59,9 @@ test('remaining item details use complete fixed-size pages and preserve their de
   test.setTimeout(90000);
   await page.goto('./');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter'); // Start Run opens the leader choice
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
+  await page.keyboard.press('Enter'); // fly with the selected Leader
   await page.waitForFunction(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return r.scene.isActive() && r.routeEssentialAssetsReady && r.cardHoverDetailModule;

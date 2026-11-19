@@ -77,8 +77,12 @@ test('complete card pool preserves measured rules and bounded frames in every st
               intactArt: Boolean(art)&&!art.isCropped&&!art.mask&&Math.abs(art.scaleX-art.scaleY)<0.001&&contains(rect.getBounds(),art.getBounds()),
               // The portrait is the card face: the name banner and rules panel
               // must leave an unobstructed window of at least 90px onto it.
+              // Dense cards raise the rules panel so every effect stays on the
+              // face (54px floor); only the overflow tier may go lower.
+              noOmission: !rules.getData('truncated') && !/Inspect/.test(rules.text),
               visibleArt: Boolean(art) && art.displayHeight >= rect.height - 16
-                && named('combat-card-rules-panel')[i].getBounds().top - named('combat-card-title-panel')[i].getBounds().bottom >= 90
+                && named('combat-card-rules-panel')[i].getBounds().top - named('combat-card-title-panel')[i].getBounds().bottom
+                  >= (/^(full|compact)/.test(rules.getData('faceTier')) ? 90 : rules.getData('faceTier') === 'overflow' ? 30 : 54)
                 && named('combat-card-title-panel')[i].getBounds().bottom >= art.getBounds().top
                 && named('combat-card-rules-panel')[i].getBounds().top <= art.getBounds().bottom,
             };

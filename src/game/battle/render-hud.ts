@@ -111,6 +111,9 @@ export interface BattleSelectionPreviewContext {
   boldFontStyle: string;
   cyan: number;
   gold: number;
+  /** Plays the selected card, exactly as a second card click or Enter would. */
+  onConfirm?: () => void;
+  confirmKeyLabel?: string;
 }
 
 interface SelectionOutcome {
@@ -474,14 +477,33 @@ export function renderBattleSelectionPreview(
   // ordinary/paged hands. The left gutter belongs to paging and inspection.
   const commandX = preview.fields ? 1050 : gameWidth / 2 + 190;
   const commandY = preview.fields ? 400 : titleY;
-  container.add(scene.add.rectangle(commandX, commandY, 188, 24, 0x102534, 0.98)
+  const commandFrame = scene.add.rectangle(commandX, commandY, 188, 24, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
-    .setName('combat-selection-command-frame'));
-  container.add(scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
+    .setName('combat-selection-command-frame');
+  container.add(commandFrame);
+  const commandLabel = scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
     ...textStyle,
     fontStyle: boldFontStyle,
     color: '#dffbff',
-  }).setOrigin(0.5).setName('combat-selection-command'));
+  }).setOrigin(0.5).setName('combat-selection-command');
+  container.add(commandLabel);
+  const confirm = context.onConfirm;
+  if (confirm) {
+    // A real control: a 44px hit area without growing the drawn frame into
+    // the enemy and Roost lanes around it.
+    const pad = (MIN_SUPPORTED_TOUCH_TARGET - 24) / 2;
+    const paint = (on: boolean) => commandFrame.setFillStyle(on ? 0x1b4a5e : 0x102534, 0.98)
+      .setStrokeStyle(on ? 2 : 1, on ? 0xffe7a8 : context.gold, on ? 1 : 0.72);
+    commandFrame.setInteractive(new Phaser.Geom.Rectangle(-6, -pad, 200, 24 + pad * 2), Phaser.Geom.Rectangle.Contains)
+      .setData({ controlKind: 'primary', enabled: true, labelObject: commandLabel,
+        accessibleLabel: `Confirm to play ${preview.card} (${context.confirmKeyLabel ?? 'Enter'})` })
+      .on('pointerover', () => paint(true)).on('pointerout', () => paint(false))
+      .on('pointerdown', (_p: unknown, _x: number, _y: number, event?: Phaser.Types.Input.EventData) => {
+        event?.stopPropagation();
+        confirm();
+      });
+    if (commandFrame.input) commandFrame.input.cursor = 'pointer';
+  }
   if (preview.fields) {
     const { cost, impact, protection, notice, critical } = preview.fields;
     for (const [index, value] of [cost, impact, protection].entries()) {

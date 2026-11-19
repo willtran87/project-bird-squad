@@ -9,7 +9,7 @@ const kb = 1024;
 
 const budgets = [
   { label: 'district arrival framing lazy module', pattern: /^district-framing-.*\.js$/, maxKb: 2, hard: true },
-  { label: 'hand rule formatting shared lazy module', pattern: /^hand-rule-summary-.*\.js$/, maxKb: 3, hard: true },
+  { label: 'hand rule formatting shared lazy module', pattern: /^hand-rule-summary-.*\.js$/, maxKb: 5.5, hard: true }, // +compact face dialect: every effect stays on hand and reward faces
   { label: 'strategy showcase lazy module', pattern: /^strategy-showcase-.*\.js$/, maxKb: 4, hard: true },
   { label: 'flight workshop lazy module', pattern: /^flight-workshop-.*\.js$/, maxKb: 6, hard: true },
   { label: 'build guidance shared lazy module', pattern: /^build-guidance-.*\.js$/, maxKb: 5, hard: true },
@@ -40,13 +40,13 @@ const budgets = [
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
   { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 8, hard: true },
   // Separate cost/outcome/protection fields and critical warnings; remains lazy.
-  { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 12, hard: true },
+  { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 12.5, hard: true }, // +CONFIRM TO PLAY is a real control
   // Full-portrait card faces, state halos and hover lift live here.
   { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 12, hard: true },
   // Living-stage lighting, weather, bloom and motion; never part of boot.
   { label: 'spectacle stage lazy module', pattern: /^spectacle-.*\.js$/, maxKb: 24, hard: true },
   { label: 'combat card reading panel', pattern: /^combat-card-detail-.*\.js$/, maxKb: 4, hard: true },
-  { label: 'shared reward card face', pattern: /^reward-card-face-.*\.js$/, maxKb: 4, hard: true },
+  { label: 'shared reward card face', pattern: /^reward-card-face-.*\.js$/, maxKb: 5, hard: true }, // +full rules and larger portrait on reward faces
   { label: 'discard choice lazy module', pattern: /^discard-choice-.*\.js$/, maxKb: 6, hard: true },
   { label: 'discard return choice lazy module', pattern: /^return-choice-.*\.js$/, maxKb: 6, hard: true },
   { label: 'battle inspect renderer lazy module', pattern: /^render-inspect-.*\.js$/, maxKb: 12, hard: true },
@@ -123,7 +123,8 @@ const combinedBootChunks = chunks.filter((chunk) => combinedBootBudget.patterns.
 const rewardPresentation = chunks.filter(chunk => /^(render-hand|render-reward|reward-card-face|hand-rule-summary)-.*\.js$/.test(chunk.name));
 const rewardPresentationKb = rewardPresentation.reduce((sum, chunk) => sum + chunk.kb, 0);
 console.log(`Combined hand/reward presentation: ${rewardPresentationKb.toFixed(1)} KB minified`);
-if (rewardPresentation.length !== 4 || rewardPresentationKb > 26) failures.push('Combined hand/reward presentation exceeds its 26 KB allowance or is incomplete.');
+// 28 KiB since full rules moved onto hand and reward faces (no "+N more").
+if (rewardPresentation.length !== 4 || rewardPresentationKb > 28) failures.push('Combined hand/reward presentation exceeds its 28 KB allowance or is incomplete.');
 // Vite may emit a tiny index launcher plus the explicitly owned app chunk.
 // Require every boot family and count every matching byte against the same cap.
 if (combinedBootBudget.patterns.some(pattern => !combinedBootChunks.some(chunk => pattern.test(chunk.name)))) {

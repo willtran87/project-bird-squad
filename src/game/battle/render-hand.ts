@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
 import { renderRewardHoverPreview } from '../reward-card-inspection';
-import { readableHandRules, actionFirstHandRules, fitHandRules, wrapHandRules } from './hand-rule-summary';
+import { readableHandRules, actionFirstHandRules, compactHandRules, fitDeferredHandRules, wrapHandRules } from './hand-rule-summary';
 import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_DISPLAY_FONT, UI_TYPE } from '../theme';
 import { itemKeywordSections } from '../keyword-definitions';
 import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
@@ -162,6 +162,54 @@ function fitCardText(label: Phaser.GameObjects.Text, source: string, maxLines: n
   // Measure actual wrapped lines, not character counts. Always signal omission;
   // the unchanged hover/selection dossier exposes the complete authored rules.
   fitTextExcerpt(label, source, maxLines);
+}
+
+/** Rules face tiers, largest first. The face shows every effect: tighter
+ * phrasing before a smaller type size, and never below the compact floor. */
+export const HAND_RULE_FONT_TIERS = [21, 19, 18, 17, 16, 15] as const;
+/** Sizes at or above the compact-viewport type floor (14 CSS px at 1000 wide). */
+const HAND_RULE_READABLE_FLOOR = 18;
+export const HAND_RULE_PANEL_HEIGHT = 110;
+/** Art window kept between the title banner and a raised rules panel. Dense
+ * cards may trade art for rules down to the compact window, never further. */
+export const HAND_ART_WINDOW = 90;
+export const HAND_COMPACT_ART_WINDOW = 54;
+const HAND_RULE_TOP_PAD = 5;
+
+/** Choose phrasing, type size and panel height so the face shows every
+ * effect: full wording, then the compact dialect at shrinking sizes, then
+ * taller panels. Only later-resolving clauses may ever yield to "Inspect". */
+export function fitHandFaceRules(label: Phaser.GameObjects.Text, readable: string, panelHeights: number[]) {
+  const full = actionFirstHandRules(readable);
+  const compact = compactHandRules(readable);
+  const fitsAt = (size: number, panel: number, tidy = false) => (text: string) => {
+    label.setFontSize(size).setText(text);
+    // At roomy sizes, also refuse a stranded one-word line ("Gain" / "1 Resonance.").
+    const stranded = tidy && label.getWrappedText().some(line => /^\S+$/.test(line.trim()));
+    return !stranded && label.height <= panel - HAND_RULE_TOP_PAD - 2;
+  };
+  const heights = [...new Set(panelHeights)].sort((a, z) => a - z);
+  const candidates: Array<[number, number, string, string]> = [[21, heights[0], full, 'full']];
+  // Raise the panel (trading art) before dropping below the readable floor;
+  // only then shrink the type, still raising the panel as needed.
+  const tier = (step: number, size: number) => `${['compact', 'tall', 'dense'][step]}-${size}`;
+  heights.forEach((panel, step) => {
+    for (const size of HAND_RULE_FONT_TIERS) if (size >= HAND_RULE_READABLE_FLOOR && (step === 0 || size < 21))
+      candidates.push([size, panel, compact, tier(step, size)]);
+  });
+  for (const size of HAND_RULE_FONT_TIERS) if (size < HAND_RULE_READABLE_FLOOR)
+    heights.forEach((panel, step) => candidates.push([size, panel, compact, tier(step, size)]));
+  for (const tidy of [true, false]) for (const [size, panel, text, tier] of candidates) {
+    if (tidy && size < HAND_RULE_READABLE_FLOOR) continue;
+    if (fitsAt(size, panel, tidy)(text)) return { text, fontSize: size, panelHeight: panel, omitted: 0, tier };
+  }
+  const floor = HAND_RULE_FONT_TIERS[HAND_RULE_FONT_TIERS.length - 1];
+  const tallest = heights[heights.length - 1];
+  const deferred = fitDeferredHandRules(compact, fitsAt(floor, tallest));
+  if (deferred) return { ...deferred, fontSize: floor, panelHeight: tallest, tier: 'deferred-omitted' };
+  // Nothing may hide: grow the panel to the text rather than clip a rule.
+  label.setFontSize(floor).setText(compact);
+  return { text: compact, fontSize: floor, panelHeight: Math.ceil(label.height) + HAND_RULE_TOP_PAD + 2, omitted: 0, tier: 'overflow' };
 }
 
 function addCardArt(
@@ -330,9 +378,27 @@ function renderCard(
     .setName('combat-card-title-rule'));
   title.setY(top + CARD_ART_INSET + bannerHeight / 2 - title.height / 2);
   target.add(title);
+  // Every effect stays on the face. Measure the rules first: a long card may
+  // raise its rules panel, but never into the 90px art window under the title.
+  const summary = scene.add.text(left + 7, 0, '', {
+    fontFamily,
+    fontSize: '21px', resolution: 2, lineSpacing: 1,
+    color: card.canPay ? '#e5edf0' : '#a8b6bf',
+    align: 'left',
+    wordWrap: { width: cardWidth - 14, callback: (text: string, label: Phaser.GameObjects.Text) =>
+      wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 14) },
+  }).setName('combat-card-readable-summary');
+  const readable = readableHandRules(card.summary.split('\n'));
+  const panelFor = (window: number) => Math.max(HAND_RULE_PANEL_HEIGHT, cardHeight - CARD_ART_INSET * 2 - bannerHeight - window);
+  const excerpt = fitHandFaceRules(summary, readable,
+    [HAND_RULE_PANEL_HEIGHT, panelFor(HAND_ART_WINDOW), panelFor(HAND_COMPACT_ART_WINDOW)]);
+  const panelHeight = excerpt.panelHeight;
+  const panelTop = bottom - panelHeight - CARD_ART_INSET;
   // Two reserved rows between title and rules: identity/choice, then Flow.
-  // Their geometry never depends on which other badges happen to be active.
-  const badgeY = top + 111;
+  // Their geometry never depends on which other badges happen to be active;
+  // a raised rules panel lifts both rows together.
+  const flowY = Math.min(top + 140, panelTop - 16);
+  const badgeY = Math.min(top + 111, flowY - 29);
   if (card.usesMolt || card.guideMolt) {
     const badgeName = card.usesMolt ? 'combat-card-molt-badge' : 'combat-molt-guide-tag';
     target.add(scene.add.rectangle(left + 62, badgeY, 60, 28, 0x2a1208, 0.96)
@@ -395,7 +461,6 @@ function renderCard(
     color: card.cost === 0 ? '#8df4ff' : card.canPay ? '#ffd76a' : '#b9a36a', resolution: 2,
   }).setOrigin(0.5).setName('combat-card-cost'));
 
-  const panelHeight = 110;
   target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, panelHeight, 0x081624, 0.95)
     .setName('combat-card-rules-panel'));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
@@ -405,30 +470,19 @@ function renderCard(
     target.add(scene.add.rectangle(centerX, handY, cardWidth - CARD_ART_INSET * 2 - 2, cardHeight - CARD_ART_INSET * 2 - 2)
       .setRounded(CARD_RADIUS - 3).setStrokeStyle(2, 0xf0c36f, card.canPay ? 0.9 : 0.45).setName('combat-card-preen-gilt'));
   }
-  {
-    const summary = scene.add.text(left + 10, bottom - panelHeight + 2, '', {
-      fontFamily,
-      fontSize: '21px', resolution: 2, lineSpacing: 1,
-      color: card.canPay ? '#e5edf0' : '#a8b6bf',
-      align: 'left',
-      maxLines: 4,
-      wordWrap: { width: cardWidth - 20, callback: (text: string, label: Phaser.GameObjects.Text) =>
-        wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 20) },
-    }).setName('combat-card-readable-summary');
-    const readable = readableHandRules(card.summary.split('\n'));
-    const excerpt = fitHandRules(actionFirstHandRules(readable), text => summary.getWrappedText(text).length <= 4);
-    summary.setText(excerpt.text).setData('truncated', excerpt.omitted > 0)
-      .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable);
-    summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
-      .setData('quickRead', card.summary);
-    target.add(summary);
-  }
+  summary.setFontSize(excerpt.fontSize).setText(excerpt.text).setY(panelTop + HAND_RULE_TOP_PAD)
+    .setData('truncated', excerpt.omitted > 0)
+    .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable)
+    .setData('faceTier', excerpt.tier).setData('panelHeight', panelHeight);
+  summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
+    .setData('quickRead', card.summary);
+  target.add(summary);
 
   if (card.buildsFlow) {
     const container = scene.add.container(0, 0);
-    const background = scene.add.rectangle(centerX, top + 140, cardWidth - 16, 26, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
+    const background = scene.add.rectangle(centerX, flowY, cardWidth - 16, 26, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
       .setStrokeStyle(1, card.surgeNext ? 0xd8a840 : 0x24d0d6, 0.82);
-    const label = scene.add.text(centerX, top + 140, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
+    const label = scene.add.text(centerX, flowY, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
       fontFamily,
       fontSize: UI_TYPE.secondary,
       resolution: UI_TYPE.resolution,

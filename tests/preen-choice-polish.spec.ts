@@ -51,7 +51,7 @@ for (const remapped of [false, true]) test(`Preen choices expose readable change
     geometry.changes.forEach((o: any) => { expect(o.font).toBe('19px'); expect(o.top).toBeGreaterThan(615); expect(o.bottom).toBeLessThan(702); expect(o.width).toBeLessThanOrEqual(240); expect(o.full).toBeTruthy(); });
     expect(geometry.take).toHaveLength(3);
     geometry.read.forEach((r: any, i: number) => { expect(r.height).toBe(58); expect(r.right).toBeLessThan(geometry.take[i].left); expect(geometry.take[i].height).toBe(58); });
-    geometry.effects.forEach((o: any) => expect(o).toEqual({ font: '21px', lines: expect.any(Number), resolution: 2 }));
+    geometry.effects.forEach((o: any) => expect(o).toEqual({ font: expect.stringMatching(/^(1[5-9]|2[01])px$/), lines: expect.any(Number), resolution: 2 }));
   }
   await click('reward-card-take-hit'); const armed = await stable();
   const labels = () => page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.list.filter((o: any) => o.name === 'reward-card-take-label').map((o: any) => o.text));
@@ -139,10 +139,10 @@ test('normal reward catalog keeps long rules bounded and previews every kind of 
       render(view, mode === 'cardReward' ? 'card' : 'upgrade');
       const effect = b.root.getByName('reward-card-effect'), panel = b.root.getByName('reward-card-effect-panel').getBounds();
       const bounds = effect.getBounds();
-      if (effect.getData('fullText') !== view.quickRead.primary || bounds.right > panel.right || bounds.bottom > panel.bottom
-        || effect.style.fontSize !== '21px' || parseFloat(effect.style.fontSize) * b.game.canvas.getBoundingClientRect().height / 720 < 16
-        || effect.getWrappedText().length > 2
-        || effect.text !== view.quickRead.primary) failures.push(`${card.id}/${mode}/${upgraded}/rules`);
+      // The face carries every rule (no excerpt), inside its panel.
+      if (effect.getData('fullText') !== view.summary || bounds.right > panel.right || bounds.bottom > panel.bottom
+        || parseFloat(effect.style.fontSize) < 15 || /\.\.\.$|…$|Inspect/.test(effect.text)
+        || bounds.bottom > 545) failures.push(`${card.id}/${mode}/${upgraded}/rules`);
       const ring = b.root.getByName('reward-input-focus-ring').getBounds();
       const read = b.root.getByName('reward-card-inspect-hit').getBounds(), take = b.root.getByName('reward-card-take-hit').getBounds();
       if (ring.bottom >= read.top || read.right >= take.left || read.height !== 58 || take.height !== 58) failures.push(`${card.id}/controls`);

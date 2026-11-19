@@ -12,6 +12,10 @@ import {
   motionState,
   playUiSound,
 } from '../main';
+import { loadAccount } from './meta';
+import { getLeader } from './leaders';
+import { controlBindingLabel } from './input-bindings';
+import { announceScreenReader } from './screen-reader-accessibility';
 
 const TITLE_RUN_LAUNCH_DELAY_MS = 180;
 
@@ -23,6 +27,7 @@ export function startRunAnimated(
   y = 642,
   w = 286,
 ) {
+  if (!resume && presentLeaderChoice(scene)) return;
   const saved = resume ? loadActiveRun() : undefined;
   if (resume && !saved) {
     startRunAnimated(scene, false, confirmAlreadyPlayed, x, y, w);
@@ -43,6 +48,26 @@ export function startRunAnimated(
     scene.storageRecoveryNotice = undefined;
     scene.enterRoute(runState);
   });
+}
+
+/** New players must meet Leaders before flying, and anyone with more than one
+ * unlocked should pick deliberately. A new run first opens the leader choice
+ * (once per title visit) with Start Run focused, so a second Enter or click
+ * flies with the selected Leader. */
+function presentLeaderChoice(scene: any) {
+  const account = scene.menuAccount ?? loadAccount();
+  // A shared-route link ("Fly Shared Route") is already a configured flight.
+  if (SHARED_ROUTE_SEED || scene.setupOpen || scene.leaderChoicePresented
+    || (account.runs > 0 && account.unlockedLeaders.length < 2)) return false;
+  scene.titleRunLaunchPending = false;
+  scene.leaderChoicePresented = true;
+  scene.setSetupOpen(true);
+  // With a saved run, the new-run command is the secondary one.
+  scene.menuFocus = scene.menuHasSavedRun ? 'secondaryRun' : 'primaryRun';
+  scene.updateMenuFocusRing();
+  scene.updateMenuTextState();
+  announceScreenReader(`Choose your leader. ${getLeader(scene.selectedLeaderId).name} is selected. ${controlBindingLabel('confirm')} or Start Run flies.`);
+  return true;
 }
 
 function titleRunLaunchFx(scene: any, x: number, y: number, w: number) {

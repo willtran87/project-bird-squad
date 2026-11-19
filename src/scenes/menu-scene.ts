@@ -48,6 +48,7 @@ const loadMenuOptionalUiModule = lazyModule(() => import('../game/menu-optional-
 
 export class MenuScene extends Phaser.Scene {
   private setupOpen = false;
+  leaderChoicePresented = false;
   private setupObjects: Phaser.GameObjects.GameObject[] = [];
   private selectedLeaderId = defaultLeaderId;
   private inspectedLeaderId = defaultLeaderId;
@@ -108,6 +109,7 @@ export class MenuScene extends Phaser.Scene {
     this.secondaryRunAction = undefined;
     this.titleRunLaunchPending = false;
     this.titleRunLaunchFlourishBursts = 0;
+    this.leaderChoicePresented = false;
     this.codexOpening = false;
     if (!data.reopenSettings && !data.reopenHelp && !data.reopenLeaderTooltip) {
       this.setupOpen = false;

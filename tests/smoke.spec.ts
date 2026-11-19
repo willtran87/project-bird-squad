@@ -20338,6 +20338,8 @@ test('title start run renders generated launch flourish before route transition'
     // known animation beat instead of racing a wall-clock sleep against loading.
     menu.time.paused = true;
     menu.tweens.paused = true;
+    // The leader choice was already presented; this samples the launch itself.
+    menu.leaderChoicePresented = true;
     menu.startRunAnimated(false, 780, 642, 286);
     for (let i = 0; i < 40 && menu.titleRunLaunchFlourishBursts === 0; i += 1) await wait(50);
     menu.time.paused = false;

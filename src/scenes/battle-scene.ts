@@ -4548,6 +4548,11 @@ private playBattleIntro(onComplete?: () => void) {
         boldFontStyle: UI_BOLD,
         cyan: UI_FIELD.cyan,
         gold: UI_FIELD.gold,
+        confirmKeyLabel: controlBindingLabel('confirm'),
+        onConfirm: () => {
+          const selected = this.getSelectedCard();
+          if (selected) this.onCardClicked(selected.instanceId);
+        },
       }, view);
       return;
     }

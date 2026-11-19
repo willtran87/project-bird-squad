@@ -27,7 +27,9 @@ for (const [index, id] of ['cover', 'flow', 'molt'].entries()) {
     await page.setViewportSize({ width: 2560, height: 1600 });
     await page.goto('./');
     await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
-    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter'); // Start Run opens the leader choice
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
+  await page.keyboard.press('Enter'); // fly with the selected Leader
     await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').routeAssetsReady);
     await page.reload();
     await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
@@ -173,6 +175,8 @@ test('failed lesson download exposes recovery without trapping the menu', async 
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect.poll(async () => (await state(page)).helpFocus).toBeUndefined();
+  await page.keyboard.press('Enter'); // Start Run opens the leader choice
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.isActive('RouteScene'));
 });
