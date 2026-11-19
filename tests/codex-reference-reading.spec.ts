@@ -82,7 +82,7 @@ test('enemy and glossary grids keep deep focus, loaded art and detail return acr
       c.activeSection = section; c.activeEnemyTab = 0; c.focusZone = 'entries';
       c.entryFocusIndex = 0; c.gridScroll = c.gridScrollTarget = 0; c.renderAll();
     }, section);
-    for (const index of section === 'enemies' ? [0, 40, 80] : [0, 17, 33]) {
+    for (const index of section === 'enemies' ? [0, 40, 80] : [0, 16, 32]) {
       await page.evaluate(index => {
         const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
         c.entryFocusIndex = index; c.ensureFocusedEntryVisible(); c.gridScroll = c.gridScrollTarget; c.renderAll();
