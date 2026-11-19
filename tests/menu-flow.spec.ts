@@ -86,23 +86,25 @@ test('quiet menu preserves setup, utilities, and a one-press start', async ({pag
 test('highest Ascension keeps cumulative modifiers readable at the minimum viewport', async ({page}, info) => {
   await page.setViewportSize({width:1000,height:560});
   const result = await page.evaluate(() => {
-    localStorage.setItem('birdsquad.maxTier','6');
+    localStorage.setItem('birdsquad.maxTier','10');
     const m=(window as any).__birdSquadGame.scene.getScene('MenuScene');
     m.setSetupOpen(true);
-    m.stepDifficulty(6);
+    m.stepDifficulty(10);
     const label=m.difficultyLabelText.getBounds(), description=m.difficultyDescText.getBounds();
     return {label:m.difficultyLabelText.text,description:m.difficultyDescText.text,
       labelLeft:label.left,labelRight:label.right,descBottom:description.bottom,descLeft:description.left,descRight:description.right};
   });
-  expect(result.label).toBe('Tier 6');
-  expect(result.description).toContain('HP x1.30');
+  expect(result.label).toBe('Tier 10');
+  expect(result.description).toContain('HP x1.45');
   expect(result.description).toContain('Tells reroute');
+  expect(result.description).toContain('Boss +2/x1.20');
+  expect(result.description).toContain('Rest x0.70');
   expect(result.labelLeft).toBeGreaterThan(170);
   expect(result.labelRight).toBeLessThan(530);
   expect(result.descLeft).toBeGreaterThanOrEqual(80);
   expect(result.descRight).toBeLessThanOrEqual(620);
   expect(result.descBottom).toBeLessThan(570);
-  await page.screenshot({path:info.outputPath('menu-tier-6-1000.png')});
+  await page.screenshot({path:info.outputPath('menu-tier-10-1000.png')});
 });
 
 // Deterministic scene time verifies programmed pacing independently of software
