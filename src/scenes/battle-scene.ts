@@ -36,6 +36,11 @@ import { setVisualContrastPreference, setColorCuePreference, setScreenShakePrefe
 import { announceScreenReader, setScreenReaderPreference } from '../game/screen-reader-accessibility';
 import { rewardBuildObservations, districtCardRewardLeans, districtRewardObservations, getMapBalanceProfile, draftStructuredRewardChoices, districtRewardAffinity, distinctMeaningfulUpgradeCards } from '../game/balance';
 import { enemyInitials, enemyStatus } from '../game/enemy-display';
+import type { ActiveTermIntroduction } from '../game/term-introductions';
+import { lazyModule } from '../game/lazy-module';
+
+// New-term callouts are optional teaching: fetched beside combat, never blocking it.
+const loadTermCalloutModule = lazyModule(() => import('../game/battle/term-callout'));
 import { parseEffect, parseEffectValue } from '../game/effects/effect-parser';
 import { cleanseFlockDebuffs, projectEnemyPhase, incomingHit } from '../game/enemy-damage';
 import { fitTextExcerpt } from '../game/text-excerpt';
@@ -210,6 +215,8 @@ export class BattleScene extends Phaser.Scene {
   private markFiredThisTurn = new Set<string>();
   private markFirstOpenSkyConsumed = false;
   private cardsPlayedThisTurn = 0;
+  private activeTermIntroduction?: ActiveTermIntroduction;
+  private termCalloutModule?: typeof import('../game/battle/term-callout');
   // Last-rendered formation state, so transitions fire a one-shot banner/FX.
   private lastFlockState: FlockState = 'holding';
   // Floating large-card preview shown while hovering a hand card.
@@ -4260,12 +4267,15 @@ private playBattleIntro(onComplete?: () => void) {
       };
     }
     if (!this.isGuidedFirstCombat()) {
+      const intro = this.termIntroductionView();
+      if (intro) return intro;
       const hints: Array<{ text: string; accent: number }> = [];
       this.events.emit('opening-coaching', hints);
       return hints[0];
     }
     const guideStep = firstFlightGuideStep();
     markFirstFlightGuideSeen(guideStep);
+    // First sight of each themed term carries its plain-language gloss.
     const text = guideStep === 'card'
       ? (() => {
           const card = this.firstCombatGuideCard();
@@ -4273,11 +4283,11 @@ private playBattleIntro(onComplete?: () => void) {
           if (!card) return 'Select a card, inspect its target, then confirm to play.';
           const cost = this.effectiveCost(card);
           const action = target ? `target ${target.name}` : 'confirm to play';
-          return `Select ${displayName(card)}; ${action}. ${cost} Wingbeat${cost === 1 ? '' : 's'}.`;
+          return `Select ${displayName(card)}; ${action}. ${cost} Wingbeat${cost === 1 ? '' : 's'} (energy).`;
         })()
       : guideStep === 'roost'
-        ? 'Roost when ready. Check incoming damage; Cover absorbs hits. Wingbeats reset next beat.'
-        : 'Read the enemy tell. Cover prevents damage and protects Flow.';
+        ? 'Roost (end turn) when ready. Cover (block) absorbs hits; Wingbeats (energy) reset next beat.'
+        : 'Read the enemy tell. Cover (block) prevents damage and protects Flow.';
     return { text, accent: this.cardsPlayedThisTurn === 0 ? UI_FIELD.gold : UI_FIELD.cyan };
   }
 
@@ -5089,6 +5099,13 @@ private playBattleIntro(onComplete?: () => void) {
   private firstCombatGuideTarget(card = this.firstCombatGuideCard()) {
     if (!card || this.activeCardContract(card).target !== 'enemy') return undefined;
     return this.getLivingEnemy(this.selectedEnemyId);
+  }
+
+  // First-encounter term callouts (one at a time, once per profile) live in a
+  // lazy module; until it arrives the lane simply shows coaching.
+  private termIntroductionView() {
+    if (this.termCalloutModule) return this.termCalloutModule.battleTermCallout(this);
+    void loadTermCalloutModule().then((loaded) => { this.termCalloutModule = loaded; }).catch(() => undefined);
   }
 
   private firstMoltGuideCard() {
@@ -6166,7 +6183,7 @@ private playBattleIntro(onComplete?: () => void) {
     const districtLean = isCardReward ? this.districtLeans() : [];
     const subtitle = mode === 'cardReward'
       ? `Pick a card or take Scrap.${districtLean.length ? ` District lean: ${districtLean.join(' / ')}.` : ''}`
-      : mode === 'upgradeReward' ? 'Pick one card.' : `Read effects, then choose one artifact. ${controlBindingLabel('roost')} / Y: Read.`;
+      : mode === 'upgradeReward' ? 'Pick one card.' : `Read effects, then choose one Waymark. ${controlBindingLabel('roost')} / Y: Read.`;
     const result = this.battleRewardRendererModule.renderRewardCeremony({
       scene: this,
       target: this.root,

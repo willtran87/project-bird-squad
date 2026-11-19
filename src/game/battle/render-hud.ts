@@ -368,7 +368,7 @@ function renderGuidance(context: BattleHudRenderContext) {
   const { scene, root, gameWidth, fontFamily, boldFontStyle, guidance } = context;
   root.add(scene.add.rectangle(gameWidth / 2 - 220, 126, 600, 58, 0x06111a, 0.94)
     .setStrokeStyle(1, guidance.accent, 0.5)
-    .setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('Roost when')));
+    .setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('Roost (end turn) when')));
   root.add(scene.add.text(gameWidth / 2 - 220, 126, guidance.text, {
     fontFamily,
     fontSize: UI_TYPE.primary,
@@ -376,7 +376,7 @@ function renderGuidance(context: BattleHudRenderContext) {
     color: '#f1f8ff',
     wordWrap: { width: 572 }, resolution: 2,
     align: 'center',
-  }).setOrigin(0.5).setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('Roost when')));
+  }).setOrigin(0.5).setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('Roost (end turn) when')));
 }
 
 function renderObjective(context: BattleHudRenderContext) {
