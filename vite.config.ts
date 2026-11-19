@@ -87,6 +87,7 @@ export default defineConfig(({ command }) => ({
           if (moduleId.endsWith('/src/game/signal-spires.ts')) return 'signal-spires';
           if (moduleId.endsWith('/src/game/battle/enemy-breathing.ts')) return 'enemy-breathing';
           if (moduleId.endsWith('/src/game/run-hud.ts')) return 'run-hud';
+          if (moduleId.endsWith('/src/game/term-introductions.ts') || moduleId.endsWith('/src/game/battle/term-callout.ts')) return 'term-introductions';
           if (moduleId.endsWith('/src/game/route-transition-fx.ts')) return 'route-transition-fx';
           if (moduleId.endsWith('/src/game/battle/state-snapshot.ts')) return 'battle-state-snapshot';
           if (moduleId.endsWith('/src/game/battle/outcome-scene.ts')) return 'battle-outcome-scene';

@@ -20,7 +20,8 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../game/shared/layout-constants';
 import { openProfileScene } from '../game/shared/lazy-modules';
 import { activeSeed, generatedMapFor } from '../game/shared/run-session';
 import { birdAudio } from '../game/shared/bird-audio-director';
-import { createInitialRunState, getMaxUnlockedTier, loadActiveRun, recoverFinishedRun } from '../game/shared/run-state';
+import { createInitialRunState, futureActiveRunVersion, getMaxUnlockedTier, loadActiveRun, recoverFinishedRun } from '../game/shared/run-state';
+import { futureSaveMessage } from '../game/save-migration';
 import { activateRenderedAudioToggleControl, playUiSound, renderAudioToggleControl } from '../game/shared/ui-helpers';
 
 type MenuDebugStateModule = typeof import('../game/menu-debug-state');
@@ -244,6 +245,12 @@ export class MenuScene extends Phaser.Scene {
 
     const savedRun = loadActiveRun();
     this.menuHasSavedRun = Boolean(savedRun);
+    // A checkpoint from a newer build stays in storage untouched; say why it
+    // cannot be continued instead of silently offering only a new run.
+    const futureFlightVersion = savedRun ? undefined : futureActiveRunVersion();
+    if (futureFlightVersion !== undefined) {
+      this.storageRecoveryNotice = { outcome: 'reset', scopes: ['flight checkpoint'], text: futureSaveMessage('flight', futureFlightVersion) };
+    }
     const newRunLabel = SHARED_ROUTE_SEED ? 'Fly Shared Route' : 'Start Run';
     if (savedRun) {
       this.runMenuOptionalAction('renderResumeContext', savedRun, generatedMapFor(savedRun.seed ?? activeSeed, savedRun.mapIndex, savedRun.flyway?.routeRhythm === 1));

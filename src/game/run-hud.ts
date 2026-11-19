@@ -1,8 +1,8 @@
 import { setTextureFilter } from './texture-filter';
 import Phaser from 'phaser';
-import { addUi, addUiIconImage, flowHudPresentation, FLOCK_HP_BAR, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, FLOW_HUD_WIDTH, FLOW_HUD_HEIGHT, FLOW_HUD_PIP_OFFSET, FLOW_HUD_PIP_GAP, GAME_WIDTH, KEYSTONE_AT, prefersReducedMotion, uiIconAssets, type UnifiedRunHudData, type UiAdd, type UiIconId } from '../main';
+import { addUi, addUiIconImage, hideKwTooltip, showKwTooltip, flowHudPresentation, FLOCK_HP_BAR, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, FLOW_HUD_WIDTH, FLOW_HUD_HEIGHT, FLOW_HUD_PIP_OFFSET, FLOW_HUD_PIP_GAP, GAME_WIDTH, KEYSTONE_AT, prefersReducedMotion, uiIconAssets, type UnifiedRunHudData, type UiAdd, type UiIconId } from '../main';
 import { UI_FIELD, UI_FONT, UI_BOLD, UI_GOLD, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
-import { KEYWORDS, keywordIconId } from './keyword-definitions';
+import { canonicalKeyword, keywordIconId } from './keyword-definitions';
 import { renderPracticeBadge, practiceHudOffset } from './practice-session';
 
 export function renderRouteDistrictBanner(scene: Phaser.Scene, title: string) {
@@ -61,10 +61,16 @@ export function renderRouteGuidance(context: {
   }).setOrigin(0.5).setResolution(2).setName(context.name);
 }
 
+// Hover shows the merged glossary entry with its gloss ("WINGBEAT (ENERGY)");
+// chip labels stay short so 1280x720 still fits.
+const termHelp = (scene: Phaser.Scene, hit: Phaser.GameObjects.Rectangle, term: string) => hit.setInteractive()
+  .on('pointerover', () => showKwTooltip(scene, term, hit.x, hit.y + 22, hit))
+  .on('pointerout', () => hideKwTooltip(scene));
+
 // Shared Route/Battle presentation. Imported only by their existing lazy renderers.
 function hudIconForLabel(label: string): UiIconId | undefined {
-  const term = label === 'Wingbeats' ? 'Wingbeat' : label;
-  if (KEYWORDS[term]) return keywordIconId(term);
+  const term = canonicalKeyword(label);
+  if (term) return keywordIconId(term);
   switch (label) {
     case 'Scrap': return 'scrap-gear';
     case 'Deck': return 'deck-stack';
@@ -206,7 +212,7 @@ export function renderUnifiedRunHud(
       0.001,
     ).setInteractive({ useHandCursor: true })
       .setName('hud-cohesion-hit'));
-    cohesionHit.on('pointerdown', data.onFlock);
+    termHelp(scene, cohesionHit.on('pointerdown', data.onFlock), 'Cohesion');
   }
 
   const cover = data.cover ?? 0;
@@ -219,14 +225,14 @@ export function renderUnifiedRunHud(
       ];
   let contextualX = hpLeft + FLOCK_HP_BAR.w + 10;
   contextualMetrics.forEach((metric) => {
-    renderHudMetricChip(scene, addTo, contextualX + metric.width / 2, FLOCK_HP_BAR.y + 1, metric.width, metric.label, metric.value, metric.color, {
+    termHelp(scene, renderHudMetricChip(scene, addTo, contextualX + metric.width / 2, FLOCK_HP_BAR.y + 1, metric.width, metric.label, metric.value, metric.color, {
       height: 38,
       valueColor: metric.text,
       alpha: 0.76,
       icon: metric.icon,
       quiet: true,
       emphasis: battleHud ? 'primary' : undefined,
-    });
+    }), metric.label);
     contextualX += metric.width + 8;
   });
 

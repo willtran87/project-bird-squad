@@ -1210,6 +1210,8 @@ export interface RenderPayload {
     target?: string;
   };
   firstFlightGuide?: ReturnType<typeof firstFlightGuideState>;
+  /** The one active first-encounter term callout, if any. */
+  termIntroduction?: { term: string; text: string; turn: number };
   practiceLesson?: { id: string; title: string; step?: number; instruction: string; complete: boolean; finished?: boolean };
   firstMoltGuide?: ReturnType<typeof firstMoltGuideState> & {
     cardId?: string;

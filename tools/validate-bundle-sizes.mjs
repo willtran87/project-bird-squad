@@ -66,6 +66,7 @@ const budgets = [
   { label: 'screen reader runtime lazy module', pattern: /^screen-reader-runtime-.*\.js$/, maxKb: 4, hard: true },
   { label: 'menu diagnostics lazy module', pattern: /^menu-debug-state-.*\.js$/, maxKb: 7, hard: true },
   { label: 'menu optional UI lazy module', pattern: /^menu-optional-ui-.*\.js$/, maxKb: 6, hard: true },
+  { label: 'first-encounter term callouts lazy module', pattern: /^term-introductions-.*\.js$/, maxKb: 4, hard: true },
   { label: 'setup portraits lazy module', pattern: /^setup-portraits-.*\.js$/, maxKb: 1, hard: true },
   { label: 'title launch lazy module', pattern: /^title-run-launch-.*\.js$/, maxKb: 4, hard: true },
   { label: 'Profile scene lazy module', pattern: /^profile-scene-.*\.js$/, maxKb: 170, hard: true },

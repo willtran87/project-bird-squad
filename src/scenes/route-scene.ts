@@ -2,6 +2,7 @@ import { setTextureFilter } from '../game/texture-filter';
 import Phaser from 'phaser';
 import { loadFlyway } from '../game/flyway-loader';
 import { rivalChapter, type PreenBranch } from '../game/flyway-rules';
+import { scaledRouteHeal } from '../game/difficulty';
 import { consumeSaveRecoveryGamepad } from '../game/save-recovery-dialog';
 import { observeChoiceInput, bindChoiceHint } from '../game/choice-input-hints';
 import { handleEventChoice, renderEventChoiceReader, eventChoiceState, eventChoiceHint } from '../game/route-event-reading';
@@ -25,13 +26,13 @@ import { controlPanelRegistryKey, controlCaptureRegistryKey, controlActionForCod
 import { setGraphicsQualityPreference, prefersLeanEffects, graphicsQualityState } from '../game/graphics-quality';
 import { setVisualContrastPreference, setColorCuePreference, setScreenShakePreference, setFlashEffectsPreference, colorCueState, visualContrastState } from '../game/visual-accessibility';
 import { announceScreenReader, setScreenReaderPreference, screenReaderState } from '../game/screen-reader-accessibility';
-import { compactBossTests, routeDecisionRead, distinctMeaningfulUpgradeCards, draftComplementaryRewardPair, rewardBuildObservations, hasMeaningfulCardUpgrade } from '../game/balance';
+import { compactBossTests, routeDecisionRead, distinctMeaningfulUpgradeCards, draftComplementaryRewardPair, rewardBuildObservations, hasMeaningfulCardUpgrade, REWARD_RARITY_WEIGHTS } from '../game/balance';
 import { parseEffect, parseEffectValue } from '../game/effects/effect-parser';
 import { fitTextExcerpt } from '../game/text-excerpt';
 import { type RouteEffectContext, resolveRouteEffect as resolveRouteEffectRule, checkRouteCondition as checkRouteEffectCondition } from '../game/effects/route-effect-runner';
 import type { Card, CardPickerMode, DeckReviewFilter, DeckReviewSort, MarketCardListing, MarketCategory, MarketDecisionPreview, MarketUtilityListing, MarketWaymarkListing, NodeChoiceOption, PendingRouteReward, PendingRouteRewardItem, RouteCardPickerPlan, RouteSceneData, RunState, SupplyFeedback } from '../game/shared/runtime-types';
 import { LAZY_LOAD_FAILED } from '../game/shared/session-config';
-import { alphaMarketConfig, BASE_COHESION, CACHE_SCRAP_REWARD, DECK_REVIEW_FILTERS, DECK_REVIEW_SORTS, DISTRICT_CONTRACT_DEFINITIONS, type DistrictContractId, districtContractProgressValue, KEYSTONE_AT, MARKET_BOSS_GUARD, MARKET_BOSS_GUARD_SHIELD, MARKET_BOSS_GUARD_SKY_GUARD, MARKET_PREEN_PRICE, MARKET_REFRESH_BASE_PRICE, MARKET_ROUTE_MARK_IDS, MARKET_ROUTE_MARK_PRICE, MARKET_ROUTE_SCOUT, MARKET_ROUTE_SCOUT_OPEN_SKY_REDUCTION, REWARD_RARITY_WEIGHT, routeMarks, runDistrictOrdinal, runMapIndices } from '../game/shared/gameplay-constants';
+import { alphaMarketConfig, BASE_COHESION, CACHE_SCRAP_REWARD, DECK_REVIEW_FILTERS, DECK_REVIEW_SORTS, DISTRICT_CONTRACT_DEFINITIONS, type DistrictContractId, districtContractProgressValue, KEYSTONE_AT, MARKET_BOSS_GUARD, MARKET_BOSS_GUARD_SHIELD, MARKET_BOSS_GUARD_SKY_GUARD, MARKET_PREEN_PRICE, MARKET_REFRESH_BASE_PRICE, MARKET_ROUTE_MARK_IDS, MARKET_ROUTE_MARK_PRICE, MARKET_ROUTE_SCOUT, MARKET_ROUTE_SCOUT_OPEN_SKY_REDUCTION, routeMarks, runDistrictOrdinal, runMapIndices } from '../game/shared/gameplay-constants';
 import { animationPaceTimeScale, animationPacingState, combatPacingState, controlsTextState, currentFlashEffectsState, currentScreenShakeState, motionState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, settingsFocusState, syncSceneAnimationPace, textPacingState } from '../game/shared/preferences';
 import { SceneAssetReadinessTracker } from '../game/shared/scene-asset-readiness';
 import { GAME_HEIGHT, GAME_WIDTH, ROUTE_BOSS_NODE_ICON_SIZE, ROUTE_BOSS_NODE_RADIUS, ROUTE_COMMIT_STREAK_DELAY_MS, ROUTE_COMMIT_STREAK_TEXTURE, ROUTE_CONFIRM_HIT_SIZE, ROUTE_CONFIRM_ICON_SIZE, ROUTE_CONFIRM_LABEL_OFFSET_X, ROUTE_CONFIRM_LABEL_WIDTH, ROUTE_NODE_FOCUS_PAD, ROUTE_NODE_ICON_SIZE, ROUTE_NODE_LAYOUT_PAD, ROUTE_NODE_RADIUS } from '../game/shared/layout-constants';
@@ -3939,6 +3940,7 @@ export class RouteScene extends Phaser.Scene {
       preenFirstAvailableCard: () => this.preenFirstAvailableCard(),
       releaseFirstReleasable: (count) => this.releaseFirstReleasable(count),
       random: this.routeRewardRng(this.runState, salt),
+      scaleRouteHeal: (n) => scaledRouteHeal(n, this.runState.difficulty),
     };
   }
 
@@ -4314,14 +4316,14 @@ export class RouteScene extends Phaser.Scene {
         case 'heal':
         case 'healCohesion': {
           const before = hp;
-          hp = Math.min(maxHp, hp + n);
+          hp = Math.min(maxHp, hp + scaledRouteHeal(n, this.runState.difficulty));
           setRow('hp', 'Cohesion', `${before}/${maxHp}`, `${hp}/${maxHp}`, '#e4fbe9');
           break;
         }
         case 'healMissingPct': {
           const before = hp;
           const heal = Math.max(Number(parsed.args[1]) || 0, Math.round(((maxHp - hp) * n) / 100));
-          hp = Math.min(maxHp, hp + heal);
+          hp = Math.min(maxHp, hp + scaledRouteHeal(heal, this.runState.difficulty));
           setRow('hp', 'Cohesion', `${before}/${maxHp}`, `${hp}/${maxHp}`, '#e4fbe9');
           break;
         }
@@ -5321,7 +5323,7 @@ export class RouteScene extends Phaser.Scene {
   private marketCardWeight(id: string, slotRarity: 'common' | 'uncommon' | 'rare' | 'weighted') {
     const rarity = cardLibrary[id]?.runtime.rarity ?? 'common';
     if (slotRarity !== 'weighted') return rarity === slotRarity ? 100 : 20;
-    const base = REWARD_RARITY_WEIGHT[rarity] ?? 50;
+    const base = REWARD_RARITY_WEIGHTS[rarity] ?? 50;
     if (rarity === 'legendary') return base + activeMapIndex * 3;
     if (rarity === 'rare') return base + activeMapIndex * 8;
     if (rarity === 'uncommon') return base + activeMapIndex * 6;

@@ -15545,6 +15545,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   const helpTargets = await targetSnapshot('MenuScene');
   expect(helpTargets.map((target) => ({ label: target.label, sceneX: target.sceneX }))).toEqual([
     { label: 'Close', sceneX: 1154 },
+    { label: 'Key terms', sceneX: 994 },
     { label: 'Skip Guide', sceneX: 790 },
     { label: 'Practice lessons', sceneX: 500 },
   ]);
@@ -15571,7 +15572,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
       .map((child: any) => ({ width: child.displayWidth, height: child.displayHeight, bounds: bounds(child) }))
       .sort((a: any, b: any) => a.bounds.top - b.bounds.top);
     const buttonTop = Math.min(...objects
-      .filter((child: any) => child.name === 'system-field-button-hit' && child.getData('label') !== 'Close')
+      .filter((child: any) => child.name === 'system-field-button-hit' && !['Close', 'Key terms'].includes(child.getData('label')))
       .map((child: any) => bounds(child).top));
     return { labels, values, rows, buttonTop };
   });
@@ -15581,7 +15582,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   ]);
   expect(helpFooter.values.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
     { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 19 },
-    { text: 'Shift+X or RT: read artifacts without spending a turn.', fontSize: 19 },
+    { text: 'Shift+X or RT: read your Waymarks without spending a turn.', fontSize: 19 },
   ]);
   expect(helpFooter.rows).toEqual([]);
   expect(helpFooter.values[1].bounds.top - helpFooter.values[0].bounds.bottom).toBeGreaterThanOrEqual(8);

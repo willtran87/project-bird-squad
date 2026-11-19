@@ -114,7 +114,8 @@ export type PatternEntry = { moveId: string; weight?: number; repeat?: 'cannotRe
 export type AttackPattern =
   | { type: 'cycle'; moveIds: string[] }
   | { type: 'weighted'; entries: PatternEntry[] }
-  | { type: 'conditional'; entries: Array<{ moveId: string; if: string }>; fallback: string }
+  // fallback: one move, or a cycle walked by intentIndex while no gate holds.
+  | { type: 'conditional'; entries: Array<{ moveId: string; if: string }>; fallback: string | { type: 'cycle'; moveIds: string[] } }
   | { type: 'scripted'; moveIds: string[]; loopFrom?: number };
 
 export interface EnemyRewards {

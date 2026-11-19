@@ -22,7 +22,7 @@ import { type OpeningDrawState, prepareOpeningDraw, deterministicChance, determi
 import type { RuntimeRouteMark, RuntimeSupply, EnemyMove, RouteNode } from '../game/types';
 import { floatingText, setFeedbackTextHoldScale, shakeCamera, banner, burst, strike, fadeRect } from '../game/fx';
 import { getLeader, defaultLeaderId } from '../game/leaders';
-import { difficultyMods, applyAscensionOpeningIntents, advanceAscensionEnemyIntent } from '../game/difficulty';
+import { difficultyMods, applyAscensionOpeningIntents, advanceAscensionEnemyIntent, enemyHpMultFor } from '../game/difficulty';
 import { type recordRun, type CardCollectionRecord, loadAccount, leaderUnlockHints, achievements, discoverCards } from '../game/meta';
 import { UI_FONT, UI_FIELD, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, UI_BOLD, UI_GOLD, UI_CYAN, UI_SOFT, UI_BODY, UI_TYPE, DECISION_UI } from '../game/theme';
 import { quietButton } from '../game/quiet-ui';
@@ -34,8 +34,13 @@ import { controlPanelRegistryKey, controlCaptureRegistryKey, controlPanelOwnsInp
 import { graphicsQualityState, prefersLeanEffects, setGraphicsQualityPreference } from '../game/graphics-quality';
 import { setVisualContrastPreference, setColorCuePreference, setScreenShakePreference, setFlashEffectsPreference, colorCueState } from '../game/visual-accessibility';
 import { announceScreenReader, setScreenReaderPreference } from '../game/screen-reader-accessibility';
-import { rewardBuildObservations, districtCardRewardLeans, districtRewardObservations, getMapBalanceProfile, draftStructuredRewardChoices, districtRewardAffinity, distinctMeaningfulUpgradeCards } from '../game/balance';
+import { rewardBuildObservations, districtCardRewardLeans, districtRewardObservations, getMapBalanceProfile, draftStructuredRewardChoices, districtRewardAffinity, distinctMeaningfulUpgradeCards, REWARD_RARITY_WEIGHTS } from '../game/balance';
 import { enemyInitials, enemyStatus } from '../game/enemy-display';
+import type { ActiveTermIntroduction } from '../game/term-introductions';
+import { lazyModule } from '../game/lazy-module';
+
+// New-term callouts are optional teaching: fetched beside combat, never blocking it.
+const loadTermCalloutModule = lazyModule(() => import('../game/battle/term-callout'));
 import { parseEffect, parseEffectValue } from '../game/effects/effect-parser';
 import { cleanseFlockDebuffs, projectEnemyPhase, incomingHit } from '../game/enemy-damage';
 import { fitTextExcerpt } from '../game/text-excerpt';
@@ -47,7 +52,7 @@ import type { BattleFxPresentationHost, BattleFxAnimationOptions, BattleFxMoteOp
 import type { ActiveCardContract, BattleSceneData, BossDossierModule, Card, CardRewardEvent, CombatInputChoiceKind, CombatResultSummary, EncounterObjective, EncounterObjectiveProgress, EndTurnOptions, Enemy, EnemyMotionCue, EnemyMoveDamageSummary, EnemyTurnBeat, EnemyTurnProgress, Flock, FlockState, GameMode, InspectOverlay, NextCombatMods, PlayCardOptions, RenderPayload, RetainSource, RouteDecisionEvent, RunMode, RunState, RunSummary, SignalChoiceEvent, StartPlayerTurnOptions, SupplyFeedback, TextureVisibleBounds, WaymarkFeedback } from '../game/shared/runtime-types';
 import { isRunOutcome, LAZY_LOAD_FAILED, PLAYTEST_MODE } from '../game/shared/session-config';
 import { cardCoverOutcome, cardDamageOutcome, flockStateOf, intentCoverValue, moveDealsDamage } from '../game/combat-rules';
-import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, REWARD_RARITY_WEIGHT, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
+import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
 import { animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, stableMotionSeed, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
 import { SceneAssetReadinessTracker } from '../game/shared/scene-asset-readiness';
 import { CARD_H, CARD_W, COMBAT_REDUCED_MOTION_MIN_DELAY_MS, COMBAT_REDUCED_MOTION_TIMING_SCALE, COMBAT_SNAPPY_MIN_DELAY_MS, COMBAT_SNAPPY_TIMING_SCALE, COMBAT_STANDARD_REPEAT_TIMING_SCALE, ENEMY_ATTACK_RECOVER_MS, ENEMY_ATTACK_WINDUP_MS, ENEMY_HP_BAR, ENEMY_TURN_PREAMBLE_MS, FLOCK_ART_X, FLOCK_ART_Y, FLOCK_FX_X, FLOCK_FX_Y, FLOCK_HP_BAR, FLOW_HUD_PIP_GAP, FLOW_HUD_PIP_OFFSET, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, GAME_HEIGHT, GAME_WIDTH, HAND_Y, HUD_MENU_PANEL, PLAYER_ATTACK_RESOLVE_DELAY_MS, PLAYER_CARD_FEEDBACK_SETTLE_MS, PLAYER_CARD_RESOLVE_DELAY_MS, PLAYER_TURN_HANDOFF_DELAY_MS } from '../game/shared/layout-constants';
@@ -210,6 +215,8 @@ export class BattleScene extends Phaser.Scene {
   private markFiredThisTurn = new Set<string>();
   private markFirstOpenSkyConsumed = false;
   private cardsPlayedThisTurn = 0;
+  private activeTermIntroduction?: ActiveTermIntroduction;
+  private termCalloutModule?: typeof import('../game/battle/term-callout');
   // Last-rendered formation state, so transitions fire a one-shot banner/FX.
   private lastFlockState: FlockState = 'holding';
   // Floating large-card preview shown while hovering a hand card.
@@ -452,14 +459,12 @@ export class BattleScene extends Phaser.Scene {
     this.encounterObjectiveFeedbackStatus = this.encounterObjective ? 'active' : undefined;
     this.encounterObjectiveFeedbackBursts = 0;
     this.enemyDefeatedTurns = new Map();
-    // Ascension: scale enemy Cohesion by the run's difficulty tier.
-    const hpMult = ascension.enemyHpMult;
-    if (hpMult !== 1) {
-      this.enemies.forEach((enemy) => {
-        enemy.maxHp = Math.round(enemy.maxHp * hpMult);
-        enemy.hp = enemy.maxHp;
-      });
-    }
+    // Ascension: scale enemy Cohesion by the run's difficulty tier, with the
+    // Tier 7/9 elite and boss levers stacked per enemy type.
+    this.enemies.forEach((enemy) => {
+      enemy.maxHp = Math.round(enemy.maxHp * enemyHpMultFor(ascension, enemy.runtime.type));
+      enemy.hp = enemy.maxHp;
+    });
     this.combatRandom = combatRandom(`${activeSeed}:combat:${activeMapIndex}:${initialRouteNode.id}`);
     this.drawPile = cardsFromSave(runState.deck);
     this.discardPile = [];
@@ -2449,7 +2454,7 @@ private playBattleIntro(onComplete?: () => void) {
     return this.combatFxModule?.combatWingbeatDrain.call(this, x, y, scale);
   }
 
-  private wingbeatDrainFx(amount: number) {
+  private wingbeatDrainFx(amount: number, label = ' Wingbeat') {
     if (amount <= 0) return;
     const x = FLOCK_FX_X - 10;
     const y = FLOCK_FX_Y - 48;
@@ -2465,7 +2470,7 @@ private playBattleIntro(onComplete?: () => void) {
       spreadX: 10,
       spreadY: 8,
     });
-    this.presentFlockResult(-amount, ' Wingbeat', '#ffcf7a', 'wingbeat-drain');
+    this.presentFlockResult(-amount, label, '#ffcf7a', 'wingbeat-drain');
   }
 
   private combatMoltShift(x: number, y: number, scale = 1) {
@@ -3770,7 +3775,9 @@ private playBattleIntro(onComplete?: () => void) {
         moveLabel: move.label,
         incomingDamage,
         intent: enemyIntentLabel(move.effects, incomingDamage),
-        moveDescription: formatEffects(move.effects).replace(/Enter Open Sky/g, 'Flock enters Open Sky'),
+        moveDescription: formatEffects(move.effects)
+          .replace(/Enter Open Sky/g, 'Flock enters Open Sky')
+          .replace(/Lose (\d+) Wingbeat\./g, 'Flock starts next turn with $1 fewer Wingbeat.'),
         status: enemyStatus(enemy),
         objective: objectiveTarget
       };
@@ -4260,12 +4267,15 @@ private playBattleIntro(onComplete?: () => void) {
       };
     }
     if (!this.isGuidedFirstCombat()) {
+      const intro = this.termIntroductionView();
+      if (intro) return intro;
       const hints: Array<{ text: string; accent: number }> = [];
       this.events.emit('opening-coaching', hints);
       return hints[0];
     }
     const guideStep = firstFlightGuideStep();
     markFirstFlightGuideSeen(guideStep);
+    // First sight of each themed term carries its plain-language gloss.
     const text = guideStep === 'card'
       ? (() => {
           const card = this.firstCombatGuideCard();
@@ -4273,11 +4283,11 @@ private playBattleIntro(onComplete?: () => void) {
           if (!card) return 'Select a card, inspect its target, then confirm to play.';
           const cost = this.effectiveCost(card);
           const action = target ? `target ${target.name}` : 'confirm to play';
-          return `Select ${displayName(card)}; ${action}. ${cost} Wingbeat${cost === 1 ? '' : 's'}.`;
+          return `Select ${displayName(card)}; ${action}. ${cost} Wingbeat${cost === 1 ? '' : 's'} (energy).`;
         })()
       : guideStep === 'roost'
-        ? 'Roost when ready. Check incoming damage; Cover absorbs hits. Wingbeats reset next beat.'
-        : 'Read the enemy tell. Cover prevents damage and protects Flow.';
+        ? 'Roost (end turn) when ready. Cover (block) absorbs hits; Wingbeats (energy) reset next beat.'
+        : 'Read the enemy tell. Cover (block) prevents damage and protects Flow.';
     return { text, accent: this.cardsPlayedThisTurn === 0 ? UI_FIELD.gold : UI_FIELD.cyan };
   }
 
@@ -5094,6 +5104,13 @@ private playBattleIntro(onComplete?: () => void) {
   private firstCombatGuideTarget(card = this.firstCombatGuideCard()) {
     if (!card || this.activeCardContract(card).target !== 'enemy') return undefined;
     return this.getLivingEnemy(this.selectedEnemyId);
+  }
+
+  // First-encounter term callouts (one at a time, once per profile) live in a
+  // lazy module; until it arrives the lane simply shows coaching.
+  private termIntroductionView() {
+    if (this.termCalloutModule) return this.termCalloutModule.battleTermCallout(this);
+    void loadTermCalloutModule().then((loaded) => { this.termCalloutModule = loaded; }).catch(() => undefined);
   }
 
   private firstMoltGuideCard() {
@@ -6171,7 +6188,7 @@ private playBattleIntro(onComplete?: () => void) {
     const districtLean = isCardReward ? this.districtLeans() : [];
     const subtitle = mode === 'cardReward'
       ? `Pick a card or take Scrap.${districtLean.length ? ` District lean: ${districtLean.join(' / ')}.` : ''}`
-      : mode === 'upgradeReward' ? 'Pick one card.' : `Read effects, then choose one artifact. ${controlBindingLabel('roost')} / Y: Read.`;
+      : mode === 'upgradeReward' ? 'Pick one card.' : `Read effects, then choose one Waymark. ${controlBindingLabel('roost')} / Y: Read.`;
     const result = this.battleRewardRendererModule.renderRewardCeremony({
       scene: this,
       target: this.root,
@@ -7978,7 +7995,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.activeGeneratedFxSprites = 0;
     this.activeFxParticleBursts = 0;
     this.turn += 1;
-    this.energy = 3 + this.nextTurnEnergyBonus;
+    this.energy = Math.max(0, 3 + this.nextTurnEnergyBonus);
     this.nextTurnEnergyBonus = 0;
     // Nests keystone: Cover carries between turns (capped) instead of fully clearing.
     this.flock.block = Math.min(this.flock.block, this.flyway.relic === 'woven-roost' ? 8 : this.keystoneActive('nests') ? NESTS_COVER_CARRY_CAP : 0);
@@ -8162,9 +8179,11 @@ private playBattleIntro(onComplete?: () => void) {
         this.windedFx(FLOCK_FX_X, FLOCK_FX_Y);
         break;
       case 'loseWingbeat':
-        this.energy = Math.max(0, this.energy - value);
-        this.logEvent(`${enemy.name} taxes ${value} Wingbeat.`);
-        this.wingbeatDrainFx(value);
+        // The enemy phase ends before startPlayerTurn refills Wingbeats, so the
+        // tax lands on the NEXT player turn through the next-turn energy bank.
+        this.nextTurnEnergyBonus -= value;
+        this.logEvent(`${enemy.name} taxes ${value} Wingbeat from the next turn.`);
+        this.wingbeatDrainFx(value, ' next Wingbeat');
         break;
       case 'applyFrail':
         this.flock.frail += value;
@@ -9313,7 +9332,7 @@ private playBattleIntro(onComplete?: () => void) {
       this.allDeckCards().map((card) => card.id),
       difficultyMods(this.runDifficulty).rewardChoices,
       this.combatRandom,
-      (id) => (REWARD_RARITY_WEIGHT[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50)
+      (id) => (REWARD_RARITY_WEIGHTS[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50)
         * (activeMapIndex === 0 && rooftopPlanMatch(this.flyway.rooftopPlan, cardLibrary[id].runtime) ? 2 : 1),
       (id) => this.cardNeedTags(cardLibrary[id]).some((tag) => tag.includes('First ') || tag.includes('Fills ') || tag.includes('KEYSTONE')),
       (id) => cardLibrary[id]?.role,

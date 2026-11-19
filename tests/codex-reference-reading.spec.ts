@@ -70,7 +70,7 @@ test('all enemy and glossary tiles fit readable text without frame clutter', asy
     }
     return { count, errors };
   });
-  expect(result.count).toBe(115); expect(result.errors).toEqual([]);
+  expect(result.count).toBe(114); expect(result.errors).toEqual([]);
 });
 
 test('enemy and glossary grids keep deep focus, loaded art and detail return across viewports', async ({ page }, info) => {
@@ -82,7 +82,7 @@ test('enemy and glossary grids keep deep focus, loaded art and detail return acr
       c.activeSection = section; c.activeEnemyTab = 0; c.focusZone = 'entries';
       c.entryFocusIndex = 0; c.gridScroll = c.gridScrollTarget = 0; c.renderAll();
     }, section);
-    for (const index of section === 'enemies' ? [0, 40, 80] : [0, 17, 33]) {
+    for (const index of section === 'enemies' ? [0, 40, 80] : [0, 16, 32]) {
       await page.evaluate(index => {
         const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
         c.entryFocusIndex = index; c.ensureFocusedEntryVisible(); c.gridScroll = c.gridScrollTarget; c.renderAll();

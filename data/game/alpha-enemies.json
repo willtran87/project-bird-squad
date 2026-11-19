@@ -154,9 +154,9 @@
       "attackPattern": {
         "type": "cycle",
         "moveIds": [
+          "strike_7",
           "watch_winded",
-          "heavy_strike_11",
-          "strike_7"
+          "heavy_strike_11"
         ]
       },
       "rewards": {
@@ -366,9 +366,9 @@
       "attackPattern": {
         "type": "cycle",
         "moveIds": [
-          "rat_courier_run_message",
           "rat_courier_skitter_5",
-          "rat_courier_alarm_tag"
+          "rat_courier_alarm_tag",
+          "rat_courier_run_message"
         ]
       },
       "rewards": {
@@ -631,8 +631,8 @@
       "attackPattern": {
         "type": "cycle",
         "moveIds": [
-          "hedgehog_curb_block",
           "hedgehog_needle_roll_6",
+          "hedgehog_curb_block",
           "hedgehog_slow_crossing"
         ]
       },
