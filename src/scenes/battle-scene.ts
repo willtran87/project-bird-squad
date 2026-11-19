@@ -22,7 +22,7 @@ import { type OpeningDrawState, prepareOpeningDraw, deterministicChance, determi
 import type { RuntimeRouteMark, RuntimeSupply, EnemyMove, RouteNode } from '../game/types';
 import { floatingText, setFeedbackTextHoldScale, shakeCamera, banner, burst, strike, fadeRect } from '../game/fx';
 import { getLeader, defaultLeaderId } from '../game/leaders';
-import { difficultyMods, applyAscensionOpeningIntents, advanceAscensionEnemyIntent } from '../game/difficulty';
+import { difficultyMods, applyAscensionOpeningIntents, advanceAscensionEnemyIntent, enemyHpMultFor } from '../game/difficulty';
 import { type recordRun, type CardCollectionRecord, loadAccount, leaderUnlockHints, achievements, discoverCards } from '../game/meta';
 import { UI_FONT, UI_FIELD, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT, UI_BOLD, UI_GOLD, UI_CYAN, UI_SOFT, UI_BODY, UI_TYPE, DECISION_UI } from '../game/theme';
 import { quietButton } from '../game/quiet-ui';
@@ -34,7 +34,7 @@ import { controlPanelRegistryKey, controlCaptureRegistryKey, controlPanelOwnsInp
 import { graphicsQualityState, prefersLeanEffects, setGraphicsQualityPreference } from '../game/graphics-quality';
 import { setVisualContrastPreference, setColorCuePreference, setScreenShakePreference, setFlashEffectsPreference, colorCueState } from '../game/visual-accessibility';
 import { announceScreenReader, setScreenReaderPreference } from '../game/screen-reader-accessibility';
-import { rewardBuildObservations, districtCardRewardLeans, districtRewardObservations, getMapBalanceProfile, draftStructuredRewardChoices, districtRewardAffinity, distinctMeaningfulUpgradeCards } from '../game/balance';
+import { rewardBuildObservations, districtCardRewardLeans, districtRewardObservations, getMapBalanceProfile, draftStructuredRewardChoices, districtRewardAffinity, distinctMeaningfulUpgradeCards, REWARD_RARITY_WEIGHTS } from '../game/balance';
 import { enemyInitials, enemyStatus } from '../game/enemy-display';
 import { parseEffect, parseEffectValue } from '../game/effects/effect-parser';
 import { cleanseFlockDebuffs, projectEnemyPhase, incomingHit } from '../game/enemy-damage';
@@ -47,7 +47,7 @@ import type { BattleFxPresentationHost, BattleFxAnimationOptions, BattleFxMoteOp
 import type { ActiveCardContract, BattleSceneData, BossDossierModule, Card, CardRewardEvent, CombatInputChoiceKind, CombatResultSummary, EncounterObjective, EncounterObjectiveProgress, EndTurnOptions, Enemy, EnemyMotionCue, EnemyMoveDamageSummary, EnemyTurnBeat, EnemyTurnProgress, Flock, FlockState, GameMode, InspectOverlay, NextCombatMods, PlayCardOptions, RenderPayload, RetainSource, RouteDecisionEvent, RunMode, RunState, RunSummary, SignalChoiceEvent, StartPlayerTurnOptions, SupplyFeedback, TextureVisibleBounds, WaymarkFeedback } from '../game/shared/runtime-types';
 import { isRunOutcome, LAZY_LOAD_FAILED, PLAYTEST_MODE } from '../game/shared/session-config';
 import { cardCoverOutcome, cardDamageOutcome, flockStateOf, intentCoverValue, moveDealsDamage } from '../game/combat-rules';
-import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, REWARD_RARITY_WEIGHT, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
+import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
 import { animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, stableMotionSeed, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
 import { SceneAssetReadinessTracker } from '../game/shared/scene-asset-readiness';
 import { CARD_H, CARD_W, COMBAT_REDUCED_MOTION_MIN_DELAY_MS, COMBAT_REDUCED_MOTION_TIMING_SCALE, COMBAT_SNAPPY_MIN_DELAY_MS, COMBAT_SNAPPY_TIMING_SCALE, COMBAT_STANDARD_REPEAT_TIMING_SCALE, ENEMY_ATTACK_RECOVER_MS, ENEMY_ATTACK_WINDUP_MS, ENEMY_HP_BAR, ENEMY_TURN_PREAMBLE_MS, FLOCK_ART_X, FLOCK_ART_Y, FLOCK_FX_X, FLOCK_FX_Y, FLOCK_HP_BAR, FLOW_HUD_PIP_GAP, FLOW_HUD_PIP_OFFSET, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, GAME_HEIGHT, GAME_WIDTH, HAND_Y, HUD_MENU_PANEL, PLAYER_ATTACK_RESOLVE_DELAY_MS, PLAYER_CARD_FEEDBACK_SETTLE_MS, PLAYER_CARD_RESOLVE_DELAY_MS, PLAYER_TURN_HANDOFF_DELAY_MS } from '../game/shared/layout-constants';
@@ -452,14 +452,12 @@ export class BattleScene extends Phaser.Scene {
     this.encounterObjectiveFeedbackStatus = this.encounterObjective ? 'active' : undefined;
     this.encounterObjectiveFeedbackBursts = 0;
     this.enemyDefeatedTurns = new Map();
-    // Ascension: scale enemy Cohesion by the run's difficulty tier.
-    const hpMult = ascension.enemyHpMult;
-    if (hpMult !== 1) {
-      this.enemies.forEach((enemy) => {
-        enemy.maxHp = Math.round(enemy.maxHp * hpMult);
-        enemy.hp = enemy.maxHp;
-      });
-    }
+    // Ascension: scale enemy Cohesion by the run's difficulty tier, with the
+    // Tier 7/9 elite and boss levers stacked per enemy type.
+    this.enemies.forEach((enemy) => {
+      enemy.maxHp = Math.round(enemy.maxHp * enemyHpMultFor(ascension, enemy.runtime.type));
+      enemy.hp = enemy.maxHp;
+    });
     this.combatRandom = combatRandom(`${activeSeed}:combat:${activeMapIndex}:${initialRouteNode.id}`);
     this.drawPile = cardsFromSave(runState.deck);
     this.discardPile = [];
@@ -9308,7 +9306,7 @@ private playBattleIntro(onComplete?: () => void) {
       this.allDeckCards().map((card) => card.id),
       difficultyMods(this.runDifficulty).rewardChoices,
       this.combatRandom,
-      (id) => (REWARD_RARITY_WEIGHT[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50)
+      (id) => (REWARD_RARITY_WEIGHTS[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50)
         * (activeMapIndex === 0 && rooftopPlanMatch(this.flyway.rooftopPlan, cardLibrary[id].runtime) ? 2 : 1),
       (id) => this.cardNeedTags(cardLibrary[id]).some((tag) => tag.includes('First ') || tag.includes('Fills ') || tag.includes('KEYSTONE')),
       (id) => cardLibrary[id]?.role,
