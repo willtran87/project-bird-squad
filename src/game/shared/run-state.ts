@@ -14,6 +14,7 @@ import type { Card, CardRewardEvent, CombatDecisionStats, CombatResultSummary, E
 import { BASE_COHESION, BASE_SUPPLY_SLOTS, type DistrictContractId, type DistrictContractState, STARTING_SCRAP } from './gameplay-constants';
 import { cardLibrary, flushCardClaims, generatedMapFor, recordCardAcquisitions, runSupplyCapacity } from './run-session';
 import { formatEffects } from './effect-text';
+import { readActiveRunCheckpoint, stampActiveRunVersion } from '../save-migration';
 import { aggregateFlockStats } from './card-stats';
 
 // Active-run persistence: a single in-progress run is mirrored to localStorage so
@@ -67,7 +68,7 @@ export function recoverFinishedRun(): boolean {
 }
 
 export function persistActiveRun(runState: RunState): boolean {
-  if (!writeJournaledJson(ACTIVE_RUN_KEY, runState) || !flushCardClaims(runState.pendingCardClaims)) return false;
+  if (!writeJournaledJson(ACTIVE_RUN_KEY, stampActiveRunVersion(runState)) || !flushCardClaims(runState.pendingCardClaims)) return false;
   if (runState.pendingCardClaims?.length) runState.pendingCardClaims = [];
   return true;
 }
@@ -393,8 +394,17 @@ export function sanitizeActiveRun(value: unknown): RunState | undefined {
   };
 }
 
+// Migrates older checkpoints; a checkpoint from a newer build is left in
+// storage untouched and reads as no run (see futureActiveRunVersion).
 export function loadActiveRun(): RunState | undefined {
-  return readJournaledJson(ACTIVE_RUN_KEY, sanitizeActiveRun);
+  const checkpoint = readActiveRunCheckpoint(sanitizeActiveRun);
+  return checkpoint.status === 'ok' ? checkpoint.run : undefined;
+}
+
+// Save version of a stored checkpoint written by a newer build, if any.
+export function futureActiveRunVersion(): number | undefined {
+  const checkpoint = readActiveRunCheckpoint(sanitizeActiveRun);
+  return checkpoint.status === 'future-version' ? checkpoint.version : undefined;
 }
 
 export function clearActiveRun(): void {
