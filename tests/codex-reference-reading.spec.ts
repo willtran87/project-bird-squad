@@ -70,7 +70,7 @@ test('all enemy and glossary tiles fit readable text without frame clutter', asy
     }
     return { count, errors };
   });
-  expect(result.count).toBe(115); expect(result.errors).toEqual([]);
+  expect(result.count).toBe(114); expect(result.errors).toEqual([]);
 });
 
 test('enemy and glossary grids keep deep focus, loaded art and detail return across viewports', async ({ page }, info) => {

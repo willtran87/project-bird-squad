@@ -1,6 +1,6 @@
 import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
-import { KEYWORDS, keywordIconId, buildKeywordTokens } from '../keyword-definitions';
+import { KEYWORDS, keywordIconId, buildKeywordTokens, canonicalKeyword, keywordTitle } from '../keyword-definitions';
 import { alphaRouteMarkLibrary } from '../runtime-data';
 import { UI_FONT, UI_BOLD, UI_FIELD, UI_GOLD, UI_SOFT, MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 import { quietButton } from '../quiet-ui';
@@ -41,8 +41,10 @@ export function hideKwTooltip(scene?: Phaser.Scene) {
   activeKwTooltip.container.destroy(true);
 }
 
-export function showKwTooltip(scene: Phaser.Scene, kw: string, atX: number, atY: number, owner?: Phaser.GameObjects.GameObject) {
+export function showKwTooltip(scene: Phaser.Scene, term: string, atX: number, atY: number, owner?: Phaser.GameObjects.GameObject) {
   hideKwTooltip();
+  // Aliases (Energy) open the one merged entry (Wingbeat).
+  const kw = canonicalKeyword(term) ?? term;
   const def = KEYWORDS[kw];
   if (!def) return;
   const iconId = keywordIconId(kw);
@@ -50,10 +52,11 @@ export function showKwTooltip(scene: Phaser.Scene, kw: string, atX: number, atY:
   const icon = addUiIconImage(scene, iconId, padding + 15, padding + 15, 14)
     ?.setName('keyword-tooltip-icon').setData('keyword', kw).setData('icon', iconId);
   const titleX = icon ? padding + 42 : padding;
-  const title = scene.add.text(titleX, padding, kw.toUpperCase(), {
+  const heading = keywordTitle(kw).toUpperCase();
+  const title = scene.add.text(titleX, padding, heading, {
     fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: def.c, resolution: 2,
     wordWrap: { width: textW - (titleX - padding), useAdvancedWrap: true },
-  }).setName('keyword-tooltip-title').setData('fullText', kw.toUpperCase());
+  }).setName('keyword-tooltip-title').setData('fullText', heading);
   const body = scene.add.text(padding, padding + title.height + 8, def.def, {
     fontFamily: UI_FONT, fontSize: '20px', color: '#dbe6f2', resolution: 2, lineSpacing: 3,
     wordWrap: { width: textW, useAdvancedWrap: true },

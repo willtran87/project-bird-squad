@@ -95,7 +95,7 @@ test('keyword help follows transformed words and cleans up on replacement and sc
     const r = tip.getBounds(), word = c.__keywordWord.getBounds();
     return { near: Math.abs(r.centerX - word.centerX) < 1 && r.bottom < word.top && word.top - r.bottom <= 16, text: tip.getByName('keyword-tooltip-title').text };
   });
-  expect(shown).toEqual({ near: true, text: 'COVER' });
+  expect(shown).toEqual({ near: true, text: 'COVER (BLOCK)' });
   await page.screenshot({ path: info.outputPath('keyword-transformed-owner.png') });
   await page.mouse.move(point.x + 160, point.y); await settleCanvas(page);
   expect(await page.evaluate(() => Boolean((window as any).__birdSquadGame.scene.getScene('CodexScene').children.getByName('keyword-tooltip')))).toBe(false);
