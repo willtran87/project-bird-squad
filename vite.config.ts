@@ -69,6 +69,14 @@ export default defineConfig(({ command }) => ({
         manualChunks(id) {
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.endsWith('/src/main.ts')) return 'index';
+          // The boot scenes, their shared helpers and the eager art manifest were
+          // split out of main.ts; keep them in the entry chunk exactly as before.
+          if (
+            moduleId.includes('/src/scenes/')
+            || moduleId.includes('/src/game/shared/')
+            || moduleId.endsWith('/src/game/combat-rules.ts')
+            || moduleId.endsWith('/src/art-assets.ts')
+          ) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
           if (moduleId.endsWith('/src/game/district-framing.ts')) return 'district-framing';
           if (moduleId.endsWith('/src/game/build-guidance.ts')) return 'build-guidance';
