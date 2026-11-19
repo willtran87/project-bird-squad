@@ -59,11 +59,6 @@ export function currentMove(enemy: Enemy, context = enemyMoveContext): EnemyMove
 }
 
 
-export function moveDealsDamage(move: EnemyMove): boolean {
-  return move.effects.some((effect) => /(?:^|then )damage\(flock/.test(effect));
-}
-
-
 // Live flock/turn snapshot so the free `currentMove`/`evalPatternCondition`
 // functions can evaluate conditional attack patterns (which branch on flock
 // state) without a scene reference. BattleScene refreshes it before any move

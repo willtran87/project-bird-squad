@@ -1,5 +1,4 @@
 import { alphaStatusSet } from '../runtime-data';
-import { parseEffect } from '../effects/effect-parser';
 import type { Card, Flock } from './runtime-types';
 import { ENEMY_FX_Y } from './layout-constants';
 
@@ -78,15 +77,6 @@ export function bossGoonViewAt(index: number, count: number): { x: number; y: nu
     ],
   };
   return layouts[Math.min(3, count)]?.[index] ?? layouts[3][layouts[3].length - 1];
-}
-
-
-export function intentCoverValue(intent: { effects: string[] }) {
-  for (const effect of intent.effects) {
-    const parsed = parseEffect(effect);
-    if (parsed && parsed.name === 'gainCover') return Number(parsed.args[0]) || 0;
-  }
-  return 0;
 }
 
 
