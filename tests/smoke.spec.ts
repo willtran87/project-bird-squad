@@ -15545,6 +15545,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   const helpTargets = await targetSnapshot('MenuScene');
   expect(helpTargets.map((target) => ({ label: target.label, sceneX: target.sceneX }))).toEqual([
     { label: 'Close', sceneX: 1154 },
+    { label: 'Key terms', sceneX: 994 },
     { label: 'Skip Guide', sceneX: 790 },
     { label: 'Practice lessons', sceneX: 500 },
   ]);
@@ -15571,7 +15572,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
       .map((child: any) => ({ width: child.displayWidth, height: child.displayHeight, bounds: bounds(child) }))
       .sort((a: any, b: any) => a.bounds.top - b.bounds.top);
     const buttonTop = Math.min(...objects
-      .filter((child: any) => child.name === 'system-field-button-hit' && child.getData('label') !== 'Close')
+      .filter((child: any) => child.name === 'system-field-button-hit' && !['Close', 'Key terms'].includes(child.getData('label')))
       .map((child: any) => bounds(child).top));
     return { labels, values, rows, buttonTop };
   });
