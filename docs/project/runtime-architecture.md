@@ -339,6 +339,6 @@ the canvas: WebKit recomposites it every frame.
   `birdsquad.flyway.medals` retains earned cosmetic seals. Both use journaled
   storage; practice writes stay disposable.
 
-Validation: `tools/tests/flyway-rules.test.mjs`, `tests/flyway-expansion.spec.ts`,
+Validation: `src/game/flyway-rules.test.ts` (`npm run test:unit`), `tests/flyway-expansion.spec.ts`,
 existing sequencing/recovery tests, production bundle budgets, and the shared
 web-game client. The expansion acceptance ledger records final evidence.
