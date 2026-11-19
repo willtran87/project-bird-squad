@@ -246,7 +246,9 @@ export class RouteScene extends Phaser.Scene {
     setActiveSeed(this.runState.seed ?? 'alpha');
     this.ensureDistrictContract();
     this.districtContractCelebration = undefined;
-    this.districtContractFocusIndex = this.defaultDistrictContractFocus();
+    // Right after a claimed card reward, never default to "Skip two card rewards".
+    this.districtContractFocusIndex = this.runState.rewardEvents?.at(-1)?.skipped === false
+      && this.districtContractChoices()[0].id === 'lean_route' ? 1 : 0;
     const completedContract = this.runState.districtContracts?.find((contract) => contract.completed && !contract.celebrated);
     const completedContractDefinition = completedContract
       ? DISTRICT_CONTRACT_DEFINITIONS.find((definition) => definition.id === completedContract.id)
@@ -1876,16 +1878,6 @@ export class RouteScene extends Phaser.Scene {
     return [0, 1, 2].map((offset) => definitions[(start + offset) % definitions.length]);
   }
 
-  /** Never pre-select a contract the player's last reward just worked against:
-   * right after claiming a card, "Skip two card rewards" is not the default. */
-  private defaultDistrictContractFocus() {
-    const choices = this.districtContractChoices();
-    const lastReward = this.runState.rewardEvents?.at(-1);
-    if (!lastReward || lastReward.skipped) return 0;
-    const index = choices.findIndex((choice) => choice.id !== 'lean_route');
-    return Math.max(0, index);
-  }
-
   private chooseDistrictContract(id: DistrictContractId) {
     const contract = this.activeDistrictContract();
     if (!contract || contract.confirmed !== false || !this.districtContractChoices().some((choice) => choice.id === id)) return;
@@ -2466,15 +2458,6 @@ export class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  /** Cache drawers are listed by position (01, 02…); the confirm copy must
-   * name the same number the player picked, not the drawer's lore id. */
-  private routeChoiceLabel(node: RouteNode, choice: NodeChoiceOption) {
-    if (node.type !== 'cache') return choice.text;
-    const index = this.nodeChoiceList(node).findIndex((candidate) => candidate.key === choice.key);
-    return index < 0 ? choice.text
-      : choice.text.replace(/^Claim Drawer \d+/, `Claim Drawer ${String(index + 1).padStart(2, '0')}`);
-  }
-
   private nodeChoiceList(node: RouteNode): NodeChoiceOption[] {
     const lockFor = (effects: string[], explicitCost?: number, requirements?: string[], lockedText?: string) => {
       const scrapCost = explicitCost ?? this.scrapCostOfEffects(effects);
@@ -2670,7 +2653,7 @@ export class RouteScene extends Phaser.Scene {
           nodeId: node.id,
           nodeType: node.type,
           choiceKey: choice.key,
-          choiceText: this.routeChoiceLabel(node, choice),
+          choiceText: choice.text,
           effects: choice.effects,
           effectText: routeEffectSummary(choice.effects),
           restoreState: pickerRestoreState,
@@ -2743,7 +2726,7 @@ export class RouteScene extends Phaser.Scene {
       nodeId: node.id,
       nodeType: node.type,
       choiceKey: choice.key,
-      choiceText: this.routeChoiceLabel(node, choice),
+      choiceText: choice.text,
       effects: resolvedEffects,
       effectText,
       restoreState,

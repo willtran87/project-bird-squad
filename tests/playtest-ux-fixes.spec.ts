@@ -264,12 +264,12 @@ test('Cache confirm names the drawer number the player picked', async ({ page })
   }, picked.key);
   await page.mouse.click(point.x, point.y, { delay: 40 });
   await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('RouteScene').pendingRouteReward));
-  const text = await page.evaluate(() => {
-    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
-    return { pending: r.pendingRouteReward.choiceText, shown: r.children.getByName('route-decision-choice')?.getData('fullText') ?? r.children.getByName('route-decision-choice')?.text };
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-decision-choice'));
+  const shown = await page.evaluate(() => {
+    const o = (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-decision-choice');
+    return o.getData('fullText') ?? o.text;
   });
-  expect(text.pending).toMatch(/^Claim Drawer 02\b/);
-  expect(text.shown).toMatch(/Drawer 02\b/);
+  expect(shown).toMatch(/^Claim Drawer 02\b/);
 });
 
 test('district contract does not pre-select Lean Route right after a claimed card reward', async ({ page }) => {

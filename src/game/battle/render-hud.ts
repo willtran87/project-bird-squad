@@ -4,6 +4,7 @@ export { renderUnifiedRunHud } from '../run-hud';
 import { MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
 import { fitTextExcerpt } from '../text-excerpt';
 import { quietButton } from '../quiet-ui';
+import { controlBindingLabel } from '../input-bindings';
 
 export type BattleHudTooltipTarget = Phaser.GameObjects.Rectangle | Phaser.GameObjects.Arc | Phaser.GameObjects.Text;
 
@@ -112,8 +113,7 @@ export interface BattleSelectionPreviewContext {
   cyan: number;
   gold: number;
   /** Plays the selected card, exactly as a second card click or Enter would. */
-  onConfirm?: () => void;
-  confirmKeyLabel?: string;
+  onConfirm?: () => unknown;
 }
 
 interface SelectionOutcome {
@@ -496,7 +496,7 @@ export function renderBattleSelectionPreview(
       .setStrokeStyle(on ? 2 : 1, on ? 0xffe7a8 : context.gold, on ? 1 : 0.72);
     commandFrame.setInteractive(new Phaser.Geom.Rectangle(-6, -pad, 200, 24 + pad * 2), Phaser.Geom.Rectangle.Contains)
       .setData({ controlKind: 'primary', enabled: true, labelObject: commandLabel,
-        accessibleLabel: `Confirm to play ${preview.card} (${context.confirmKeyLabel ?? 'Enter'})` })
+        accessibleLabel: `Confirm to play ${preview.card} (${controlBindingLabel('confirm')})` })
       .on('pointerover', () => paint(true)).on('pointerout', () => paint(false))
       .on('pointerdown', (_p: unknown, _x: number, _y: number, event?: Phaser.Types.Input.EventData) => {
         event?.stopPropagation();
