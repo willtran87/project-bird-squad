@@ -1,6 +1,7 @@
 import { tacticalFormation } from '../tactical-formations';
 import { alphaEncounterLibrary, alphaEnemyLibrary } from '../runtime-data';
 import type { RuntimeEnemy, EnemyMove } from '../types';
+import { selectPatternMoveId } from '../enemy-pattern';
 import type { Enemy, Flock } from './runtime-types';
 
 // Resolve a combat route node's payloadId (an encounter id) to EVERY enemy the
@@ -31,31 +32,8 @@ export function currentMove(enemy: Enemy, context = enemyMoveContext): EnemyMove
   const i = enemy.intentIndex;
   const phaseIds = enemy.phase === 2 ? enemy.runtime.phaseTwoMoveIds : undefined;
   if (phaseIds?.length) return byId(phaseIds[i % phaseIds.length]);
-  switch (attackPattern.type) {
-    case 'cycle':
-      return byId(attackPattern.moveIds[i % attackPattern.moveIds.length]);
-    case 'scripted': {
-      const ids = attackPattern.moveIds;
-      if (i < ids.length) return byId(ids[i]);
-      const loopFrom = attackPattern.loopFrom ?? 0;
-      const loopLen = Math.max(1, ids.length - loopFrom);
-      return byId(ids[loopFrom + ((i - ids.length) % loopLen)]);
-    }
-    case 'weighted': {
-      // Deterministic weighted cycle: expand entries by weight and walk by
-      // intentIndex so frequencies honor the weights AND the telegraphed intent
-      // always matches the move that later executes (no per-call RNG drift).
-      const expanded = attackPattern.entries.flatMap((entry) =>
-        Array<string>(Math.max(1, entry.weight ?? 1)).fill(entry.moveId));
-      return byId(expanded[i % expanded.length]);
-    }
-    case 'conditional': {
-      const hit = attackPattern.entries.find((entry) => context && evaluateEnemyCondition(entry.if, enemy, context));
-      return byId(hit ? hit.moveId : attackPattern.fallback);
-    }
-    default:
-      return moves[i % moves.length];
-  }
+  const id = selectPatternMoveId(attackPattern, i, (condition) => Boolean(context && evaluateEnemyCondition(condition, enemy, context)));
+  return id ? byId(id) : moves[i % moves.length];
 }
 
 

@@ -15,7 +15,7 @@ export interface DifficultyMods {
   eliteDamageBonus: number; // extra flat damage on elite/rival hits
   bossDamageBonus: number; // extra flat damage on boss hits (not its escorts)
   // Spawn-time Cohesion multipliers stacked on enemyHpMult for elites/bosses.
-  // Apply with enemyHpMultFor(); see the main.ts spawn scaling hook.
+  // Apply with enemyHpMultFor(); see the battle-scene spawn scaling.
   eliteHpMult: number;
   bossHpMult: number;
   routeHealMult: number; // scales out-of-combat (Basin/Nest/route) healing

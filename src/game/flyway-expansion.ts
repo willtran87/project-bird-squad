@@ -6,6 +6,7 @@ import { birdAudio, cardArtAssets, cardLibrary, createInitialRunState, currentMa
 import { routeSceneEventResidentAssets, routeSceneMapBackdropAssets } from './route-scene-assets';
 import { codexLeaderArtAssets } from './leader-portrait-assets';
 import { writeJournaledJson, readJournaledJson } from './safe-storage';
+import { stampActiveRunVersion } from './save-migration';
 import { controlBindingsSnapshot } from './input-bindings';
 import { capstones } from './signature-capstones';
 import { prefersLeanEffects } from './graphics-quality';
@@ -32,7 +33,7 @@ function section(parent: HTMLElement, title: string, text: string) {
 }
 function saveRoute(scene: Scene) {
   if (!scene.runState) return true;
-  return writeJournaledJson('birdsquad.run.active', scene.runState);
+  return writeJournaledJson('birdsquad.run.active', stampActiveRunVersion(scene.runState));
 }
 function readArchive() {
   return readJournaledJson(archiveKey, value => {

@@ -87,12 +87,6 @@ export const CACHE_SCRAP_REWARD = 30;
 
 export const DEFAULT_REWARD_SKIP_SCRAP = 12;
 
-
-// Every playable card lives in one shared reward pool; weight post-combat offers
-// by rarity so uncommon cards show up often while rares/legendaries still feel special.
-export const REWARD_RARITY_WEIGHT: Record<string, number> = { common: 80, uncommon: 75, rare: 32, legendary: 10 };
-
-
 export type DistrictContractId = 'hold_line' | 'clean_flight' | 'bright_signal' | 'lean_route';
 
 

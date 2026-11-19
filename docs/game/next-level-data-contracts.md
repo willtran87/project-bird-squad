@@ -119,7 +119,7 @@ type PatternEntry = { moveId: string; weight?: number; repeat?: 'cannotRepeat' |
 type AttackPattern =
   | { type: 'cycle'; moveIds: string[] }
   | { type: 'weighted'; entries: PatternEntry[] }
-  | { type: 'conditional'; entries: Array<{ moveId: string; if: string }>; fallback: string }
+  | { type: 'conditional'; entries: Array<{ moveId: string; if: string }>; fallback: string | { type: 'cycle'; moveIds: string[] } }
   | { type: 'scripted'; moveIds: string[]; loopFrom?: number };
 ```
 
@@ -138,7 +138,11 @@ Two spire-codex-validated refinements (provenance §13):
 - **`repeat`** on a weighted entry encodes "never twice in a row"
   (`cannotRepeat`) or "once per combat" (`oncePerCombat`) as data, not as resolver
   special-cases — the clean place for boss-variety constraints. Omitting `repeat`
-  means no constraint (the move may repeat in any adjacent turn).
+  means no constraint (the move may repeat in any adjacent turn). Runtime walks
+  the weight-expanded entries by `intentIndex`, skipping slots a rule forbids
+  (`src/game/enemy-pattern.ts`), so the Tell stays deterministic.
+- A **`conditional`** pattern's `fallback` is one move id, or
+  `{ type: 'cycle', moveIds }` walked by `intentIndex` while no entry's `if` holds.
 
 `intent: IntentBadgeView[]` is **derived at render time** from `effects` (§2.2),
 not authored per move. This removes the audit's "every move needs an authored
@@ -558,7 +562,7 @@ Two card-validator changes also land here (driven by §7.3):
 | `alpha-reward-profiles.json` | ids unique; scrap shapes valid; no unknown fields. |
 | `alpha-statuses.json` | ids unique; `kind` ∈ {buff, debuff}; `stack` ∈ {counter, flag}; every status referenced elsewhere (powers[], verbs, core-spec) resolves here. |
 | `alpha-encounters.json` | ids unique; `enemies[]` exist in alpha-enemies; `rewardProfileId` exists; `band` ∈ §5.1; every `tags[]` ∈ §5.2; `nodeType` ∈ validNodeTypes; non-empty lesson. |
-| enemy `moves` + `attackPattern` | `attackPattern.moveIds`/entries reference defined moves; `cycle` non-empty; `scripted.loopFrom` in range; `weighted.weight > 0`; optional `entry.repeat` ∈ {cannotRepeat, oncePerCombat}; `conditional.fallback` defined and every `if` ∈ §1.3 set; every `powers[].status` ∈ §5.5 registry and `target` ∈ {self, flock}. |
+| enemy `moves` + `attackPattern` | `attackPattern.moveIds`/entries reference defined moves; `cycle` non-empty; `scripted.loopFrom` in range; `weighted.weight > 0`; optional `entry.repeat` ∈ {cannotRepeat, oncePerCombat}; `conditional.fallback` a defined move id or a non-empty `{type:'cycle', moveIds}` of defined moves, and every `if` ∈ §1.3 set; every `powers[].status` ∈ §5.5 registry and `target` ∈ {self, flock}. |
 | `alpha-market.json` | prices positive; slot shapes valid (§9 slot interfaces); slot counts match inventory rule; referenced card/RouteMark/Supply ids exist; service ids ∈ `{preen,release}`. |
 | `alpha-supplies.json` | `answerType` ∈ §5.4; `rarity` valid; effects parse + verb allowlist. |
 | `alpha-signals.json` | choice `key`s unique and order-stable; `outcomes` parse + verb allowlist; `requirements`/`cost` parse + **predicate allowlist** (§7.2). |

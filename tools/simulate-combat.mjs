@@ -45,6 +45,7 @@ const bundle = buildSync({
       "export { playCombination } from './src/game/flyway-rules';",
       "export * as balanceModule from './src/game/balance';",
       "export { flockHandTarget } from './src/game/hand-size';",
+      "export { selectPatternMoveId } from './src/game/enemy-pattern';",
     ].join('\n'),
     resolveDir: root,
     loader: 'ts',
@@ -176,31 +177,15 @@ function buildDeck(leader, mapIndex, boss, rng) {
   return deck;
 }
 
-// --- Enemy helpers (mirror main.ts currentMove / evaluateEnemyCondition) -------
+// --- Enemy helpers (mirror enemy-moves.ts currentMove / evaluateEnemyCondition) --
 function currentMove(enemy, ctx) {
   const { moves, attackPattern } = enemy.runtime;
   const byId = (id) => moves.find((move) => move.id === id) ?? moves[0];
   const i = enemy.intentIndex;
   const phaseIds = enemy.phase === 2 ? enemy.runtime.phaseTwoMoveIds : undefined;
   if (phaseIds?.length) return byId(phaseIds[i % phaseIds.length]);
-  switch (attackPattern.type) {
-    case 'cycle': return byId(attackPattern.moveIds[i % attackPattern.moveIds.length]);
-    case 'scripted': {
-      const ids = attackPattern.moveIds;
-      if (i < ids.length) return byId(ids[i]);
-      const loopFrom = attackPattern.loopFrom ?? 0;
-      return byId(ids[loopFrom + ((i - ids.length) % Math.max(1, ids.length - loopFrom))]);
-    }
-    case 'weighted': {
-      const expanded = attackPattern.entries.flatMap((entry) => Array(Math.max(1, entry.weight ?? 1)).fill(entry.moveId));
-      return byId(expanded[i % expanded.length]);
-    }
-    case 'conditional': {
-      const hit = attackPattern.entries.find((entry) => ctx && enemyCondition(entry.if, enemy, ctx));
-      return byId(hit ? hit.moveId : attackPattern.fallback);
-    }
-    default: return moves[i % moves.length];
-  }
+  const id = rt.selectPatternMoveId(attackPattern, i, (condition) => Boolean(ctx && enemyCondition(condition, enemy, ctx)));
+  return id ? byId(id) : moves[i % moves.length];
 }
 
 function enemyCondition(condition, enemy, ctx) {
@@ -517,7 +502,7 @@ function simulateFight(encounter, mapIndex, enemyById, deckCards, rng, mods, lea
       case 'applyWinded': flock.weak += value; break;
       case 'applyFrail': flock.frail += value; break;
       case 'applyPoison': flock.fouled += value; break;
-      case 'loseWingbeat': energy = Math.max(0, energy - value); break;
+      case 'loseWingbeat': nextTurnEnergy -= value; break; // lands on the next player turn, like the runtime
       case 'addSnagToDiscard': case 'addSnagToDraw': {
         const snagId = parts[0];
         if (snagId && cardById.has(snagId) && !deckIds.has(snagId)) {
@@ -558,7 +543,7 @@ function simulateFight(encounter, mapIndex, enemyById, deckCards, rng, mods, lea
 
   const startTurn = () => {
     turn += 1;
-    energy = 3 + nextTurnEnergy;
+    energy = Math.max(0, 3 + nextTurnEnergy);
     nextTurnEnergy = 0;
     flock.block = Math.min(flock.block, keystone('nests') ? 8 : 0);
     combat.previousSuit = undefined;
