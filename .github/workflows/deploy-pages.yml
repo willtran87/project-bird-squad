@@ -220,10 +220,7 @@ jobs:
 
       - name: Validate content and release policy
         run: |
-          node --test tools/tests/flyway-rules.test.mjs
-          node --test tools/tests/draw-comparison.test.mjs
-          node --test tools/tests/card-contributions.test.mjs
-          node --test tools/tests/distinct-builds.test.mjs
+          npm run test:unit
           npm run validate:docs
           npm run validate:runtime
           npm run validate:runtime-assets
