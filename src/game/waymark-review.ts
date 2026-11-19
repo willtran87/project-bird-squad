@@ -132,12 +132,12 @@ function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
     .setStrokeStyle(1, 0x8874a9, 0.7).setName('route-waymark-drawer-panel');
   const frame = { left: 110, top: 75, right: 1170 };
   text(scene, 148, 110, 'Found Waymarks', 650, 30, '#ffe1a3').setFontStyle('bold');
-  text(scene, 148, 156, `${view.entries.length} artifacts carried this run`, 650, 18, '#abc4d4');
+  text(scene, 148, 156, `${view.entries.length} Waymark${view.entries.length === 1 ? '' : 's'} carried this run`, 650, 18, '#abc4d4');
   const [, back] = decisionButton(scene, 1068, 159, 152, 'Back', 'route-waymark-close-hit',
     () => { if (!blocked(scene)) view.onClose(); });
   bindChoiceHint(scene, back, mode => mode === 'pointer' ? 'Back'
     : `Back · ${mode === 'controller' ? 'B' : controlBindingLabel('back')}`);
-  if (!view.entries.length) { text(scene, 200, 260, 'No Waymarks found yet. Discover artifacts along your route.', 820, 22); return; }
+  if (!view.entries.length) { text(scene, 200, 260, 'No Waymarks found yet. Discover them along your route.', 820, 22); return; }
   const columns = 3, visibleRows = 2, tileW = 252, tileH = 80;
   const startX = frame.left + 64, startY = frame.top + 128;
   const totalRows = Math.ceil(view.entries.length / columns), maxScrollRows = Math.max(0, totalRows - visibleRows);
@@ -176,7 +176,7 @@ function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
   decisionButton(scene, 926, 159, 112, pin ? 'Unpin' : 'Pin', 'route-waymark-pin-hit', () => { if (!blocked(scene)) view.onPin(); });
   if (view.selected) renderSceneWaymarkReview(scene, { selected: view.selected, pinned: view.pinned, onPin: view.onPin });
   bindChoiceHint(scene, text(scene, 148, 650, '', 1020, 18, '#abc4d4').setName('route-waymark-reader-hints'),
-    mode => mode === 'pointer' ? 'Choose an artifact to read · Pin one to compare'
+    mode => mode === 'pointer' ? 'Choose a Waymark to read · Pin one to compare'
       : mode === 'controller' ? 'D-pad: choose · X: pin · LB / RB: rules · B: back'
         : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: choose · ${controlBindingLabel('roost')}: pin · PgUp / PgDn: rules · ${controlBindingLabel('back')}: back`);
 }
