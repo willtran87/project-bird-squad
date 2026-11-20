@@ -1,4 +1,5 @@
 import { setTextureFilter } from '../texture-filter';
+import { attachCardBody, battleActors } from './actors';
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
@@ -268,9 +269,9 @@ function glowStyle(card: GlowState) {
   return { tint: card.accent, alpha: live ? 0.34 : 0 };
 }
 
-/** Hover answers with light, not movement: card bounds are a layout contract
- * (forecast clearance, touch separation, pile motion), so the halo brightens
- * and nothing shifts. */
+/** Hover answers with light here and with a lift on the actor stage. Card
+ * bounds stay a layout contract (forecast clearance, touch separation, pile
+ * motion): the lift is drawn, never written to the card's objects. */
 function hoverCard(rect: Phaser.GameObjects.Rectangle, hovered: boolean) {
   const glow = rect.getData('halo') as Phaser.GameObjects.Image | undefined;
   if (!glow?.active) return;
@@ -292,7 +293,8 @@ export function renderBattleHandCardArt(
     context,
     target,
     { ...card, artKey: detailed },
-    centerX,
+    // A retained card that changed slot carries its art layer with it.
+    centerX - target.x,
     context.handY,
     context.cardWidth - CARD_ART_INSET * 2,
     context.cardHeight - CARD_ART_INSET * 2,
@@ -333,12 +335,15 @@ function renderCard(
     event?.stopPropagation();
     context.onCardClick(card.instanceId);
   });
+  const fan = battleActors(scene).hand;
   rect.on('pointerover', () => {
     hoverCard(rect, true);
+    fan.hovered = card.instanceId;
     context.onCardHover(card.instanceId);
   });
   rect.on('pointerout', () => {
     hoverCard(rect, false);
+    if (fan.hovered === card.instanceId) fan.hovered = undefined;
     context.onCardOut();
   });
   // The halo travels with its card; the raster pulse map stays reserved.
@@ -497,16 +502,64 @@ function renderCard(
   rect.setData('presentation', target.list.slice(presentationStart));
 }
 
+const emptyHand = (): BattleHandRenderResult => ({
+  rects: new Map(), artLayers: new Map(), frames: new Map(), selectionPulses: new Map(), flowIndicators: new Map(),
+});
+
+/** One retained hand card: its flat objects, the slot they were laid out in and
+ * the face data they show. */
+interface HandCardBody { sig: string; art: string; left: number; rect: Phaser.GameObjects.Rectangle; objects: Phaser.GameObjects.GameObject[]; parts: BattleHandRenderResult }
+const HAND_BODIES = new WeakMap<Phaser.GameObjects.Container, Map<string, HandCardBody>>();
+
+/**
+ * Reconcile the hand instead of rebuilding it. A card keeps its objects for as
+ * long as it stays in hand and its face is unchanged; a card whose slot moved
+ * is shifted and slides there; only a changed face is redrawn, and only a card
+ * that left the hand is destroyed. Everything else in the layer is transient.
+ */
 export function renderBattleHand(context: BattleHandRenderContext): BattleHandRenderResult {
-  const result: BattleHandRenderResult = {
-    rects: new Map(),
-    artLayers: new Map(),
-    frames: new Map(),
-    selectionPulses: new Map(),
-    flowIndicators: new Map(),
-  };
-  if (context.cards.length === 0) return result;
-  context.cards.forEach((card, index) => renderCard(context, result, card, context.cardLeft(index, context.cards.length)));
+  const { scene, target, cards } = context, stage = battleActors(scene);
+  const known = HAND_BODIES.get(target) ?? new Map<string, HandCardBody>();
+  const bodies = new Map<string, HandCardBody>(), result = emptyHand(), keep = new Set<Phaser.GameObjects.GameObject>();
+  HAND_BODIES.set(target, bodies);
+  const ready = (key?: string) => Boolean(key && textureReady(scene, key));
+  cards.forEach((card, index) => {
+    const id = card.instanceId, left = context.cardLeft(index, cards.length);
+    const sig = JSON.stringify([{ ...card, selected: 0, flowVisible: 0, surgeNext: 0 },
+      ready(context.assets.cardFrame), context.reinforcedColorCues]);
+    const art = `${ready(card.artKey)}${ready(card.preview.artKey)}`;
+    let body = known.get(id);
+    if (body?.sig === sig && body.rect.active && body.rect.visible) {
+      const shift = left - body.left;
+      if (shift) for (const object of body.objects) (object as Phaser.GameObjects.Rectangle).x += shift;
+      body.left = left;
+      // Art that finished loading is repainted in place; the hit target stays.
+      const layer = body.parts.artLayers.get(id);
+      if (body.art !== art && layer?.active) renderBattleHandCardArt(context, layer, card, left + context.cardWidth / 2);
+      body.art = art;
+    } else {
+      const parts = emptyHand();
+      renderCard(context, parts, card, left);
+      const rect = parts.rects.get(id)!;
+      body = { sig, art, left, rect, objects: rect.getData('presentation'), parts };
+      if (stage.hand.hovered === id) stage.hand.hovered = undefined;
+    }
+    bodies.set(id, body);
+    const live = body.rect;
+    for (const object of body.objects) keep.add(object);
+    for (const name of ['rects', 'artLayers', 'frames', 'flowIndicators'] as const) {
+      const part = body.parts[name].get(id);
+      if (part) (result[name] as Map<string, unknown>).set(id, part);
+    }
+    attachCardBody(stage, id, body.objects, left + context.cardWidth / 2, context.handY, () => live.active);
+  });
+  for (const child of [...target.list]) if (!keep.has(child)) child.destroy();
+  // Draw order follows hand order, whichever cards were kept or redrawn.
+  for (const body of bodies.values()) for (const object of body.objects) target.bringToTop(object);
+  for (const id of known.keys()) if (!bodies.has(id)) stage.retire(`card:${id}`);
+  stage.hand.order = cards.map(card => card.instanceId);
+  if (cards.length) refreshBattleHandSelection(context, cards, result);
+  else stage.hand.selected = stage.hand.hovered = undefined;
   return result;
 }
 
@@ -532,6 +585,7 @@ export function refreshBattleHandSelection(
   cards: BattleHandSelectionView[],
   result: BattleHandRenderResult,
 ) {
+  battleActors(context.scene).hand.selected = cards.find(card => card.selected)?.instanceId;
   cards.forEach((card) => {
     const rect = result.rects.get(card.instanceId);
     if (!rect?.scene) return;

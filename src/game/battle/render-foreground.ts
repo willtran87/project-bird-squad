@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { fitTextExcerpt } from '../text-excerpt';
 import { artContact } from './art-grounding';
 import type { enemyIntentLabel } from '../enemy-intent';
+import { battleActors, type ActorBreath } from './actors';
 
 export interface BattleForegroundArtPlacement {
   artX: number;
@@ -90,21 +91,60 @@ export interface BattleForegroundRenderContext {
   ) => void;
   addIntentIcon: (icon: BattleIntentIcon, x: number, y: number, size: number) => Phaser.GameObjects.Image | undefined;
   registerEnemyPose: (enemyId: string, group: Phaser.GameObjects.Container, scale: number) => void;
-  presentEnemyMotion: (
-    enemyId: string,
-    breathGroup: Phaser.GameObjects.Container,
-    poseGroup: Phaser.GameObjects.Container,
-    scale: number
-  ) => void;
-  presentLeaderMotion: (
-    breathGroup: Phaser.GameObjects.Container,
-    poseGroup: Phaser.GameObjects.Container
-  ) => void;
+  /** Top of a texture's visible pixels, as a share of its height. */
+  textureTop: (key: string) => number;
+}
+
+/** Combatant bodies outlive the redraw. Each record is one retained container,
+ * refilled only when its `sig` (art, fit, frame) changes and destroyed when the
+ * combatant leaves play. */
+interface RetainedBody { node: Phaser.GameObjects.Container; pose?: Phaser.GameObjects.Container; sig: string; seen: boolean }
+interface RetainedStage { bodies: Map<string, RetainedBody>; parking: Phaser.GameObjects.Container }
+const RETAINED = new WeakMap<Phaser.GameObjects.Container, RetainedStage>();
+
+function retainedStage(context: BattleForegroundRenderContext) {
+  let stage = RETAINED.get(context.target);
+  if (!stage) {
+    const parking = context.scene.add.container(0, 0).setVisible(false).setName('combat-actor-parking');
+    stage = { bodies: new Map(), parking };
+    RETAINED.set(context.target, stage);
+    context.target.once(Phaser.GameObjects.Events.DESTROY, () => parking.destroy(true));
+  }
+  return stage;
+}
+
+/** Call before the immediate-mode layer is cleared: retained bodies step aside
+ * and are re-seated, in draw order, by the next foreground render. */
+export function parkBattleActors(target: Phaser.GameObjects.Container) {
+  const stage = RETAINED.get(target);
+  if (!stage?.parking.active) return;
+  for (const body of stage.bodies.values()) if (body.node.active) stage.parking.add(body.node);
+}
+
+function retainedBody(context: BattleForegroundRenderContext, key: string, name: string, x: number, y: number) {
+  const stage = retainedStage(context);
+  let body = stage.bodies.get(key);
+  if (!body?.node.active) {
+    body = { node: context.scene.add.container(x, y).setName(name), sig: '', seen: true };
+    stage.bodies.set(key, body);
+  }
+  body.seen = true;
+  return body;
+}
+
+/** A logical hit area: it sits on the slot and never follows the animated body. */
+function slotHit(context: BattleForegroundRenderContext, x: number, y: number, width: number, height: number, name: string) {
+  const hit = context.scene.add.rectangle(x, y, width, height, 0x000000, 0.001)
+    .setInteractive({ useHandCursor: true }).setName(name);
+  context.target.add(hit);
+  return hit;
 }
 
 function fitSingleLine(label: Phaser.GameObjects.Text, source: string) {
   return fitTextExcerpt(label, source, 1);
 }
+
+const ENEMY_AMBIENT_TINT = 0x111822;
 
 function identifyEnemy<T extends Phaser.GameObjects.GameObject>(object: T, name: string, enemyId: string) {
   return object.setName(name).setData('enemyId', enemyId);
@@ -144,11 +184,39 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
   const hasEnemyArt = Boolean(enemy.artKey && scene.textures.exists(enemy.artKey));
   const contact = enemyContact(context, enemy);
   const reticle = context.textures.targetReticle;
-  const breathGroup = scene.add.container(enemy.x, enemy.y)
-    .setName('combat-enemy-art').setData('enemyId', enemy.id);
-  const poseGroup = scene.add.container(0, 0);
+  const body = retainedBody(context, `enemy:${enemy.id}`, 'combat-enemy-art', enemy.x, enemy.y);
+  const breathGroup = body.node.setData('enemyId', enemy.id);
+  const placement = enemy.artPlacement;
+  const sig = [hasEnemyArt && enemy.artKey, enemy.artFit, s, placement?.artX, placement?.artY,
+    hasEnemyArt || enemy.selected, enemy.elite, enemy.frameColor].join('|');
+  if (body.sig !== sig || !body.pose?.active) {
+    breathGroup.removeAll(true);
+    body.sig = sig;
+    const pose = body.pose = scene.add.container(0, 0);
+    breathGroup.add(pose);
+    if (hasEnemyArt && enemy.artKey) {
+      pose.add(scene.add.image(placement?.artX ?? 0, placement?.artY ?? -22 * s, enemy.artKey)
+        .setName('combat-enemy-portrait')
+        .setScale(enemy.artFit)
+        // A restrained cool ambient fill reveals dark feather/workwear detail on
+        // the night rooftops. Screen tint leaves existing highlights intact.
+        .setTint(ENEMY_AMBIENT_TINT).setTintMode(Phaser.TintModes.SCREEN)
+        .setAlpha(0.99));
+    } else {
+      pose.add(scene.add.ellipse(0, 0, 174 * s, 136 * s, enemy.elite ? 0x5b3f6d : 0x6f4b35, 1)
+        .setStrokeStyle(enemy.selected ? 5 : enemy.elite ? 4 : 2, enemy.frameColor, 1));
+      pose.add(scene.add.triangle(68 * s, -10 * s, 0, 0, 22 * s, 8 * s, 0, 16 * s, 0xe7c36a, 1));
+      pose.add(scene.add.text(0, -10 * s, enemy.initials, {
+        fontFamily,
+        fontSize: `${Math.round(28 * s)}px`,
+        fontStyle: boldFontStyle,
+        color: '#1b1110'
+      }).setOrigin(0.5));
+    }
+  }
+  const poseGroup = body.pose!;
+  const art = poseGroup.getByName('combat-enemy-portrait') as Phaser.GameObjects.Image | null;
   context.registerEnemyPose(enemy.id, poseGroup, s);
-  breathGroup.add(poseGroup);
   // Authored enamel target art keeps its native proportions under the feet.
   if (enemy.selected && scene.textures.exists(reticle)) {
     target.add(scene.add.image(enemy.x + contact.x, enemy.y + contact.y, reticle)
@@ -169,40 +237,33 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
 
   contactShadow(context, enemy.x + contact.x, enemy.y + contact.y, contact.width,
     Math.min(18 * s, contact.width * 0.16), 'combat-enemy-contact-shadow', enemy.id);
-  if (!hasEnemyArt) {
-    const body = scene.add.ellipse(0, 0, 174 * s, 136 * s, enemy.elite ? 0x5b3f6d : 0x6f4b35, 1)
-      .setStrokeStyle(enemy.selected ? 5 : enemy.elite ? 4 : 2, enemy.frameColor, 1)
-      .setInteractive({ useHandCursor: true });
-    body.on('pointerdown', () => context.onEnemyClicked(enemy.id));
-    poseGroup.add(body);
+  // The silhouette is a selection target, but its hit area belongs to the slot:
+  // a lunge or recoil never moves what the player can click. Transparent export
+  // padding stays outside it, so it cannot steal input from the HUD or a neighbour.
+  let hitX = enemy.x, hitY = enemy.y, hitW = 174 * s, hitH = 136 * s, restTop = hitY;
+  if (art) {
+    const fit = enemy.artFit, bounds = placement?.hitBounds ?? { x: 0, y: 0, width: art.width, height: art.height };
+    hitW = bounds.width * fit; hitH = bounds.height * fit;
+    hitX = enemy.x + art.x + (bounds.x - art.width / 2) * fit + hitW / 2;
+    hitY = enemy.y + art.y + (bounds.y - art.height / 2) * fit + hitH / 2;
+    restTop = enemy.y + art.y + art.height * fit * (context.textureTop(art.texture.key) - 0.5);
   }
-  if (hasEnemyArt && enemy.artKey) {
-    const art = scene.add.image(enemy.artPlacement?.artX ?? 0, enemy.artPlacement?.artY ?? -22 * s, enemy.artKey)
-      .setName('combat-enemy-portrait')
-      .setScale(enemy.artFit)
-      // A restrained cool ambient fill reveals dark feather/workwear detail on
-      // the night rooftops. Screen tint leaves existing highlights intact.
-      .setTint(0x111822).setTintMode(Phaser.TintModes.SCREEN)
-      .setAlpha(0.99);
-    // Transparent export padding must not steal input from the HUD or another
-    // enemy. The silhouette and the separate vitals are both selection targets.
-    const bounds = enemy.artPlacement?.hitBounds;
-    if (bounds) art.setInteractive(new Phaser.Geom.Rectangle(bounds.x, bounds.y, bounds.width, bounds.height), Phaser.Geom.Rectangle.Contains);
-    else art.setInteractive();
-    if (art.input) art.input.cursor = 'pointer';
-    art.on('pointerdown', () => context.onEnemyClicked(enemy.id));
-    poseGroup.add(art);
-  } else {
-    poseGroup.add(scene.add.triangle(68 * s, -10 * s, 0, 0, 22 * s, 8 * s, 0, 16 * s, 0xe7c36a, 1));
-    poseGroup.add(scene.add.text(0, -10 * s, enemy.initials, {
-      fontFamily,
-      fontSize: `${Math.round(28 * s)}px`,
-      fontStyle: boldFontStyle,
-      color: '#1b1110'
-    }).setOrigin(0.5));
-  }
+  identifyEnemy(slotHit(context, hitX, hitY, hitW, hitH, 'combat-enemy-hit'), 'combat-enemy-hit', enemy.id)
+    .on('pointerdown', () => context.onEnemyClicked(enemy.id));
   target.add(breathGroup);
-  context.presentEnemyMotion(enemy.id, breathGroup, poseGroup, s);
+  // Reserve HUD clearance for the entire breathing envelope, not just its rest pose.
+  let breath: ActorBreath | undefined;
+  if (!context.reducedMotion) {
+    const seed = [...enemy.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const lift = (3.5 + seed % 3) * s, stretch = 0.024 + (seed % 3) * 0.003;
+    const rise = lift + Math.max(0, enemy.y - restTop) * stretch;
+    // Two pixels of margin also keep floating-point bounds clear of the 106px HUD edge.
+    const strength = art ? Math.min(1, Math.max(0, restTop - 108) / Math.max(0.001, rise)) : 1;
+    breath = { lift: lift * strength, stretch: stretch * strength, squeeze: 0.008 + (seed % 2) * 0.002,
+      period: 1500 + seed % 420, delay: seed % 420 };
+  }
+  battleActors(scene).bindNode(`enemy:${enemy.id}`, 'enemy', breathGroup, enemy.x, enemy.y, s, breath,
+    art ? { image: art, from: ENEMY_AMBIENT_TINT, to: 0xb8b0a8 } : undefined);
 }
 
 function renderRankBadge(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView,
@@ -309,46 +370,67 @@ function renderEnemyLabels(context: BattleForegroundRenderContext, enemy: Battle
 function renderLeader(context: BattleForegroundRenderContext) {
   const { scene, target, leader, fontFamily, boldFontStyle, goldColor } = context;
   const hasLeaderArt = Boolean(leader.artKey && scene.textures.exists(leader.artKey));
-  const breathGroup = scene.add.container(leader.x, leader.y).setName('combat-leader-art');
-  const poseGroup = scene.add.container(0, 0).setName('combat-leader-pose');
-  breathGroup.add(poseGroup);
+  const body = retainedBody(context, 'flock', 'combat-leader-art', leader.x, leader.y);
+  const breathGroup = body.node;
+  const sig = [hasLeaderArt && leader.artKey, leader.artFit, leader.artY, hasLeaderArt || leader.stateAccent].join('|');
+  const rebuild = body.sig !== sig || !body.pose?.active;
+  if (rebuild) {
+    breathGroup.removeAll(true);
+    body.sig = sig;
+    body.pose = scene.add.container(0, 0).setName('combat-leader-pose');
+    breathGroup.add(body.pose);
+  }
+  const poseGroup = body.pose!;
   if (hasLeaderArt && leader.artKey) {
     const source = scene.textures.get(leader.artKey).getSourceImage() as { width: number; height: number };
     const fit = leader.artFit, artY = leader.artY;
     const width = source.width * fit, height = source.height * fit;
     const contact = artContact(leader.artKey, 0, artY, width, height, { x: 0, y: 100, width: 112 });
     contactShadow(context, leader.x + contact.x, leader.y + contact.y, contact.width, 15, 'combat-leader-contact-shadow');
-    poseGroup.add(scene.add.image(0, artY, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));
+    if (rebuild) poseGroup.add(scene.add.image(0, artY, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));
   } else {
     contactShadow(context, leader.x, leader.y + 40, 112, 18, 'combat-leader-contact-shadow');
-    poseGroup.add(scene.add.ellipse(0, -18, 142, 118, 0x6f4b35, 0.96).setStrokeStyle(3, leader.stateAccent, 0.9));
-    poseGroup.add(scene.add.triangle(52, -26, 0, 0, 28, 7, 0, 16, 0x1b1110, 1));
-    poseGroup.add(scene.add.text(0, -18, 'FF', {
-      fontFamily,
-      fontSize: '28px',
-      fontStyle: boldFontStyle,
-      color: goldColor,
-      stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5));
+    if (rebuild) {
+      poseGroup.add(scene.add.ellipse(0, -18, 142, 118, 0x6f4b35, 0.96).setStrokeStyle(3, leader.stateAccent, 0.9));
+      poseGroup.add(scene.add.triangle(52, -26, 0, 0, 28, 7, 0, 16, 0x1b1110, 1));
+      poseGroup.add(scene.add.text(0, -18, 'FF', {
+        fontFamily,
+        fontSize: '28px',
+        fontStyle: boldFontStyle,
+        color: goldColor,
+        stroke: '#000000',
+        strokeThickness: 4,
+      }).setOrigin(0.5));
+    }
   }
+  target.add(breathGroup);
   // Stop the leader's inspection region above the fixed hand rail: hovering
   // or tapping a card must never be intercepted by the portrait's empty area.
-  const hitbox = scene.add.rectangle(0, -36, 250, 264, 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true }).setName('combat-leader-hit');
+  // Like every actor's hit area it stays on the slot while the body moves.
+  const hitbox = slotHit(context, leader.x, leader.y - 36, 250, 264, 'combat-leader-hit');
   hitbox.on('pointerdown', context.onLeaderClicked);
   hitbox.on('pointerover', () => hitbox.setStrokeStyle(2, leader.stateAccent, 0.7));
   hitbox.on('pointerout', () => hitbox.setStrokeStyle());
   context.attachTooltip(hitbox, leader.name, `${leader.bird} leader. ${leader.signatureLabel} Click for Flock Stats.`);
-  poseGroup.add(hitbox);
-  target.add(breathGroup);
-  context.presentLeaderMotion(breathGroup, poseGroup);
+  const portrait = poseGroup.getByName('combat-leader-portrait') as Phaser.GameObjects.Image | null;
+  battleActors(scene).bindNode('flock', 'flock', breathGroup, leader.x, leader.y, 1,
+    context.reducedMotion ? undefined : { lift: 4, squeeze: 0.006, stretch: 0.012, period: 1700, delay: 0 },
+    portrait ? { image: portrait, from: 0xffffff, to: 0xff9c8c } : undefined);
 }
 
 /** Render battle combatants, target affordances, vitals, and intent presentation. */
 export function renderBattleForeground(context: BattleForegroundRenderContext) {
+  const retained = retainedStage(context);
+  for (const body of retained.bodies.values()) body.seen = false;
   context.enemies.forEach((enemy) => renderEnemyArt(context, enemy));
   renderLeader(context);
+  // A combatant that was not drawn this pass has left play.
+  for (const [key, body] of retained.bodies) {
+    if (body.seen) continue;
+    body.node.destroy(true);
+    retained.bodies.delete(key);
+    battleActors(context.scene).retire(key);
+  }
   // Container insertion order is the render order. Keep every status and Tell
   // above every combatant, including art belonging to a later front-row enemy.
   context.enemies.forEach((enemy) => renderEnemyLabels(context, enemy));

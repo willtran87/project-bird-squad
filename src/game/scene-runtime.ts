@@ -17,6 +17,7 @@ export function advanceGameTime(game: Phaser.Game, requestedMs: number) {
         clock.preUpdate();
         clock.update(clock.now + delta, delta);
         if (!tweens.paused) tweens.tick();
+        scene.events.emit('clock-advanced');
         remaining -= delta;
       }
     } finally { tweens.getDelta = getDelta; }
