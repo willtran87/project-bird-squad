@@ -3,7 +3,7 @@ import { arrivalCardState, dressArrivalCard } from './arrival-card';
 import { backdropLifeState, dressBackdropLife, lightPose, runLight, runProgress } from './backdrop-life';
 import { dressButtons } from './button-fx';
 import { eachFrame, redrawWatch, renderPose } from './kit';
-import { overlayEntranceState } from './overlay-fx';
+import { overlayAmbience, overlayEntranceState } from './overlay-fx';
 import { routeLifeState } from './route-life';
 import { staggerLists, type StaggerSpec } from './stagger';
 import { dressTransition, installTransitions, lastTransition } from './transitions';
@@ -29,6 +29,12 @@ const LISTS: Record<string, readonly StaggerSpec[]> = {
 export function dressLife(scene: Phaser.Scene, arriving: boolean) {
   const key = scene.scene.key;
   if (key === 'BootScene') return false;
+  // The Codex and Flock Record are whole-screen readers over a run: quieten the bed.
+  if (key === 'CodexScene' || key === 'ProfileScene') {
+    const owner = scene.add.zone(0, 0, 1, 1).setName('overlay-ambience');
+    overlayAmbience(owner, key === 'CodexScene' ? 'codex' : 'profile');
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => owner.destroy());
+  }
   dressButtons(scene);
   const lists = LISTS[key];
   if (lists) {
@@ -49,7 +55,7 @@ export function gradeBattlePainting(scene: Phaser.Scene, painting: Phaser.GameOb
 }
 
 export function installLife(game: Phaser.Game) {
-  installTransitions();
+  installTransitions(game);
   // One read-only window onto the layer for tests and debugging.
   (window as unknown as Record<string, unknown>).__birdSquadLife = (sceneKey: string) => {
     const scene = game.scene.getScene(sceneKey);

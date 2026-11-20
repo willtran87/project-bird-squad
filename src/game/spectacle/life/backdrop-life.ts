@@ -177,11 +177,11 @@ export function dressBackdropLife(scene: Phaser.Scene) {
     if (!scene.textures.exists(GLOW)) return made;
     const { width, height } = scene.scale.gameSize;
     made.horizon = scene.add.image(width * 0.5, height * 0.06, GLOW).setBlendMode(Phaser.BlendModes.ADD)
-      .setDisplaySize(width * 1.5, height * 0.8).setAlpha(0).setName('spectacle-horizon');
+      .setDisplaySize(width * 1.1, height * 0.55).setAlpha(0).setName('spectacle-horizon');
     layer.add(made.horizon);
     litWindows(scene, image.texture.key, plan.windows).forEach(([x, y]) => {
       const glow = scene.add.image(x * width, y * height, GLOW).setBlendMode(Phaser.BlendModes.ADD)
-        .setTint(0xffc983).setDisplaySize(58, 58).setAlpha(0).setName('spectacle-window');
+        .setTint(0xffc983).setDisplaySize(46, 46).setAlpha(0).setName('spectacle-window');
       made.windows.push(glow);
       layer.add(glow);
     });

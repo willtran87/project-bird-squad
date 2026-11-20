@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { birdAudio } from '../../shared/bird-audio-director';
 import { clamp01, easeOut, motion, paced, renderPose, wallNow } from './kit';
 
 /**
@@ -48,6 +49,22 @@ export function overlayEntrance(scene: Phaser.Scene, kind: string, addTo: UiAdd)
       return { alpha: eased, dx: (width / 2 - placed.x) * gather, dy: (1 - eased) * 18 + (height / 2 - placed.y) * gather };
     });
   };
+}
+
+const open = new Map<string, number>();
+
+/** Tell the audio director an overlay is up, so the ambience sits back under
+ * it (`overlay.set`, docs/game/audio-events.md). `owner` is the overlay's
+ * lifecycle object; a redraw destroys and recreates it in one call stack, so
+ * the close is only sent if nothing has reopened it by the next microtask. */
+export function overlayAmbience(owner: Phaser.GameObjects.GameObject, id: string) {
+  const count = open.get(id) ?? 0;
+  open.set(id, count + 1);
+  if (!count) birdAudio.play('overlay.set', { id, open: true });
+  owner.once('destroy', () => {
+    open.set(id, (open.get(id) ?? 1) - 1);
+    queueMicrotask(() => { if (!open.get(id)) birdAudio.play('overlay.set', { id, open: false }); });
+  });
 }
 
 export function overlayEntranceState(scene: Phaser.Scene) {

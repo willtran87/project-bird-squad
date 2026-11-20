@@ -28,6 +28,8 @@ const STYLES: Record<string, Style> = {
 const DISTRICT: Style = { direction: 1, tint: GOLD, ms: 760 };
 
 let pending: { pair: string; to: string; frame: number; snapshot: boolean } | undefined;
+/** True from the start of a game step until its frame has been drawn. */
+let stepping = false;
 let last: { pair: string; style: string; snapshot: boolean } | undefined;
 
 function wingTexture(scene: Phaser.Scene) {
@@ -74,7 +76,10 @@ function wingTexture(scene: Phaser.Scene) {
 /** Draw the outgoing scene's current frame into a texture. */
 function capture(scene: Phaser.Scene) {
   const { textures, renderer } = scene.game;
-  if (renderer.type !== Phaser.WEBGL) return false;
+  // Drawing between frames (a DOM handler, a test calling `scene.start`
+  // directly) leaves the WebGL batch in a state the next frame trips over.
+  // Those changes get the wing without the outgoing picture.
+  if (renderer.type !== Phaser.WEBGL || !stepping) return false;
   try {
     if (textures.exists(SNAPSHOT)) textures.remove(SNAPSHOT);
     const { width, height } = scene.scale.gameSize;
@@ -91,7 +96,9 @@ function capture(scene: Phaser.Scene) {
 }
 
 /** Note every scene change as it is requested. Call once per game. */
-export function installTransitions() {
+export function installTransitions(game: Phaser.Game) {
+  game.events.on(Phaser.Core.Events.PRE_STEP, () => { stepping = true; });
+  game.events.on(Phaser.Core.Events.POST_RENDER, () => { stepping = false; });
   const plugin = Phaser.Scenes.ScenePlugin.prototype as unknown as {
     start: (this: Phaser.Scenes.ScenePlugin, key?: string | Phaser.Scene, data?: object) => Phaser.Scenes.ScenePlugin;
   };

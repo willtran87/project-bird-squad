@@ -161,7 +161,8 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
 
   if (node.current || node.selected) {
     const name = node.current ? 'route-node-current-label' : 'route-node-selected-label';
-    const labelY = node.y + node.radius + 18;
+    // Tucked under the medallion: four-lane columns leave 119px between rows.
+    const labelY = node.y + node.radius + 10;
     scene.add.rectangle(node.x, labelY, 104, 28, 0x06111a, 0.98)
       .setStrokeStyle(1, node.current ? 0xe7eef7 : 0xd8a840, 0.88)
       .setName(name);

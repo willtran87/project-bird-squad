@@ -188,6 +188,66 @@ raised deliberately: hand renderer 10 to 12 KiB, hand plus reward allowance
   particles, portrait echoes, replacement bodies or ground ripples" rule, at the
   owner's request in list 2.
 
+- Route layout: the graph starts below the banner row (`top` 146 to 177,
+  `bottom` 638 to 647, `left` 88 to 104) so a four-lane column clears the
+  header; the Flyway bar moved from the lower left of the graph to the header
+  row; the "Here"/"Selected" label sits 8px closer to its medallion.
+- The district arrival card is a picture, not a modal. It owns no input: any
+  key or click dismisses it and also reaches the route beneath. Making it
+  modal would put an extra dismissal in front of every route flow.
+- Pause and confirm scrims changed from `0x020409` at 0.9 to slate `0x0a121c`
+  at 0.84.
+
+## Scene life (November 19–20)
+
+`src/game/spectacle/life/` is a second lazy chunk (`scene-life`), loaded by the
+stage and applied from outside the scenes. Two techniques keep it invisible to
+game logic and to tests that read geometry between frames:
+
+- **Draw-time poses** (`kit.ts`, `renderPose`): an entrance offsets an object
+  only inside its own draw call and restores it before returning, the way
+  Phaser's container renderer treats children. Position, alpha, bounds and hit
+  areas are final from the first frame. Overlay entrances, list staggers,
+  button presses, parallax and the light grade all use it.
+- **Clock functions**: the route and battle scenes destroy and redraw
+  everything on each state change, so nothing here is a tween. Pulses, the
+  flock's idle motion, birds, steam and the arrival card are functions of a
+  scene stopwatch that `advanceTime` drives, rebuilt on demand.
+
+Exit transitions do not delay a scene change. The outgoing frame is drawn once
+into a texture when `scene.start` is called; the next scene starts at once and
+the picture is wiped off it behind the wing.
+
+Route scene frame time, Playwright on Windows, 90 frames, district 1 with the
+arrival card dismissed. Other agents were building on the same machine, so
+treat single steps of the 16.7 ms Chromium vsync grid as noise.
+
+| Build | WebKit 1280×720 | WebKit 1024×600 | Chromium (SwiftShader) 1280×720 | Chromium 1024×600 |
+| --- | --- | --- | --- | --- |
+| Before (`53c72619`) | 36 ms | 33 ms | 33 ms | 50 ms |
+| With scene life | 37 ms | 36 ms | 50–67 ms | 50 ms |
+
+Hiding layers one at a time on Chromium (150-frame means): everything 50–58 ms,
+without the life layer 45–46 ms, also without the stage's rain and fog
+36–38 ms. So the new backdrop life costs about 5 ms of software rendering and
+the weather that was already there about 10 ms. On WebKit the same steps all
+measured 36–44 ms with no trend. Overlay blur was not built or measured: a
+blur is a full-screen shader pass like bloom, which is already gated off
+software renderers, and the route draws overlays into the same display list as
+the scene, so there is no separate layer to blur.
+
+Boot code is 703.9 of 708 KiB (was 703.0 before this work, 703.8 after the
+audio merge). New budget: `scene-life` 30 KiB (25.5 measured). Raised for
+import-rename drift of a few bytes: `run-hud` 10 to 10.25, `route-reward-overlay`
+6 to 6.25; `route-map-renderer` 5 to 5.5 for its calls into route life.
+
+Known limits: the outgoing picture is only captured when `scene.start` is
+called inside a game step (drawing to a texture between frames corrupts the
+WebGL batch in production builds), so changes made from DOM handlers get the
+wing without the picture. The Flight Stories/Strategy DOM button draws over
+the arrival card. List staggers cover title rows, node options, contract
+options, market offers and route card rewards; battle rewards are untouched.
+
 ## Failures retained during development
 
 - The first full CI run failed six tests: hover lift moved card bounds the

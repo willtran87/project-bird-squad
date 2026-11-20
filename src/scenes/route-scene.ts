@@ -1681,7 +1681,7 @@ export class RouteScene extends Phaser.Scene {
       map: { x: 32, y: 112, w: 1208, h: 590, cx: 636, cy: 407 },
       // Top clears the banner row (ends at y 179) for a four-lane column; left
       // leaves a gutter for the node legend.
-      graph: { left: 104, right: 1158, top: 177, bottom: 638 },
+      graph: { left: 104, right: 1158, top: 177, bottom: 647 },
       confirm: { cx: 1138, cy: 662, w: 260, h: 42 },
       footer: { x: 62, y: 612, w: 848, h: 56, cx: 486, cy: 640 }
     };
@@ -2405,7 +2405,7 @@ export class RouteScene extends Phaser.Scene {
     if (!this.selectableNodeIds.has(routeNodeId)) return;
     this.selectedNodeId = routeNodeId;
     this.routeCommitPending = true;
-    playUiSound('confirm');
+    birdAudio.play('ui.confirm');
     this.routeCommitStreakFx(routeNodeId);
     const delay = this.routeCommitDelayMs();
     this.time.delayedCall(delay, () => {
