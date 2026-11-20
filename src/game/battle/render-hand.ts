@@ -202,6 +202,11 @@ export function fitHandFaceRules(label: Phaser.GameObjects.Text, readable: strin
   for (const tidy of [true, false]) for (const [size, panel, text, tier] of candidates) {
     if (tidy && size < HAND_RULE_READABLE_FLOOR) continue;
     if (fitsAt(size, panel, tidy)(text)) return { text, fontSize: size, panelHeight: panel, omitted: 0, tier };
+    if (!tidy) continue;
+    // A wrap that strands a one-word condition ("… if / Resonance.") reads as a
+    // loose keyword. Break before the "if" instead when that fits tidily.
+    const bound = text.replace(/ if (\S+)$/gm, `${String.fromCharCode(10)}if $1`);
+    if (bound !== text && fitsAt(size, panel, true)(bound)) return { text: bound, fontSize: size, panelHeight: panel, omitted: 0, tier };
   }
   const floor = HAND_RULE_FONT_TIERS[HAND_RULE_FONT_TIERS.length - 1];
   const tallest = heights[heights.length - 1];
