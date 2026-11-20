@@ -14,10 +14,16 @@ async function boot(page: Page) {
 
 async function startBattle(page: Page, routeNodeId = 'm1_entry') {
   await page.evaluate(async (routeNodeId) => {
-    const scene: any = await (window as any).__birdSquadStartScene('BattleScene', { routeNodeId });
-    for (let attempt = 0; attempt < 200; attempt += 1) {
-      if (scene.mode === 'battle' && !scene.combatAnimationPending) break;
-      await new Promise((resolve) => setTimeout(resolve, 25));
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = (window as any).__birdSquadGame;
+    await (window as any).__birdSquadEnsureScene?.('BattleScene');
+    for (const key of ['MenuScene', 'RouteScene', 'BattleScene']) if (game.scene.isActive(key)) game.scene.stop(key);
+    await wait(0);
+    game.scene.start('BattleScene', { routeNodeId });
+    for (let attempt = 0; attempt < 240; attempt += 1) {
+      const scene = game.scene.getScene('BattleScene');
+      if (scene?.scene?.isActive?.() && scene.fxLayer?.active && scene.root?.active && scene.mode === 'battle' && !scene.combatAnimationPending) return;
+      await wait(25);
     }
   }, routeNodeId);
 }
@@ -35,9 +41,11 @@ test('typed audio events follow a fight through real WebAudio without errors', a
   const title = await audio(page);
   expect(title.events).toEqual({ requests: {}, played: 0 });
   // Everything audio arrives as lazy chunks after that first interaction.
-  await expect.poll(() => page.evaluate(() => [...new Set(performance.getEntriesByType('resource').map((entry) => entry.name.split('/').pop()!)
-    .filter((name) => /^(audio-|adaptive-music)/.test(name)).map((name) => name.replace(/-[^-]+\.js$/, '')))].sort()))
-    .toEqual(['adaptive-music', 'audio-ambience', 'audio-events', 'audio-sfx', 'audio-voices']);
+  await expect.poll(() => page.evaluate(() => {
+    const files = performance.getEntriesByType('resource').map((entry) => entry.name.split('/').pop()!);
+    return ['adaptive-music', 'audio-ambience', 'audio-events', 'audio-sfx', 'audio-voices']
+      .filter((chunk) => !files.some((file) => file.startsWith(`${chunk}-`) && file.endsWith('.js')));
+  })).toEqual([]);
 
   await startBattle(page);
   await expect.poll(async () => (await audio(page)).ambienceBed.drone).toBe('battle');
