@@ -408,7 +408,8 @@ function renderCard(
   // Their geometry never depends on which other badges happen to be active;
   // a raised rules panel lifts both rows together.
   const flowY = Math.min(top + 140, panelTop - 16);
-  const badgeY = Math.min(top + 111, flowY - 29);
+  // A raised panel must never lift the badge row into the name banner.
+  const badgeY = Math.max(top + CARD_ART_INSET + bannerHeight + 17, Math.min(top + 111, flowY - 29));
   if (card.usesMolt || card.guideMolt) {
     const badgeName = card.usesMolt ? 'combat-card-molt-badge' : 'combat-molt-guide-tag';
     target.add(scene.add.rectangle(left + 62, badgeY, 60, 28, 0x2a1208, 0.96)

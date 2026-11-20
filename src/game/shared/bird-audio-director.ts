@@ -2,25 +2,53 @@ import type { CardSuit } from '../types';
 import { safeStorageGet, safeStorageSet } from '../safe-storage';
 import type { AdaptiveMusicSequencer, AdaptiveMusicSnapshot } from '../adaptive-music';
 import type { SynthAudioCue } from '../audio-sfx';
+import type { DistrictAmbience } from '../audio-ambience';
+import type { BirdAudioEvent, BirdAudioEventMap, EncounterTier, FormationState } from '../audio-events';
 import type { AdaptiveMusicModule, AudioMood, AudioSfxModule } from './runtime-types';
 import { clamp } from './ui-helpers';
 
 export type AudioCue = SynthAudioCue | 'card';
 
 
-type StoppableAudioNode = AudioNode & { stop: (when?: number) => void };
+/** Loose view of an event's detail; the typed overload of `play` checks the real shape. */
+type EventData = { state?: FormationState; tier?: EncounterTier; district?: number; id?: string; open?: boolean; [key: string]: unknown };
 
 
 class BirdAudioDirector {
   private flightState = 'planning';
   private flightDistrict = 0;
+  private formation: FormationState = 'holding';
+  private tier: EncounterTier = 'street';
+  private overlays = new Set<string>();
+  private bed?: DistrictAmbience;
+  private bedLoad?: Promise<typeof import('../audio-ambience') | undefined>;
+  private eventRequests: Partial<Record<BirdAudioEvent, number>> = {};
+  private eventsPlayed = 0;
   setFlightState(state: string, district: number) {
+    const stinger = state !== this.flightState && (state === 'molt' ? 'molt' : state === 'boss-phase' && 'bossPhase');
+    const moved = district !== this.flightDistrict;
     this.flightState = state; this.flightDistrict = district;
-    this.adaptiveMusic?.setFlightState(state, district);
+    this.syncMusic();
+    if (moved) this.syncBed();
+    if (stinger) this.play('stinger.play', { id: stinger });
+  }
+  private syncMusic() {
+    this.adaptiveMusic?.setFlightState(this.flightState, this.flightDistrict, this.formation, this.tier);
+  }
+  /** District bed: lazy, crossfades on district change, lower under overlays, silent when muted. */
+  private syncBed() {
+    if (!this.ctx) return;
+    void (this.bedLoad ??= import('../audio-ambience').catch(() => undefined)).then((module) => {
+      if (!module) { this.bedLoad = undefined; return; }
+      if (this.ctx && this.master) (this.bed ??= new module.DistrictAmbience()).update(this.ctx, this.master, {
+        district: this.flightDistrict, mood: this.mood, overlay: this.overlays.size > 0,
+        volume: this.muted ? 0 : this.ambienceVolume,
+      });
+    });
   }
   private ctx?: AudioContext;
   private master?: GainNode;
-  private ambience?: { mood: AudioMood; gain: GainNode; nodes: StoppableAudioNode[] };
+  private ambienceMood?: AudioMood;
   private adaptiveMusic?: AdaptiveMusicSequencer;
   private adaptiveMusicLoad?: Promise<AdaptiveMusicModule | undefined>;
   private sfxLoad?: Promise<AudioSfxModule | undefined>;
@@ -38,6 +66,10 @@ class BirdAudioDirector {
 
   setMood(mood: AudioMood) {
     this.mood = mood;
+    this.formation = 'holding';
+    this.tier = mood === 'boss' ? 'boss' : 'street';
+    this.overlays.clear();
+    this.syncMusic();
     if (this.muted) {
       this.stopAmbience();
       return;
@@ -45,8 +77,25 @@ class BirdAudioDirector {
     if (this.ctx) this.startAmbience(mood);
   }
 
-  play(cue: AudioCue, intensity = 1, suit?: CardSuit | null, usesMolt = false) {
-    this.cueRequests[cue] = (this.cueRequests[cue] ?? 0) + 1;
+  /** Typed events (see docs/game/audio-events.md), e.g. `play('card.play', { suit })`. */
+  play<E extends BirdAudioEvent>(event: E, detail?: BirdAudioEventMap[E]): void;
+  /** Legacy cue names; kept for existing call sites. */
+  play(cue: AudioCue, intensity?: number, suit?: CardSuit | null, usesMolt?: boolean): void;
+  play(cue: AudioCue | BirdAudioEvent, detail: number | object = 1, suit?: CardSuit | null, usesMolt = false) {
+    let event = cue.includes('.') ? cue as BirdAudioEvent : undefined;
+    let data = detail as EventData;
+    const intensity = typeof detail === 'number' ? detail : 1;
+    if (event) {
+      this.eventRequests[event] = (this.eventRequests[event] ?? 0) + 1;
+      // State events update the music and the bed even while muted.
+      if (event === 'flock.formation') this.formation = data.state ?? 'holding';
+      if (event === 'battle.enter') { this.tier = data.tier ?? 'street'; this.formation = 'holding'; }
+      if (event === 'battle.enter' || event === 'district.enter') this.flightDistrict = data.district ?? this.flightDistrict;
+      if (event === 'overlay.set' && data.id) this.overlays[data.open ? 'add' : 'delete'](data.id);
+      if (event === 'flock.formation' || event === 'battle.enter') this.syncMusic();
+      else if (event === 'district.enter' || event === 'overlay.set') this.syncBed();
+      if (event !== 'battle.enter' && /^(flock|district|overlay)/.test(event)) return;
+    } else this.cueRequests[cue as AudioCue] = (this.cueRequests[cue as AudioCue] ?? 0) + 1;
     if (this.muted) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
@@ -55,9 +104,11 @@ class BirdAudioDirector {
     if (cue === 'card') {
       void this.adaptiveMusicLoad?.then((module) => {
         if (module && !this.muted) (this.adaptiveMusic ??= new module.AdaptiveMusicSequencer())
-          .playCardVoice(ctx, this.master!, this.voiceVolume, suit ?? 'neutral', usesMolt, intensity);
+          .noteCardVoice(suit ?? 'neutral', usesMolt, this.voiceVolume);
       });
-      return;
+      // A card play is paper, the suit's material and its bird call, rising within the turn.
+      event = 'card.play';
+      data = { suit, molt: usesMolt, intensity };
     }
 
     this.sfxStatus = 'loading';
@@ -70,10 +121,16 @@ class BirdAudioDirector {
         return;
       }
       this.sfxStatus = 'ready';
-      if ((!this.muted || playThroughMute) && this.master) {
-        const volume = cue.endsWith('Air') ? this.ambienceVolume : cue.startsWith('flock') ? this.voiceVolume : this.sfxVolume;
-        if (module.playAudioCue(ctx, this.master, volume, cue, intensity)) this.sfxPlayed += 1;
-      }
+      if ((this.muted && !playThroughMute) || !this.master) return;
+      const volume = cue.endsWith('Air') ? this.ambienceVolume : cue.startsWith('flock') ? this.voiceVolume : this.sfxVolume;
+      // A cue the budget dropped neither counts nor ducks the music.
+      if (!(event
+        ? module.playAudioEvent(ctx, this.master, { sfx: this.sfxVolume, voice: this.voiceVolume }, event, data as never)
+        : module.playAudioCue(ctx, this.master, volume, cue as SynthAudioCue, intensity))) return;
+      if (event) this.eventsPlayed += 1;
+      else this.sfxPlayed += 1;
+      const duck = module.audioDuck(event ?? cue, data);
+      if (duck) this.adaptiveMusic?.duck(duck);
     });
   }
 
@@ -108,7 +165,9 @@ class BirdAudioDirector {
       ambienceVolume: this.ambienceVolume,
       music,
       sfx: { status: this.sfxStatus, played: this.sfxPlayed },
-      cueRequests: { ...this.cueRequests }
+      cueRequests: { ...this.cueRequests },
+      events: { requests: { ...this.eventRequests }, played: this.eventsPlayed },
+      ambienceBed: this.bed?.snapshot(),
     };
   }
 
@@ -121,14 +180,7 @@ class BirdAudioDirector {
   setAmbienceVolume(value: number) {
     this.ambienceVolume = clamp(value, 0, 1);
     this.storeVolume('birdsquad.ambienceVolume', this.ambienceVolume);
-    if (this.ambience && this.ctx) {
-      const droneTarget = this.ambienceProfile(this.ambience.mood).volume * this.ambienceVolume;
-      const now = this.ctx.currentTime;
-      const gain = this.ambience.gain.gain;
-      gain.cancelScheduledValues(now);
-      gain.setValueAtTime(Math.max(0.0001, gain.value), now);
-      gain.exponentialRampToValueAtTime(Math.max(0.0001, droneTarget), now + 0.16);
-    }
+    this.syncBed();
   }
 
   setSfxVolume(value: number) {
@@ -161,6 +213,7 @@ class BirdAudioDirector {
     safeStorageSet('birdsquad.audioMuted', value ? '1' : '0');
     if (value) this.stopAmbience();
     else if (this.ctx) this.startAmbience(this.mood);
+    this.syncBed();
   }
 
   private ensureContext() {
@@ -182,52 +235,24 @@ class BirdAudioDirector {
   private startAmbience(mood: AudioMood) {
     const ctx = this.ensureContext();
     if (!ctx || !this.master) return;
-    if (this.ambience?.mood === mood) {
+    if (this.ambienceMood === mood) {
       if (this.adaptiveMusicStatus === 'idle' || this.adaptiveMusicStatus === 'error') {
         this.startAdaptiveMusic(mood);
       }
       return;
     }
     this.stopAmbience();
-    const profile = this.ambienceProfile(mood);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, profile.volume * this.ambienceVolume), ctx.currentTime + 0.8);
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(profile.filter, ctx.currentTime);
-    filter.connect(gain);
-    gain.connect(this.master);
-    const nodes: StoppableAudioNode[] = profile.freqs.map((freq, index) => {
-      const osc = ctx.createOscillator();
-      const local = ctx.createGain();
-      osc.type = profile.type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      osc.detune.setValueAtTime(index * 4 - 3, ctx.currentTime);
-      local.gain.setValueAtTime(index === 0 ? 0.72 : 0.38, ctx.currentTime);
-      osc.connect(local);
-      local.connect(filter);
-      osc.start();
-      return osc;
-    });
-    this.ambience = { mood, gain, nodes };
+    this.ambienceMood = mood;
     this.startAdaptiveMusic(mood);
+    // The mood drone and the district bed are both built by the lazy ambience module.
+    this.syncBed();
   }
 
   private stopAmbience() {
     this.adaptiveMusicRequest += 1;
     this.adaptiveMusic?.stop();
     this.adaptiveMusicStatus = 'idle';
-    if (!this.ambience || !this.ctx) return;
-    const { gain, nodes } = this.ambience;
-    const now = this.ctx.currentTime;
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
-    nodes.forEach((node) => {
-      try { node.stop(now + 0.32); } catch { /* already stopped */ }
-    });
-    this.ambience = undefined;
+    this.ambienceMood = undefined;
   }
 
   private startAdaptiveMusic(mood: AudioMood) {
@@ -251,23 +276,12 @@ class BirdAudioDirector {
         || !this.master
       ) return;
       this.adaptiveMusic ??= new module.AdaptiveMusicSequencer();
-      this.adaptiveMusic.setFlightState(this.flightState, this.flightDistrict);
+      this.syncMusic();
       this.adaptiveMusic.start(this.ctx, this.master, mood, this.musicVolume);
       this.adaptiveMusicStatus = 'ready';
     });
   }
 
-  private ambienceProfile(mood: AudioMood) {
-    switch (mood) {
-      case 'route': return { freqs: [98, 147, 196], filter: 820, volume: 0.026, type: 'triangle' as OscillatorType };
-      case 'battle': return { freqs: [82, 123, 164], filter: 680, volume: 0.032, type: 'sawtooth' as OscillatorType };
-      case 'boss': return { freqs: [73, 110, 146], filter: 560, volume: 0.038, type: 'sawtooth' as OscillatorType };
-      case 'victory': return { freqs: [131, 196, 262], filter: 1100, volume: 0.024, type: 'sine' as OscillatorType };
-      case 'defeat': return { freqs: [65, 98, 130], filter: 440, volume: 0.03, type: 'triangle' as OscillatorType };
-      case 'menu':
-      default: return { freqs: [110, 165, 220], filter: 940, volume: 0.022, type: 'triangle' as OscillatorType };
-    }
-  }
 
 }
 

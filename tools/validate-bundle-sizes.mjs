@@ -35,6 +35,10 @@ const budgets = [
   { label: 'interaction rules', pattern: /^interaction-rules-.*\.js$/, maxKb: 12, hard: true },
   { label: 'adaptive music lazy module', pattern: /^adaptive-music-.*\.js$/, maxKb: 8, hard: true },
   { label: 'synthesized SFX lazy module', pattern: /^audio-sfx-.*\.js$/, maxKb: 8, hard: true },
+  // Typed audio events: pure rules, material/bird/impact/stinger voices, district beds and mood drones. All lazy.
+  { label: 'audio event rules lazy module', pattern: /^audio-events-.*\.js$/, maxKb: 5, hard: true },
+  { label: 'audio event voices lazy module', pattern: /^audio-voices-.*\.js$/, maxKb: 8, hard: true },
+  { label: 'district ambience beds lazy module', pattern: /^audio-ambience-.*\.js$/, maxKb: 6, hard: true },
   { label: 'battle FX presenter lazy module', pattern: /^fx-presenter-.*\.js$/, maxKb: 8, hard: true },
   { label: 'encounter intro lazy module', pattern: /^encounter-intro-.*\.js$/, maxKb: 4, hard: true },
   { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },

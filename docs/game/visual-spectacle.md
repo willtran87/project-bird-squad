@@ -84,21 +84,21 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | --- | --- | --- | --- |
 | 1 | Three beats per hit | Done | Crouch, dive or lunge, then a frozen contact frame and a recoil |
 | 2 | Enemies react physically | Done | Wind-up, lunge toward the flock, recoil scaled by damage, stagger on a heavy hit |
-| 3 | Feedback scales with damage | Partial | Body motion and hit-stop scale with the share of maximum Cohesion removed (heavy from 20%). Sound, sparks and camera shake still use the fixed 8 |
+| 3 | Feedback scales with damage | Partial | Body motion and hit-stop scale with the share of maximum Cohesion removed (heavy from 20%). Sparks and camera shake still use the fixed 8 |
 | 4 | Finishing blows | Partial | Punch, gold flash and defeat stagger; no slow motion |
 | 5 | Cover feels like armour | Done | Sparks on block; heavier sparks on shatter |
 | 6 | Each suit strikes differently | Done | Plumes slash, Basins ripple, Quills volley, Nests thud |
 | 7 | Card flies into the action | Not started | |
 | 8 | Telegraph enemy attacks on stage | Done | Danger line grows during the wind-up |
 | 9 | Surge as a state | Not started | |
-| 10 | Combo feedback | Not started | |
+| 10 | Combo feedback | Partial | Audio only: pitch climbs on consecutive card plays within a turn. Not auditioned |
 | 11 | Status effects have a body | Not started | |
 | 12 | Animate characters | Partial | Whole-body motion on retained actors: breathing, dive, brace, lunge, recoil, stagger. No frame animation |
-| 13 | Layered hit sounds | Done | `attack` and `heavyAttack` gain a body thud and a bright tick |
-| 14 | Recorded bird calls | Not started | No audio assets |
-| 15 | Duck music on big moments | Not started | |
-| 16 | District ambient beds | Existing | Shipped in Coherent City |
-| 17 | Material interface sounds | Not started | |
+| 13 | Layered hit sounds | Done | Impacts now scale by damage share of max HP; Cover absorb and Cover break differ. Not auditioned; see [audio events](audio-events.md) |
+| 14 | Recorded bird calls | Partial | Still no recordings. Synthesised stylised calls per suit and per Flock Leader stand in. Not auditioned |
+| 15 | Duck music on big moments | Done | Heavy hits, finishing blows, stingers, boss entrances. Stems add on Surge, thin on Scatter, intensify for elites and bosses. Not auditioned |
+| 16 | District ambient beds | Done | Continuous rain, canal, static-and-wires and high-wind beds; crossfade on district change; lower under the pause overlay only. Not auditioned |
+| 17 | Material interface sounds | Partial | Paper, metal, wood, water, soft click and cancel are live. `ui.confirm` and `count.tick` have no call site yet. Not auditioned |
 | 18 | One vocabulary (HP versus Cohesion) | Not started | 20 source strings and 3 test files involved |
 | 19 | One lighting direction | Not started | |
 | 20 | One frame material | Not started | |
