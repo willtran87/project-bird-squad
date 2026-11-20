@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { districtFraming } from '../../district-framing';
+import { districtArrivalLine } from '../../narrative-threads';
 import { safeStorageGet, safeStorageSet } from '../../safe-storage';
 import { runDistrictOrdinal, runMapIndices } from '../../shared/gameplay-constants';
 import { UI_DISPLAY_FONT, UI_FONT } from '../../ui-tokens';
@@ -13,14 +14,18 @@ import { clamp01, eachFrame, easeOut, motion, paced, sceneNow } from './kit';
  * first frame and the card never takes input ownership; any key or click
  * dismisses it and still reaches the screen underneath. That keeps every
  * route flow, and every test that drives one, exactly as it was.
+ *
+ * Under the premise sits the flight's narrative thread: one Leader-specific
+ * line for this district, picked by the run seed (see narrative-threads.ts).
  */
 
 const STORAGE_KEY = 'birdsquad.arrivalCards';
 const DEPTH = 29000;
-const HOLD_MS = 2600, ENTER_MS = 460, EXIT_MS = 360, SKIP_EXIT_MS = 170;
+const THREAD_Y = 494;
+const HOLD_MS = 2600, THREAD_HOLD_MS = 3400, ENTER_MS = 460, EXIT_MS = 360, SKIP_EXIT_MS = 170;
 
 type RouteRead = Phaser.Scene & {
-  runState?: { mapIndex?: number; startedAtMs?: number; runMode?: 'full' | 'quick' };
+  runState?: { mapIndex?: number; startedAtMs?: number; runMode?: 'full' | 'quick'; seed?: string; leaderId?: string };
   routeEssentialAssetsReady?: boolean;
   routeMapBackdrop?: { key: string };
 };
@@ -58,16 +63,21 @@ function build(scene: RouteRead, index: number) {
   const name = text(360, district.place, UI_DISPLAY_FONT, 84, '#fff6e0').setShadow(0, 4, '#000000', 14, false, true)
     .setName('district-arrival-card-name');
   const premise = text(456, district.premise, UI_FONT, 26, '#e8f1f7').setName('district-arrival-card-premise');
+  const line = districtArrivalLine(scene.runState?.seed ?? 'alpha', scene.runState?.leaderId, index);
+  const thread = text(THREAD_Y, line, UI_FONT, 22, '#cfdbe2', 'italic').setOrigin(0.5, 0)
+    .setWordWrapWidth(940, true).setLineSpacing(4).setName('district-arrival-card-thread');
   const rule = scene.add.rectangle(width / 2, 420, 360, 2, accent, 0.9);
   const bars = [scene.add.rectangle(width / 2, 42, width, 84, 0x020409, 0.94), scene.add.rectangle(width / 2, height - 42, width, 84, 0x020409, 0.94)];
   card.add([
     scene.add.rectangle(width / 2, height / 2, width, height, 0x05070c, 1), art,
     scene.add.rectangle(width / 2, height / 2, width, height, 0x05070c, 0.1),
-    scene.add.rectangle(width / 2, 372, width, 262, 0x05090f, 0.58),
-    ...bars, rule, kicker, name, premise,
+    scene.add.rectangle(width / 2, 372 + (line ? 36 : 0), width, 262 + (line ? 72 : 0), 0x05090f, 0.58),
+    ...bars, rule, kicker, name, premise, thread,
     text(height - 42, 'Any key or click to continue', UI_FONT, 19, '#9fb2bd').setName('district-arrival-card-hint'),
   ]);
-  return { card, art, bars, rule, lines: [kicker, name, premise] };
+  const held = line ? THREAD_HOLD_MS : HOLD_MS;
+  card.setData('held', held);
+  return { card, art, bars, rule, lines: [kicker, name, premise, thread], held };
 }
 
 /** Show the card once per district per run. Safe to call on every route start. */
@@ -106,10 +116,10 @@ export function dressArrivalCard(route: Phaser.Scene) {
     // A paused clock would freeze the card over the pause panel.
     if (scene.time.paused) { finish(); return; }
     const mode = motion();
-    const hold = paced(HOLD_MS), exit = paced(EXIT_MS);
+    if (!parts?.card.active) parts = build(scene, index);
+    const hold = paced(parts.held), exit = paced(EXIT_MS);
     const out = skipAt !== undefined ? (now - skipAt) / paced(SKIP_EXIT_MS) : (now - start - hold + exit) / exit;
     if (out >= 1) { finish(); return; }
-    if (!parts?.card.active) parts = build(scene, index);
     const { width } = scene.scale.gameSize;
     const enter = mode === 'full' ? easeOut(clamp01((now - start) / paced(ENTER_MS))) : 1;
     parts.card.setAlpha(1 - clamp01(out));
@@ -122,13 +132,14 @@ export function dressArrivalCard(route: Phaser.Scene) {
     parts.rule.setScale(enter, 1);
     parts.lines.forEach((line, order) => {
       const rise = easeOut(clamp01((now - start! - paced(90 + order * 110)) / paced(ENTER_MS)));
-      line.setAlpha(rise).setY([288, 360, 456][order] + (1 - rise) * 18);
+      line.setAlpha(rise).setY([288, 360, 456, THREAD_Y][order] + (1 - rise) * 18);
     });
   }, finish);
 }
 
 export function arrivalCardState(scene: Phaser.Scene) {
   const card = scene.children.getByName('district-arrival-card') as Phaser.GameObjects.Container | null;
-  return card?.active ? { district: card.getData('district') as number, alpha: card.alpha, depth: card.depth,
-    name: (card.getByName('district-arrival-card-name') as Phaser.GameObjects.Text | null)?.text } : undefined;
+  return card?.active ? { district: card.getData('district') as number, alpha: card.alpha, depth: card.depth, holdMs: card.getData('held') as number,
+    name: (card.getByName('district-arrival-card-name') as Phaser.GameObjects.Text | null)?.text,
+    thread: (card.getByName('district-arrival-card-thread') as Phaser.GameObjects.Text | null)?.text } : undefined;
 }
