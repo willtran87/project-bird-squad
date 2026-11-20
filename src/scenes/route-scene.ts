@@ -412,6 +412,7 @@ export class RouteScene extends Phaser.Scene {
     loadFlyway(this);
     syncSceneAnimationPace(this);
     birdAudio.setMood('route');
+    birdAudio.play('district.enter', { district: activeMapIndex });
     this.routeArtworkRefreshPending = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off(Phaser.Core.Events.STEP, this.flushRouteArtwork);
@@ -1112,6 +1113,7 @@ export class RouteScene extends Phaser.Scene {
   private setRoutePaused(paused: boolean) {
     if (this.pauseOverlayOpen === paused) return;
     this.pauseOverlayOpen = paused;
+    birdAudio.play('overlay.set', { id: 'pause', open: paused });
     playUiSound(paused ? 'confirm' : 'close');
     if (!paused) {
       this.time.paused = false;
