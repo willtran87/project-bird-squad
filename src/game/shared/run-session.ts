@@ -8,6 +8,7 @@ import { type CardAcquisitionSource, loadAccount, type CardCollectionRecord } fr
 import { unlockCollectionMilestones } from '../collection-milestone-progress';
 import type { RuntimeImageAsset } from '../runtime-images';
 import { writeJournaledJson } from '../safe-storage';
+import { queueCeremony } from '../ceremony-queue';
 import type { BossDossierModule, Card, RunState, RunSummary } from './runtime-types';
 import { BASE_SUPPLY_SLOTS, runMapIndices } from './gameplay-constants';
 import { BATTLEFIELD_ASSETS, BATTLEFIELD_BOSS_VARIANTS, DEFAULT_BATTLEFIELD_ASSET } from '../../art-assets';
@@ -174,6 +175,7 @@ export function recordCardAcquisitions(
   const newMilestones = unlockCollectionMilestones(account);
   if (receipt) account.recentCardClaims = [...(account.recentCardClaims ?? []), receipt].slice(-256);
   const saved = writeJournaledJson('birdsquad.account', account);
+  if (saved && source !== 'starter_flock') queueCeremony('card', firstCopies);
   return { firstCopies, completedTargets, newMilestones, saved };
 }
 

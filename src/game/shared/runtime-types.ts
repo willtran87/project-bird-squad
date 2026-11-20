@@ -82,7 +82,9 @@ export type MenuFocus =
   | 'howToPlay'
   | 'settings'
   | 'codex'
-  | 'profile';
+  | 'profile'
+  | 'daily'
+  | 'recap';
 
 
 export interface Flock {

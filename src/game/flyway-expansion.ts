@@ -57,7 +57,9 @@ function isBusy(scene: Scene, reading = false) {
     || scene.inspectOverlay || scene.combatCardDetail?.active || scene.outcomeDetailsOpen || scene.supplyDrawerOpen || scene.waymarkDrawerOpen
     || scene.deckOverlayOpen || scene.flockOverlayOpen || scene.nodeChoiceOpen || scene.marketOpen
     || scene.pendingRouteReward || scene.cardPickerMode || scene.root?.getByName('pending-overlay')?.active
-    || scene.scene.key === 'BattleScene' && !scene.fxLayer?.active;
+    || scene.scene.key === 'BattleScene' && !scene.fxLayer?.active
+    // A modal scene above this one (the Collection ceremony) has taken its input.
+    || scene.input?.keyboard?.enabled === false;
 }
 
 export function installFlyway(raw: Phaser.Scene) {

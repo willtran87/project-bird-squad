@@ -52,6 +52,11 @@ const budgets = [
   // overlay and list entrances, living backdrops, button depth. Loaded after
   // the stage; never part of boot.
   { label: 'scene life lazy module', pattern: /^scene-life-.*.js$/, maxKb: 30, hard: true },
+  // Daily Flight, run recap/photo card and Collection ceremony scenes; the title
+  // requests this after its first frame. Narrative copy rides with the arrival card.
+  { label: 'engagement scenes lazy module', pattern: /^engagement-.*\.js$/, maxKb: 30, hard: true },
+  { label: 'leader portrait manifest', pattern: /^leader-portraits-.*\.js$/, maxKb: 2, hard: true },
+  { label: 'narrative threads lazy module', pattern: /^narrative-threads-.*\.js$/, maxKb: 14, hard: true },
   { label: 'spectacle stage lazy module', pattern: /^spectacle-.*\.js$/, maxKb: 24, hard: true },
   { label: 'combat card reading panel', pattern: /^combat-card-detail-.*\.js$/, maxKb: 4, hard: true },
   { label: 'shared reward card face', pattern: /^reward-card-face-.*\.js$/, maxKb: 5, hard: true }, // +full rules and larger portrait on reward faces
@@ -73,7 +78,7 @@ const budgets = [
   { label: 'flock stats overlay lazy module', pattern: /^flock-stats-overlay-.*\.js$/, maxKb: 8, hard: true },
   { label: 'screen reader runtime lazy module', pattern: /^screen-reader-runtime-.*\.js$/, maxKb: 4, hard: true },
   { label: 'menu diagnostics lazy module', pattern: /^menu-debug-state-.*\.js$/, maxKb: 7, hard: true },
-  { label: 'menu optional UI lazy module', pattern: /^menu-optional-ui-.*\.js$/, maxKb: 6, hard: true },
+  { label: 'menu optional UI lazy module', pattern: /^menu-optional-ui-.*\.js$/, maxKb: 6.25, hard: true }, // import-rename drift from the engagement chunk's shared exports
   { label: 'first-encounter term callouts lazy module', pattern: /^term-introductions-.*\.js$/, maxKb: 4, hard: true },
   { label: 'setup portraits lazy module', pattern: /^setup-portraits-.*\.js$/, maxKb: 1, hard: true },
   { label: 'title launch lazy module', pattern: /^title-run-launch-.*\.js$/, maxKb: 4, hard: true },

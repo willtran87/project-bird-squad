@@ -19,6 +19,7 @@ const GOLD = 0xffd98a, CYAN = 0x8df4ff;
 const STYLES: Record<string, Style> = {
   'MenuScene>RouteScene': { direction: 1, tint: GOLD, ms: 560 },
   'MenuScene>BattleScene': { direction: 1, tint: GOLD, ms: 560 },
+  'DailyFlightScene>RouteScene': { direction: 1, tint: GOLD, ms: 560 },
   'RouteScene>BattleScene': { direction: 1, tint: CYAN, ms: 480 },
   'BattleScene>RouteScene': { direction: -1, tint: CYAN, ms: 480 },
   'RouteScene>MenuScene': { direction: -1, tint: GOLD, ms: 480 },
