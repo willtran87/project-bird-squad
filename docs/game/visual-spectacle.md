@@ -248,6 +248,77 @@ wing without the picture. The Flight Stories/Strategy DOM button draws over
 the arrival card. List staggers cover title rows, node options, contract
 options, market offers and route card rewards; battle rewards are untouched.
 
+## Engagement outside combat (November 20)
+
+Four features around the run, none of them in `battle-scene.ts` or
+`src/game/battle/` (another change owns battle rendering). Scenes and pure
+logic are in `src/game/engagement/`, one lazy chunk (`engagement`, 27.9 KB)
+that the title requests after it has drawn; narrative copy is its own chunk
+(`narrative-threads`, 10.4 KB) beside the arrival card. Boot grew 0.8 KB
+(703.9 to 704.7 KB of the 708 KB cap): the unlock-queue append, three title
+focus hooks and one import.
+
+| Feature | State | What exists |
+| --- | --- | --- |
+| Daily Flight | Done | Title entry (keyboard, controller, pointer) opening `DailyFlightScene`: the date, the day's Leader, today's best, up to four earlier days, the score rule, and Fly/Back. The seed is `daily-YYYYMMDD` from the local calendar date; the Leader is `hashSeed(seed) % 5` over the whole roster, locked or not. Bests (score, districts, result, Leader, attempts) are kept per date in `birdsquad.daily` through the journaled storage helper, folded in from the flight log on each title visit, so no battle hook is needed and nothing is counted twice. Local only. |
+| Run recap | Partial | `RecapScene` reads any flight from the existing flight log (`birdsquad.runs`): Leader, districts cleared, fights won, damage dealt and taken, biggest fight, top card, deck size, cards added, Waymarks, time, score, and a closing line. Older/Newer page the log. Photo view hides every control and enlarges the card over the district painting; Save PNG snapshots that view (1280x720) and downloads it. Card rises in and numbers count up on the scene clock; Reduced Motion fades and shows final numbers. **Missing:** it opens from the title (Flight Recap, with a gold mark until the newest flight has been read), not from the outcome screen, which is battle code. Best single hit is not recorded by combat, so the card shows the biggest fight and the top card instead. |
+| Collection ceremony | Done | Unlocks are queued where they happen: `recordRun` (Leaders, achievements) and the first claim of a non-starter card. `CeremonyScene` shows them once, on the title or the Collection, whichever comes first: the card flips in, with its name and one line of why. Leaders, then achievements, then at most three cards; the third stands in for the rest. Any key, click or controller button moves on; Back skips the rest. |
+| Narrative threads | Partial | `narrative-content.ts`: five Leaders, four districts, four arrival lines each (80), plus three win and three loss closings per Leader (30). Picked by run seed. The arrival line is on the district arrival card, under the premise; the card holds 3.4 s instead of 2.6 s when it has one, and still owns no input. The closing line is on the recap card. **Missing:** the closing line is not on the outcome screen (battle code). |
+
+Decisions that are not obvious from the code:
+
+- **The ceremony is modal; the arrival card is not.** Existing overlays own
+  input exclusively, so the reveal follows them. It runs as its own scene
+  above the title or Collection and switches that scene's pointer, keyboard
+  and gamepad plugins off while it is up, then back on after the step in
+  which it closed. The key that dismisses a reveal therefore never reaches
+  the screen underneath. The Flyway DOM launcher treats a scene whose
+  keyboard is off as busy and hides.
+- **Queue, not diff.** Reveals come from events, not from comparing the
+  account with a "seen" list, so restoring a backup or seeding storage never
+  produces a ceremony for things the player already had.
+- **The score is small enough to check by hand:** 1,000 per district cleared
+  and 150 per fight won; a completed flight adds 2,000, 20 per Cohesion kept
+  and a pace bonus of 900 minus 6 per beat (never below zero). It has no
+  Ascension term because Daily Flight is always Standard.
+- **Daily Flight replaces a saved flight only from its own screen,** which
+  says so first. If the saved flight is today's, the button continues it.
+- **Title focus order is appended to,** not reordered: Daily Flight and
+  Flight Recap come after Flock Record, so every existing Tab sequence holds.
+
+What the daily seed fixes, and what it does not: the district maps, node
+contents, encounters, enemy openings, draw order, encounter objectives, reward
+drafts, Waymark and Preen rolls, district contracts, cache outcomes and market
+stock all derive from the run seed, so two players making the same choices see
+the same flight. Reward and market draws also mix in the deck, Waymarks,
+supplies, Cohesion and Scrap at that moment, so flights diverge once choices
+do. Not from the seed: visual effect jitter, and anything a player carries in
+from their own profile (Flight Story plans and medals were not audited).
+Nothing prevents replaying a date's seed through a shared-route link on
+another day; it counts toward the date in the seed.
+
+Battle hooks this needs, none made here:
+
+1. Outcome screen: a Flight Recap action calling
+   `openRunRecap(scene, { runId: summary.id, returnTo: 'MenuScene' })` from
+   `src/game/engagement`, so the recap follows a run directly.
+2. Outcome screen: show `closingLine(seed, leaderId, result, districtName)`
+   under the title, and the Daily Flight score when the seed is a daily one.
+3. Combat: record the best single hit in `CombatResultSummary` (and keep it in
+   `sanitizeCombatResults`) so the recap can show it.
+
+Not built: an online leaderboard (out of scope), Daily Flight bests and the
+unlock queue in save backups (they are cleared with the profile, and bests
+rebuild from an imported flight log), a recap entry in the Flock Record's
+flight history, and reveals for contract badges or Collection milestones.
+
+Checks: `tests/daily-flight.spec.ts`, `tests/run-recap.spec.ts`,
+`tests/collection-ceremony.spec.ts`, `tests/narrative-threads.spec.ts`
+(14 tests) and four unit files (37 tests) under `src/game/engagement/` and
+`src/game/narrative-threads.test.ts`. Captures of each screen were inspected
+at 1280x720 with software rendering. No human, controller-hardware or
+real-GPU acceptance; the controller checks use the Gamepad API fixture.
+
 ## Failures retained during development
 
 - The first full CI run failed six tests: hover lift moved card bounds the

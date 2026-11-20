@@ -72,18 +72,17 @@ export class CeremonyScene extends Phaser.Scene {
     // Take input away from the scene underneath for as long as this one is up.
     const host = this.hostKey ? this.scene.get(this.hostKey) : undefined;
     const input = host?.input as unknown as HostInput | undefined;
-    const before = input && { enabled: input.enabled, keyboard: input.keyboard?.enabled, gamepad: input.gamepad?.enabled };
-    if (input) {
-      input.enabled = false;
-      if (input.keyboard) input.keyboard.enabled = false;
-      if (input.gamepad) input.gamepad.enabled = false;
-    }
-    const restore = () => {
-      if (!input || !before) return;
-      input.enabled = before.enabled;
-      if (input.keyboard && before.keyboard !== undefined) input.keyboard.enabled = before.keyboard;
-      if (input.gamepad && before.gamepad !== undefined) input.gamepad.enabled = before.gamepad;
+    const lend = (enabled: boolean) => {
+      if (!input) return;
+      input.enabled = enabled;
+      if (input.keyboard) input.keyboard.enabled = enabled;
+      if (input.gamepad) input.gamepad.enabled = enabled;
     };
+    lend(false);
+    // Nothing else in the game switches these off, so handing back is always "on";
+    // restoring a remembered value could strand a scene that restarted mid-reveal.
+    // If a new reveal has already started above the same scene, it owns the hand-back.
+    const restore = () => { if (!this.sys.isActive()) lend(true); };
     const hostGone = () => this.scene.stop();
     host?.events.once(Phaser.Scenes.Events.SHUTDOWN, hostGone);
 

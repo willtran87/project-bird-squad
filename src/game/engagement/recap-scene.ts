@@ -82,6 +82,7 @@ export class RecapScene extends Phaser.Scene {
     birdAudio.setMood('menu');
     this.view = 'recap';
     this.chrome = [];
+    this.card = undefined;
     this.saving = false;
     this.photosSaved = 0;
     this.lastPhoto = undefined;
