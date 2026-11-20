@@ -112,14 +112,15 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
     const badge = items.find((c: any) => c.name === 'combat-card-molt-badge');
     const summary = items.find((c: any) => c.name === 'combat-card-readable-summary');
     return { separated:name.getBounds().bottom < badge.getBounds().top,
-      titleOmission:name.text.endsWith('…'), rulesOmission:/Inspect/.test(summary.text),
+      titleOmission:name.text.endsWith('…'), rulesShown:!/Inspect/.test(summary.text) && !summary.getData('truncated'),
       fullRules:summary.getData('fullText').endsWith('Retain 1 card.'),
       containedFrames: [...b.handCardFrames.entries()].every(([id, frame]: any) => {
         const outer = b.handCardRects.get(id).getBounds(), inner = frame.getBounds();
         return inner.left >= outer.left && inner.right <= outer.right && inner.top >= outer.top && inner.bottom <= outer.bottom;
       }) };
   });
-  expect(stress).toEqual({separated:true,titleOmission:true,rulesOmission:true,fullRules:true,containedFrames:true});
+  // Every rule stays on the face now; nothing hides behind Inspect.
+  expect(stress).toEqual({separated:true,titleOmission:true,rulesShown:true,fullRules:true,containedFrames:true});
   await page.setViewportSize({width:1000,height:560});
   await settleCanvas(page);
   await page.screenshot({path:info.outputPath('long-molt-1000.png')});
