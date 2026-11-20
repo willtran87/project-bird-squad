@@ -284,5 +284,9 @@ export function resolveCardEffect<CardT extends CardEffectCard, EnemyT extends C
     case 'exhaustSelf':
       state.exhaustSelf = true;
       break;
+    default:
+      // A well-formed but unknown verb (a typo such as "gainCovr") must be
+      // reported, not dropped silently.
+      context.logFizzle(card, effectText);
   }
 }
