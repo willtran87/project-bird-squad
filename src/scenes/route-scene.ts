@@ -935,19 +935,20 @@ export class RouteScene extends Phaser.Scene {
     if (restoredSegments <= 0) return;
     // Meta-progress belongs outside the route graph: a diagonal rail reads as
     // a playable connection even though it has no corresponding destination.
-    this.add.rectangle(210, 610, 252, 40, 0x050b14, 0.94)
-      .setDepth(7).setName('flyway-restoration');
+    // It sits in the header row beside the district banner: the graph below
+    // is reserved for nodes, which the old lower-left plate used to cover.
+    this.add.rectangle(872, 158, 252, 40, 0x050b14, 0.94)
+      .setName('flyway-restoration');
     const segmentWidth = (224 - (totalSegments - 1) * 6) / totalSegments;
     for (let index = 0; index < totalSegments; index += 1) {
-      this.add.rectangle(98 + index * (segmentWidth + 6), 624, segmentWidth, 3,
+      this.add.rectangle(760 + index * (segmentWidth + 6), 172, segmentWidth, 3,
         index < restoredSegments ? UI_FIELD.cyan : 0x49606d, 0.9)
         .setOrigin(0, 0.5)
-        .setDepth(8)
         .setName('flyway-restoration');
     }
-    this.add.text(98, 604, `FLYWAY  ${restoredSegments}/${totalSegments} RESTORED`, {
+    this.add.text(760, 152, `FLYWAY  ${restoredSegments}/${totalSegments} RESTORED`, {
       fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: '#bff8ff', resolution: 2,
-    }).setOrigin(0, 0.5).setDepth(8).setName('flyway-restoration');
+    }).setOrigin(0, 0.5).setName('flyway-restoration');
   }
 
   private flywayRestorationProgress() {
@@ -1678,7 +1679,9 @@ export class RouteScene extends Phaser.Scene {
     return {
       top: { y: 124 },
       map: { x: 32, y: 112, w: 1208, h: 590, cx: 636, cy: 407 },
-      graph: { left: 88, right: 1158, top: 146, bottom: 638 },
+      // Top clears the banner row (ends at y 179) for a four-lane column; left
+      // leaves a gutter for the node legend.
+      graph: { left: 104, right: 1158, top: 177, bottom: 647 },
       confirm: { cx: 1138, cy: 662, w: 260, h: 42 },
       footer: { x: 62, y: 612, w: 848, h: 56, cx: 486, cy: 640 }
     };
@@ -2402,7 +2405,7 @@ export class RouteScene extends Phaser.Scene {
     if (!this.selectableNodeIds.has(routeNodeId)) return;
     this.selectedNodeId = routeNodeId;
     this.routeCommitPending = true;
-    playUiSound('confirm');
+    birdAudio.play('ui.confirm');
     this.routeCommitStreakFx(routeNodeId);
     const delay = this.routeCommitDelayMs();
     this.time.delayedCall(delay, () => {

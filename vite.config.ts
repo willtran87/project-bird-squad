@@ -78,6 +78,8 @@ export default defineConfig(({ command }) => ({
             || moduleId.endsWith('/src/art-assets.ts')
           ) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
+          // Title, route and chrome life: loaded after the stage, never part of boot.
+          if (moduleId.includes('/src/game/spectacle/life/')) return 'scene-life';
           if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';
           // Audio stays lazy: pure rules, the event voices and the district beds
           // are each measurable beside the legacy cue and music chunks.

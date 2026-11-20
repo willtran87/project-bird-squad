@@ -31,6 +31,7 @@ import { MIN_SUPPORTED_TOUCH_TARGET, UI_BOLD, READER_UI, UI_TYPE, ROUTE_DECK_VIS
 import { quietButton } from './quiet-ui';
 import { fitTextExcerpt } from './text-excerpt';
 import { controlActionForCode, controlBindingLabel } from './input-bindings';
+import { overlayAmbience } from './spectacle/life/overlay-fx';
 import { comparisonPagingHint } from './deck-review-hints';
 import {
   HUD_MENU_PANEL,
@@ -224,9 +225,9 @@ export function renderRouteDeckBrowser(scene: Phaser.Scene, view: RouteDeckBrows
     onCycleSort: owned(view.onCycleSort), onToggleSearch: owned(view.onToggleSearch),
     onSaveDeck: owned(view.onSaveDeck), onInspect: id => owned(() => original.onInspect(id))(),
     onCompare: id => owned(() => original.onCompare(id))(), onScroll: delta => owned(() => original.onScroll(delta))() };
-  scene.add.rectangle(640, 360, 1280, 720, 0x07101a, 1)
+  overlayAmbience(scene.add.rectangle(640, 360, 1280, 720, 0x07101a, 1)
     .setName('deck-review-curtain')
-    .setInteractive({ useHandCursor: false });
+    .setInteractive({ useHandCursor: false }), 'deck-browser');
   renderFieldPanel(scene, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
     accent: UI_FIELD.gold,
   });

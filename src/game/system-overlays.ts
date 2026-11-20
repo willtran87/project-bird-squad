@@ -38,6 +38,15 @@ import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_TYPE, MENU_UI } from '
 const { gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT, field: UI_FIELD } = MENU_UI;
 import { bindActionFocus } from './action-focus';
 import type { UiIconId } from '../art-assets';
+import { overlayAmbience, overlayEntrance } from './spectacle/life/overlay-fx';
+import { birdAudio } from './shared/bird-audio-director';
+
+// Dim and soften: a slate wash mutes the scene's colour as well as its light.
+// A real blur is a full-screen shader pass; like bloom and grain it would have
+// to be gated off the software renderers WebKit and CI use, and this scene
+// draws its overlays into the same list as the scene, so there is nothing to
+// blur separately. Not built.
+const SCRIM = 0x0a121c, SCRIM_ALPHA = 0.84;
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
@@ -688,7 +697,8 @@ function renderSettingsGraphicsQualitySwitch(
 export function renderPauseMenuOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: PauseOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+  addTo = overlayEntrance(scene, 'pause', addTo);
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, SCRIM, SCRIM_ALPHA)
     .setName('pause-actions').setInteractive());
   const frame = renderQuietMenuPanel(scene, addTo, 620, 580);
   dependencies.renderAudioToggleControl(scene, addTo, frame.right - 58, frame.top + 50, options.onToggleAudio);
@@ -711,13 +721,15 @@ export function renderPauseMenuOverlay(
     }).setResolution(2).setOrigin(1, 0.5));
   });
   const returnFocusKey = `birdsquad.pauseReturnFocus.${scene.scene.key}`;
-  const action = (callback: () => void) => () => {
+  // Typed cues (docs/game/audio-events.md): leaving for the menu commits, Resume steps back.
+  const action = (callback: () => void, cue?: 'ui.confirm' | 'ui.cancel') => () => {
     scene.registry.remove(returnFocusKey);
-    dependencies.playUiSound('confirm'); callback();
+    if (cue) birdAudio.play(cue); else dependencies.playUiSound('confirm');
+    callback();
   };
   const actions: Array<{ hit: Phaser.GameObjects.Rectangle; label: string; run: () => void }> = [];
-  const addAction = (x: number, y: number, width: number, label: string, callback: () => void, primary = false) => {
-    const run = action(callback);
+  const addAction = (x: number, y: number, width: number, label: string, callback: () => void, primary = false, cue?: 'ui.confirm' | 'ui.cancel') => {
+    const run = action(callback, cue);
     const hit = renderQuietMenuButton(scene, addTo, x, y, width, label, run, primary);
     actions.push({ hit, label, run });
     return hit;
@@ -726,9 +738,9 @@ export function renderPauseMenuOverlay(
     scene.registry.set(returnFocusKey, 1);
     options.onSettings!();
   } : undefined;
-  addAction(640, frame.top + 368, 300, 'Resume', options.onResume, true);
+  addAction(640, frame.top + 368, 300, 'Resume', options.onResume, true, 'ui.cancel');
   if (settings) addAction(540, frame.top + 440, 170, 'Settings', settings);
-  addAction(options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', options.onMenu);
+  addAction(options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', options.onMenu, false, 'ui.confirm');
   if (options.onAbandon) addAction(640, frame.top + 516, 220,
     memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', options.onAbandon).setName('pause-abandon-hit');
   const initialIndex = scene.registry.get(returnFocusKey) ?? 0;
@@ -742,8 +754,10 @@ export function renderPauseMenuOverlay(
 export function renderConfirmRunExitOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: ConfirmRunExitOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+  addTo = overlayEntrance(scene, 'confirm', addTo);
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, SCRIM, SCRIM_ALPHA)
     .setName('confirm-exit-actions').setInteractive());
+  overlayAmbience(lifecycle, 'confirm');
   renderQuietMenuPanel(scene, addTo, 680, 320);
   addUi(addTo, scene.add.text(640, 254, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
     fontFamily: TOKEN_DISPLAY_FONT, fontSize: '32px', color: UI_FIELD.text,
@@ -793,8 +807,10 @@ export function renderSettingsMenuOverlay(
   // A deferred scene redraw can replace a panel before its old destroy callback.
   // Retire the previous input owner before attaching replacement handlers.
   settingsInputCleanups.get(scene)?.();
+  addTo = overlayEntrance(scene, 'settings', addTo);
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }));
+  overlayAmbience(lifecycle, 'settings');
   const settingsInputKey = settingsOverlayInputRegistryKey(scene);
   const controlsPanelKey = controlPanelRegistryKey(scene);
   const controlsCaptureKey = controlCaptureRegistryKey(scene);
@@ -811,7 +827,7 @@ export function renderSettingsMenuOverlay(
     fontSize: '40px',
     color: UI_FIELD.text,
   }));
-  renderQuietMenuButton(scene, addTo, frame.right - 66, frame.top + 58, 104, 'Close', () => { dependencies.playUiSound('close'); dismissSettingsOverlay(); });
+  renderQuietMenuButton(scene, addTo, frame.right - 66, frame.top + 58, 104, 'Close', () => { birdAudio.play('ui.cancel'); dismissSettingsOverlay(); });
 
   const applyHint = addUi(addTo, scene.add.text(frame.left + 108, frame.top + 120, '', {
     fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT,
@@ -1330,7 +1346,7 @@ export function renderSettingsMenuOverlay(
     if (wasOpen) {
       if (focusRing?.active) focusRing.setVisible(true);
       setFocus(controlsRowIndex);
-      if (playSound) dependencies.playUiSound('close');
+      if (playSound) birdAudio.play('ui.cancel');
     }
   };
 
@@ -1504,7 +1520,7 @@ export function renderSettingsMenuOverlay(
           captureAction = undefined;
           controlsStatus = 'Binding unchanged';
           scene.registry.remove(controlsCaptureKey);
-          dependencies.playUiSound('close');
+          birdAudio.play('ui.cancel');
           renderControlsPanel();
         } else if (!isBindableControlCode(event.code)) {
           controlsStatus = `${controlCodeLabel(event.code)} is reserved`;
@@ -1563,7 +1579,7 @@ export function renderSettingsMenuOverlay(
         captureAction = undefined;
         controlsStatus = 'Binding unchanged';
         scene.registry.remove(controlsCaptureKey);
-        dependencies.playUiSound('close');
+        birdAudio.play('ui.cancel');
         renderControlsPanel();
       } else if (!captureAction && button.index === 12) setControlsFocus(controlsFocusIndex - 1, controlFrame);
       else if (!captureAction && button.index === 13) setControlsFocus(controlsFocusIndex + 1, controlFrame);
@@ -1618,8 +1634,10 @@ export function renderHowToPlayOverlay(
   options: HowToPlayOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
+  addTo = overlayEntrance(scene, 'how-to-play', addTo);
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }).setName('how-to-play-actions'));
+  overlayAmbience(lifecycle, 'how-to-play');
   const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
   addUi(addTo, scene.add.text(168, 98, 'How to Play', {
     fontFamily: TOKEN_DISPLAY_FONT, fontSize: '40px', color: UI_FIELD.text,
@@ -1631,7 +1649,7 @@ export function renderHowToPlayOverlay(
     fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: UI_SOFT, wordWrap: { width: 940 },
   }).setResolution(2).setName('guide-download-status'));
   const close = renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
-    () => { dependencies.playUiSound('close'); options.onClose(); });
+    () => { birdAudio.play('ui.cancel'); options.onClose(); });
   const pageLabel = termsPage ? 'Core loop' : 'Key terms';
   const pageToggle = options.onPage
     ? renderQuietMenuButton(scene, addTo, frame.right - 226, 88, 180, pageLabel,

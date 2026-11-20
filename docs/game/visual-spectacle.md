@@ -39,7 +39,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 1 | Hand cards show the full illustration | Done | `render-hand.ts`; `card-pool-layout` now requires art to fill the card with a 90px clear window |
 | 2 | Real typeface | Done | Barlow (UI) and Fraunces (display), SIL OFL; see Typography |
 | 3 | Post-processing | Done | Bloom and grade on battle, title and route backdrops; hardware GL only |
-| 4 | Living backdrop | Partial | Lamps, beacons, rain, splash rings, fog, motes. No parallax or crossing birds |
+| 4 | Living backdrop | Partial | Title and route: three depth layers drift with the pointer; birds cross, windows light and vents steam, per district (`life/backdrop-life.ts`). Battle keeps lamps, rain, fog and motes only |
 | 5 | Less shading over the battlefield | Partial | Backdrop shade lightened; fixed enemy tint unchanged |
 | 6 | Hand fan, hover lift, tilt | Partial | Hover brightens the halo. Lift was built and removed: card bounds are a layout contract |
 | 7 | Card frame, radius, shadow, cost coin | Done | |
@@ -59,20 +59,20 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 21 | Intent icon badges | Not started | |
 | 22 | Character frame animation | Not started | Needs art or the retained-mode refactor |
 | 23 | One panel material | Partial | Every authored panel is rounded from one place; no texture or layered depth |
-| 24 | Button bevel, glow, press depth | Partial | Rounded, plus a brief press dip on shared buttons |
+| 24 | Button bevel, glow, press depth | Done | `life/button-fx.ts` dresses every `quietButton`: lip, top light, hover and focus glow, and a press that sinks at draw time. Hit areas and labels untouched |
 | 25 | HUD rebuild | Not started | |
 | 26 | Letterbox atmosphere | Reverted | Doubled WebKit frame time; see Performance |
-| 27 | Overlay blur and slide | Not started | |
+| 27 | Overlay blur and slide | Partial | Pause, settings, how to play and confirm rise and gather in over a slate scrim; rain no longer draws over them. No blur: see Performance |
 | 28 | Wider icon use | Not started | |
 | 29 | Animated numbers | Partial | Tabular figures only (list 3, item 10) |
-| 30 | Outgoing transitions | Partial | Arrival light sweep on every scene; no exit transition |
+| 30 | Outgoing transitions | Done | Wing wipe between menu, route and battle; a slower gold wipe into a new district. The scene change itself stays instant (`life/transitions.ts`) |
 | 31 | Animated title | Done | Rain, glowing puddles and neon, bloom. No wordmark shimmer |
-| 32 | District arrival card | Not started | |
+| 32 | District arrival card | Done | Full-screen title over the district painting, once per district per run, skippable. Not modal: see Rules changed |
 | 33 | Boss entrance | Not started | Boss fights gain sheet lightning instead (list 2, item 32) |
-| 34 | Route map life | Partial | Light rain, bloom, lighter panel. No flock marker or fog of war |
+| 34 | Route map life | Done | Flock marker that flies the chosen edge, pulsing reachable nodes, flown edges drawn as flight trails, node legend. No fog of war |
 | 35 | Reward reveal | Not started | |
 | 36 | Victory and defeat moments | Partial | Gold edge flash on victory; grey grade on defeat, never observed |
-| 37 | Lighting across a run | Not started | Per-district plans exist but do not progress |
+| 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
 | 38 | Device-pixel-ratio rendering | Not started | Touches every screen's coordinates; belongs in its own change |
 | 39 | Retained-mode battle rendering | Not started | Largest single unlock for character motion |
 | 40 | More particle systems | Done | Contact dressing in `spectacle/impact.ts` |
@@ -104,7 +104,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 20 | One frame material | Not started | |
 | 21 | Tarot made visible in play | Not started | |
 | 22 | Suit colour everywhere | Partial | Strikes and card halos |
-| 23 | District identity kit | Partial | Per-district light and weather plans |
+| 23 | District identity kit | Partial | Per-district light, weather, ambient life and arrival card |
 | 24 | Leader visual signature | Not started | |
 | 25 | Consistent button wording | Not started | |
 | 26 | Icons from the world | Not started | |
@@ -128,8 +128,8 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 13–16 | Layered panels, elevation, accents, overlay blur | Not started | Needs one shared panel component across ~550 call sites |
 | 17 | Film grain | Done | Hardware GL only; see Performance |
 | 18 | Contrast in context | Not started | |
-| 19–23 | Transitions, easing, stagger, numbers, bar trails | Not started | Fades change opacity during frames that geometry tests read |
-| 24 | Pressed, hover and focus states | Partial | Press dip on shared buttons |
+| 19–23 | Transitions, easing, stagger, numbers, bar trails | Partial | Transitions and staggered list entrances are built as draw-time poses, which leave the geometry and opacity tests read untouched. Numbers and bar trails not started |
+| 24 | Pressed, hover and focus states | Done | See list 1, item 24 |
 | 25–26 | Continuity transitions; motion-reduced cross-fades | Not started | |
 | 27–33 | Feedback and micro-interactions | Not started | Includes drag-to-play and haptics, which are new features |
 | 34 | Loading state | Partial | Boot screen in the game's palette and title treatment |
@@ -187,6 +187,66 @@ raised deliberately: hand renderer 10 to 12 KiB, hand plus reward allowance
   stagger on separate layers. This reverses the earlier "no second set of suit
   particles, portrait echoes, replacement bodies or ground ripples" rule, at the
   owner's request in list 2.
+
+- Route layout: the graph starts below the banner row (`top` 146 to 177,
+  `bottom` 638 to 647, `left` 88 to 104) so a four-lane column clears the
+  header; the Flyway bar moved from the lower left of the graph to the header
+  row; the "Here"/"Selected" label sits 8px closer to its medallion.
+- The district arrival card is a picture, not a modal. It owns no input: any
+  key or click dismisses it and also reaches the route beneath. Making it
+  modal would put an extra dismissal in front of every route flow.
+- Pause and confirm scrims changed from `0x020409` at 0.9 to slate `0x0a121c`
+  at 0.84.
+
+## Scene life (November 19–20)
+
+`src/game/spectacle/life/` is a second lazy chunk (`scene-life`), loaded by the
+stage and applied from outside the scenes. Two techniques keep it invisible to
+game logic and to tests that read geometry between frames:
+
+- **Draw-time poses** (`kit.ts`, `renderPose`): an entrance offsets an object
+  only inside its own draw call and restores it before returning, the way
+  Phaser's container renderer treats children. Position, alpha, bounds and hit
+  areas are final from the first frame. Overlay entrances, list staggers,
+  button presses, parallax and the light grade all use it.
+- **Clock functions**: the route and battle scenes destroy and redraw
+  everything on each state change, so nothing here is a tween. Pulses, the
+  flock's idle motion, birds, steam and the arrival card are functions of a
+  scene stopwatch that `advanceTime` drives, rebuilt on demand.
+
+Exit transitions do not delay a scene change. The outgoing frame is drawn once
+into a texture when `scene.start` is called; the next scene starts at once and
+the picture is wiped off it behind the wing.
+
+Route scene frame time, Playwright on Windows, 90 frames, district 1 with the
+arrival card dismissed. Other agents were building on the same machine, so
+treat single steps of the 16.7 ms Chromium vsync grid as noise.
+
+| Build | WebKit 1280×720 | WebKit 1024×600 | Chromium (SwiftShader) 1280×720 | Chromium 1024×600 |
+| --- | --- | --- | --- | --- |
+| Before (`53c72619`) | 36 ms | 33 ms | 33 ms | 50 ms |
+| With scene life | 37 ms | 36 ms | 50–67 ms | 50 ms |
+
+Hiding layers one at a time on Chromium (150-frame means): everything 50–58 ms,
+without the life layer 45–46 ms, also without the stage's rain and fog
+36–38 ms. So the new backdrop life costs about 5 ms of software rendering and
+the weather that was already there about 10 ms. On WebKit the same steps all
+measured 36–44 ms with no trend. Overlay blur was not built or measured: a
+blur is a full-screen shader pass like bloom, which is already gated off
+software renderers, and the route draws overlays into the same display list as
+the scene, so there is no separate layer to blur.
+
+Boot code is 703.9 of 708 KiB (was 703.0 before this work, 703.8 after the
+audio merge). New budget: `scene-life` 30 KiB (25.5 measured). Raised for
+import-rename drift of a few bytes: `run-hud` 10 to 10.25, `route-reward-overlay`
+6 to 6.25; `route-map-renderer` 5 to 5.5 for its calls into route life.
+
+Known limits: the outgoing picture is only captured when `scene.start` is
+called inside a game step (drawing to a texture between frames corrupts the
+WebGL batch in production builds), so changes made from DOM handlers get the
+wing without the picture. The Flight Stories/Strategy DOM button draws over
+the arrival card. List staggers cover title rows, node options, contract
+options, market offers and route card rewards; battle rewards are untouched.
 
 ## Failures retained during development
 
