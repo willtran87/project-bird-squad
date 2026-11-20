@@ -10,7 +10,7 @@ test.afterEach(async ({ page }) => {
   await page.goto('about:blank');
 });
 
-async function openBattle(page: Page, storage: Record<string, string> = {}) {
+async function openBattle(page: Page, storage: Record<string, string> = {}, arrange = true) {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -32,6 +32,7 @@ async function openBattle(page: Page, storage: Record<string, string> = {}) {
     return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active && !s.combatAnimationPending
       && b.battleActors && b.cardObjects && b.battleHandRendererModule && b.handCardRects.size === b.hand.length && !b.battleRenderQueued;
   });
+  if (!arrange) return errors;
   // A known hand: an enemy-target attack first, then a Cover card, on a sturdy enemy.
   await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
@@ -40,7 +41,7 @@ async function openBattle(page: Page, storage: Record<string, string> = {}) {
     for (const zone of ['hand', 'drawPile', 'discardPile', 'clearedPile']) b[zone] = b[zone].filter((card: any) => !wanted.includes(card));
     b.drawPile.push(...b.hand); b.hand = wanted;
     b.energy = 3; b.enemies[0].hp = b.enemies[0].maxHp = 400;
-    b.renderAll(); w.advanceTime(500);
+    b.renderAll(); w.advanceTime(900); // past the opening deal
   });
   return errors;
 }
@@ -178,6 +179,35 @@ test('drawn cards fly in from the draw pile in a stagger and the counter ticks d
   expect(result.shownSecond).toBe(result.real - 2);
   expect(result.shownEnd).toBe(result.real - 2);
   expect(result.textEnd).toBe(`${result.real - 2}`);
+  expect(errors).toEqual([]);
+});
+
+test('the opening hand is dealt from the draw pile once the encounter intro has cleared, and only once', async ({ page }) => {
+  const errors = await openBattle(page, {}, false);
+  const result = await page.evaluate(() => {
+    const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene'), stage = b.cardObjects;
+    const cards = () => b.battleActors.debugState().actors.filter((actor: any) => actor.kind === 'card');
+    const bounds = () => b.hand.map((card: any) => { const r = b.handCardRects.get(card.instanceId).getBounds(); return [r.x, r.y, r.width, r.height]; });
+    w.advanceTime(17); // one frame after the intro: the deal has begun
+    const start = { intro: b.combatIntroActive, deals: stage.counts.deals, hand: b.hand.length, bounds: bounds(),
+      dealing: cards().filter((actor: any) => actor.motions.includes('deal')).length,
+      waiting: cards().filter((actor: any) => actor.pose.scaleX < 0.3).length,
+      shown: stage.shownPileCount('DRAW'), real: b.drawPile.length };
+    w.advanceTime(900);
+    const settled = cards().every((actor: any) => actor.motions.length === 0 && Math.abs(actor.pose.x) < 1 && Math.abs(actor.pose.scaleX - 1) < 0.01);
+    b.handRenderKey = ''; b.renderAll(); w.advanceTime(200);
+    return { start, settled, boundsAfter: bounds(), dealsAfter: stage.counts.deals, again: cards().some((actor: any) => actor.motions.includes('deal')) };
+  });
+  expect(result.start.intro).toBe(false);
+  expect(result.start.hand).toBeGreaterThan(1);
+  expect(result.start.deals).toBe(result.start.hand);
+  expect(result.start.dealing).toBe(result.start.hand);
+  expect(result.start.waiting).toBeGreaterThan(0); // staggered: later cards are still at the pile
+  expect(result.start.shown).toBe(result.start.real); // the pile already shows the settled count
+  expect(result.settled).toBe(true);
+  expect(result.boundsAfter).toEqual(result.start.bounds); // layout never moved
+  expect(result.dealsAfter).toBe(result.start.deals);
+  expect(result.again).toBe(false);
   expect(errors).toEqual([]);
 });
 

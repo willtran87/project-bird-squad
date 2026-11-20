@@ -14,7 +14,7 @@ for (const reduced of [false, true]) test(`pile motion is bounded, anchored and 
   });
   await page.waitForFunction(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    return b.fxLayer?.active && b.hand.length && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued;
+    return b.fxLayer?.active && b.hand.length && b.cardObjects && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued;
   });
   const state = await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
@@ -27,10 +27,14 @@ for (const reduced of [false, true]) test(`pile motion is bounded, anchored and 
     const unchanged = before === stable();
     w.advanceTime(60); b.time.paused = true; b.tweens.pauseAll();
     w.pileMotionObjects = objects;
-    return { transfers, draw: b.drawPilePos(), discard: b.discardPilePos(), unchanged, before };
+    return { transfers, draw: b.drawPilePos(), discard: b.discardPilePos(), unchanged, before,
+      pendingDeals: b.cardObjects.debugState().pendingDeals.length, hand: b.hand.length };
   });
   expect(state.unchanged).toBe(true);
-  expect(state.transfers).toHaveLength(reduced ? 0 : 8);
+  // Drawn, discarded and returned cards now travel as themselves (see
+  // card-objects.spec.ts); only the shuffle still sends a stand-in card back.
+  expect(state.transfers.map((transfer: any) => transfer.kind)).toEqual(reduced ? [] : ['shuffle']);
+  expect(state.pendingDeals).toBe(reduced ? 0 : state.hand);
   for (const transfer of state.transfers) {
     expect(transfer.width).toBeLessThanOrEqual(32);
     if (transfer.kind === 'draw') expect(transfer.from).toEqual(state.draw);
@@ -46,7 +50,7 @@ for (const reduced of [false, true]) test(`pile motion is bounded, anchored and 
     const complete = w.pileMotionObjects.every((o: any) => !o.active && b.tweens.getTweensOf(o).length === 0);
     const lifetime = w.pileMotionObjects.map((o: any) => ({ active: o.active, alpha: o.alpha,
       tweens: b.tweens.getTweensOf(o).map((t: any) => ({ progress: t.progress, elapsed: t.elapsed, duration: t.duration, paused: t.paused })) }));
-    b.animateDraw(3); const pending = [...b.fxLayer.list]; b.fxLayer.removeAll(true); w.advanceTime(500);
+    b.animateShuffle(); const pending = [...b.fxLayer.list]; b.fxLayer.removeAll(true); w.advanceTime(500);
     return { complete, cleanup: pending.every((o: any) => b.tweens.getTweensOf(o).length === 0), pending: b.combatAnimationPending, lifetime };
   });
   await info.attach('transfer-lifetimes', { body: JSON.stringify(retired), contentType: 'application/json' });

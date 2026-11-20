@@ -71,7 +71,8 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
   const endScale = crowded ? 0.58 : contract.target === 'enemy' ? 0.82 : 0.9;
   const living = host.enemies.filter((entry: any) => entry.hp > 0).map((entry: any) => host.enemyView(entry));
   const view = enemy ? host.enemyView(enemy) : undefined;
-  const to = contract.target === 'enemy' && view ? { x: view.x - 34, y: view.y + 6 }
+  // On the body, above the enemy's intent and name plate.
+  const to = contract.target === 'enemy' && view ? { x: view.x - 34, y: view.y - 30 * view.scale }
     : contract.target === 'allEnemies' && living.length
       ? { x: living.reduce((sum: number, entry: any) => sum + entry.x, 0) / living.length - 20, y: living.reduce((sum: number, entry: any) => sum + entry.y, 0) / living.length + 6 }
       : contract.target === 'self' ? { x: FLOCK_FX_X + 26, y: FLOCK_FX_Y - 30 }

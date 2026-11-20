@@ -43,11 +43,11 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 5 | Less shading over the battlefield | Partial | Backdrop shade lightened; fixed enemy tint unchanged |
 | 6 | Hand fan, hover lift, tilt | Done | The hand fans; the hovered card lifts and straightens while neighbours part; cards slide to new slots. Drawn only: card bounds and hit areas stay on the slot (`battle/actors.ts`) |
 | 7 | Card frame, radius, shadow, cost coin | Done | |
-| 8 | Rarity treatment | Not started | |
-| 9 | Upgraded cards look different | Partial | Gilt inner frame. Changed numbers are not highlighted |
-| 10 | Deal and discard as card objects | Not started | Existing pile motion retained |
+| 8 | Rarity treatment | Done | Procedural frame per rarity on hand, reward and pile-inspect faces; ornament weight rises with rarity; rare and legendary carry a sweeping sheen (off under Reduced Motion and Lean graphics). Captures only at 1280×720 software GL |
+| 9 | Upgraded cards look different | Done | Gilt inner frame; numbers the Preen changed are gilt, and damage or Cover numbers that current status raises or lowers are green or red. Rules text is not rewritten. Hand and inspector faces only |
+| 10 | Deal and discard as card objects | Done | Drawn cards fly from the draw pile in a stagger; discards travel as themselves; cleared cards burn; pile counters tick as cards leave and arrive. The opening hand is dealt when the encounter intro clears. The shuffle keeps its card back |
 | 11 | Playable and unplayable states | Done | Unplayable art desaturates; playable cards carry a suit halo |
-| 12 | Large inspect view | Not started | |
+| 12 | Large inspect view | Done | The reader shows the card at 1.5× with rules, glosses, rarity and flavor; it grows from the card's slot and returns to it |
 | 13 | Hit-stop | Done | Contact freezes the actor clock for 2–4 frames (enemy, flock and hand bodies). Game logic, FX tweens and particles keep running |
 | 14 | Camera punch and flash | Done | Follows Screen Shake and Flash Effects |
 | 15 | Enemy death | Done | Defeat stagger plus feathers. Spawn verified; full playout not observed under the test harness |
@@ -88,7 +88,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 4 | Finishing blows | Partial | Punch, gold flash and defeat stagger; no slow motion |
 | 5 | Cover feels like armour | Done | Sparks on block; heavier sparks on shatter |
 | 6 | Each suit strikes differently | Done | Plumes slash, Basins ripple, Quills volley, Nests thud |
-| 7 | Card flies into the action | Not started | |
+| 7 | Card flies into the action | Done | The played-card cue is now the card, thrown on an arc from its slot to its target inside the existing resolve delay, then on to the discard pile. Reduced Motion and Lean keep the still cue |
 | 8 | Telegraph enemy attacks on stage | Done | Danger line grows during the wind-up |
 | 9 | Surge as a state | Not started | |
 | 10 | Combo feedback | Partial | Audio only: pitch climbs on consecutive card plays within a turn. Not auditioned |
@@ -306,3 +306,32 @@ the slot-owned `combat-enemy-hit`, not the animated portrait). New:
 - Remaining items above, starting with device-pixel-ratio rendering and the
   rest of the retained-mode work (vitals and HP drains as retained objects,
   deal and discard as card actors), each as its own change.
+
+## Cards as objects — November 20, 2026
+
+Scope: the hand and card presentation only. Enemy and flock bodies, status and
+intent badges, the HUD and set pieces were left alone.
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| Card flight on play | Done | List 2 item 7. Lands as the unchanged resolve delay ends. The thrown card is drawn in `fxLayer`, which sits under the hand, so for its first frames it passes behind neighbouring hand cards |
+| Deal and discard as objects | Done | List 1 item 10. The opening hand is dealt once the encounter intro has cleared (its counter is not ticked: the pile already shows the settled count). The shuffle still uses one stand-in card back |
+| Drag to play | Done | Mouse and touch. Coexists with click-select-then-confirm and keyboard or controller; a stray click still only selects. A press on a card that is already selected still plays it at once, as before, so a drag has to start on an unselected card |
+| Rarity frames | Done | List 1 item 8 |
+| Number highlights | Done | List 1 item 9. Reward and pile faces are not tinted |
+| Large inspect view | Done | List 1 item 12 |
+| Unplayable feedback | Done | Refusal shake on the card; the reason line is the existing "Cannot play" notice ("Needs 1 more Wingbeat.") and the sound is the existing `locked` cue. No new audio event |
+
+Tests changed because the behaviour changed:
+
+- `identity-continuity` (card cue clearance): the cue used to wait in a pocket
+  beside the leader; it now flies from the hand to the target, so the check is
+  that it never enters the top bar and that where it lands it covers no enemy
+  label and no other combatant.
+- `pile-motion-continuity` and three `smoke` expectations: draws, discards and
+  returns are the real cards, so only the shuffle still creates a
+  `combat-pile-transfer` card back.
+
+Not verified: human play, a physical touch device (touch was driven through
+CDP touch events), real-GPU rendering, WebKit and Firefox, and how the sheen
+and burn read at speed. No new sound was auditioned because none was added.

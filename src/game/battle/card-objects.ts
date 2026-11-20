@@ -52,6 +52,8 @@ export class CardObjectStage {
   private arriving: Record<Pile, number> = { DRAW: 0, DISCARD: 0 };
   private tickedAt: Record<Pile, number> = { DRAW: -1e9, DISCARD: -1e9 };
   private pilesDirty = false;
+  private opened = false;
+  private sawIntro = false;
   private timers: Array<{ at: number; run: () => void }> = [];
   private sheens = new Set<Phaser.GameObjects.TileSprite>();
   private drag?: { id: string; origin: Point; last: Point; tilt: number; active: boolean; target: DropTarget; stop: () => void };
@@ -84,6 +86,7 @@ export class CardObjectStage {
       const due = this.timers.filter(timer => timer.at <= now);
       if (due.length) { this.timers = this.timers.filter(timer => timer.at > now); due.forEach(timer => timer.run()); }
     }
+    if (!this.opened) this.openingDeal();
     this.refreshPiles(now);
     if (this.sheens.size) this.sweepSheens(now);
   }
@@ -92,12 +95,12 @@ export class CardObjectStage {
 
   /** Cards just drawn. Each flies from the pile to its slot when the hand next
    * reconciles. Returns true: the real cards replace the stand-in card backs. */
-  deal(ids: string[], from?: Point) {
+  deal(ids: string[], from?: Point, counted = !from) {
     if (this.still || !ids.length) return true;
     const origin = from ?? this.scene.drawPilePos();
     ids.forEach((id, index) => {
       this.pendingDeals.set(id, { index, at: this.scene.time.now, from: origin });
-      if (from) return;
+      if (!counted) return;
       // The counter keeps a dealt card until it actually leaves the pile.
       this.leaving.DRAW += 1;
       this.after(index * DEAL_STAGGER_MS + 30, () => { this.leaving.DRAW -= 1; this.tickedAt.DRAW = this.clock; });
@@ -105,6 +108,21 @@ export class CardObjectStage {
     this.pilesDirty = true;
     this.counts.deals += ids.length;
     return true;
+  }
+
+  /**
+   * The opening hand is drawn before anything can show it, under the encounter
+   * intro. Deal it once, when the intro has cleared and the hand is on screen.
+   * The pile counter already shows the settled count and is left alone.
+   */
+  private openingDeal() {
+    const host = this.scene, stage = battleActors(host), ids = stage.hand.order;
+    // The first hand render usually precedes the intro; wait until one has played.
+    if (host.combatIntroActive) { this.sawIntro = true; return; }
+    if (!this.sawIntro || host.mode !== 'battle' || !host.handLayer?.visible || !ids.length) return;
+    this.opened = true;
+    this.deal(ids, undefined, false);
+    for (const id of ids) { const actor = stage.actors.get(`card:${id}`); if (actor) this.arrive(id, actor); }
   }
 
   /** A card's body has just been created in the hand. */
@@ -149,6 +167,9 @@ export class CardObjectStage {
     const host = this.scene, at = this.landing ?? { x: fallbackX, y: HAND_Y, scale: 1 };
     this.landing = undefined;
     if (this.still || !this.layer.active) return;
+    // Played without a throw (no resolve delay): its hand card is still on
+    // screen and leaves for the pile itself at the next reconcile.
+    if ((host.handCardRects as Map<string, Phaser.GameObjects.Rectangle> | undefined)?.get(card.instanceId)?.visible) return;
     const body = host.add.container(at.x, at.y).setScale(at.scale).setData('played', true);
     paintFlightCard(host, body, card);
     this.sendOff(body, card.instanceId, fate, 0, FLIGHT_CARD.width, FLIGHT_CARD.height);
