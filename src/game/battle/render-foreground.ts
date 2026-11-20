@@ -255,11 +255,12 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
   let breath: ActorBreath | undefined;
   if (!context.reducedMotion) {
     const seed = [...enemy.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const lift = (3.5 + seed % 3) * s, stretch = 0.024 + (seed % 3) * 0.003;
-    const rise = lift + Math.max(0, enemy.y - restTop) * stretch;
+    // Feet stay planted on the contact shadow; only the top of the body rises.
+    const anchor = contact.y, stretch = 0.028 + (seed % 3) * 0.003;
+    const rise = (anchor + Math.max(0, enemy.y - restTop)) * stretch;
     // Two pixels of margin also keep floating-point bounds clear of the 106px HUD edge.
     const strength = art ? Math.min(1, Math.max(0, restTop - 108) / Math.max(0.001, rise)) : 1;
-    breath = { lift: lift * strength, stretch: stretch * strength, squeeze: 0.008 + (seed % 2) * 0.002,
+    breath = { anchor, stretch: stretch * strength, squeeze: 0.008 + (seed % 2) * 0.002,
       period: 1500 + seed % 420, delay: seed % 420 };
   }
   battleActors(scene).bindNode(`enemy:${enemy.id}`, 'enemy', breathGroup, enemy.x, enemy.y, s, breath,
@@ -381,12 +382,14 @@ function renderLeader(context: BattleForegroundRenderContext) {
     breathGroup.add(body.pose);
   }
   const poseGroup = body.pose!;
+  let foot = 40;
   if (hasLeaderArt && leader.artKey) {
     const source = scene.textures.get(leader.artKey).getSourceImage() as { width: number; height: number };
     const fit = leader.artFit, artY = leader.artY;
     const width = source.width * fit, height = source.height * fit;
     const contact = artContact(leader.artKey, 0, artY, width, height, { x: 0, y: 100, width: 112 });
     contactShadow(context, leader.x + contact.x, leader.y + contact.y, contact.width, 15, 'combat-leader-contact-shadow');
+    foot = contact.y;
     if (rebuild) poseGroup.add(scene.add.image(0, artY, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));
   } else {
     contactShadow(context, leader.x, leader.y + 40, 112, 18, 'combat-leader-contact-shadow');
@@ -414,7 +417,7 @@ function renderLeader(context: BattleForegroundRenderContext) {
   context.attachTooltip(hitbox, leader.name, `${leader.bird} leader. ${leader.signatureLabel} Click for Flock Stats.`);
   const portrait = poseGroup.getByName('combat-leader-portrait') as Phaser.GameObjects.Image | null;
   battleActors(scene).bindNode('flock', 'flock', breathGroup, leader.x, leader.y, 1,
-    context.reducedMotion ? undefined : { lift: 4, squeeze: 0.006, stretch: 0.012, period: 1700, delay: 0 },
+    context.reducedMotion ? undefined : { anchor: foot, squeeze: 0.006, stretch: 0.014, period: 1700, delay: 0 },
     portrait ? { image: portrait, from: 0xffffff, to: 0xff9c8c } : undefined);
 }
 

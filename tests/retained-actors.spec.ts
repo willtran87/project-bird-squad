@@ -48,17 +48,18 @@ test('combatant bodies and hand cards are created once and survive redraws', asy
     b.renderAll(); b.handRenderKey = ''; b.renderHand(); b.energy = 8; b.renderAll();
     const after = { bodies: bodies(), portraits: portraits(), cards: cards(), vitals: named('combat-enemy-vitals') };
     const same = (a: any[], z: any[]) => a.length > 0 && a.length === z.length && a.every((o, i) => o === z[i] && o.active);
+    const kept = { bodies: same(before.bodies, after.bodies), portraits: same(before.portraits, after.portraits),
+      cards: same(before.cards, after.cards),
+      // HUD panels stay immediate-mode: every pass rebuilds them.
+      vitalsRebuilt: before.vitals.every((o: any) => !o.active) && after.vitals.every((o: any) => o.active) };
     const enemy = b.enemies.find((e: any) => e.hp > 0);
     // A combatant that leaves play takes its body with it.
     const doomed = named('combat-enemy-art').find((o: any) => o.getData('enemyId') === enemy.id);
-    const hp = enemy.hp; enemy.hp = 0; b.renderBattleForeground();
+    const hp = enemy.hp; enemy.hp = 0; b.renderAll();
     const retired = !doomed.active && !b.battleActors.actors.has(`enemy:${enemy.id}`);
     enemy.hp = hp; b.renderAll();
     return {
-      bodies: same(before.bodies, after.bodies), portraits: same(before.portraits, after.portraits),
-      cards: same(before.cards, after.cards),
-      // HUD panels stay immediate-mode: every pass rebuilds them.
-      vitalsRebuilt: before.vitals.every((o: any) => !o.active) && after.vitals.every((o: any) => o.active),
+      ...kept,
       order: b.hand.map((card: any) => b.handLayer.list.indexOf(b.handCardRects.get(card.instanceId)))
         .every((index: number, i: number, all: number[]) => index >= 0 && (i === 0 || index > all[i - 1])),
       actors: b.battleActors.debugState().actors.map((actor: any) => actor.kind).sort().join(','),
@@ -113,7 +114,7 @@ test('hover lifts the drawn card and parts its neighbours without moving bounds 
   const hit = await page.evaluate(id => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     const rect = b.handCardRects.get(id), bounds = rect.getBounds();
-    return [bounds.top + 2, bounds.bottom - 2].map(y => b.input.hitTest({ x: bounds.centerX, y }, [rect], b.cameras.main).includes(rect));
+    return [bounds.top + 2, bounds.bottom - 2].map(y => b.input.manager.hitTest({ x: bounds.centerX, y }, [rect], b.cameras.main).includes(rect));
   }, rest[2].id);
   expect(hit).toEqual([true, true]);
   await page.mouse.move(4, 4);
@@ -129,7 +130,7 @@ test('cards slide to their new slots when the hand changes', async ({ page }) =>
     const pose = (id: string) => b.battleActors.debugState().actors.find((a: any) => a.id === `card:${id}`).pose;
     const kept = b.hand[1], rect = b.handCardRects.get(kept.instanceId), parts = rect.getData('presentation');
     const from = rect.x;
-    b.discard.push(b.hand.shift()); b.renderAll();
+    b.discardPile.push(b.hand.shift()); b.renderAll();
     const to = b.handCardRects.get(kept.instanceId).x, start = pose(kept.instanceId).x;
     w.advanceTime(60);
     const midway = pose(kept.instanceId).x;
@@ -283,7 +284,7 @@ test('Reduced Motion keeps every actor on its slot', async ({ page }) => {
     b.events.emit('living-enemy-cue', enemy.id, 'attack', 80);
     b.events.emit('living-cast', 400, 'swoop', enemy.id);
     b.events.emit('living-flock-cue', 'brace');
-    b.discard.push(b.hand.shift()); b.renderAll();
+    b.discardPile.push(b.hand.shift()); b.renderAll();
     for (let i = 0; i < 12; i++) { w.advanceTime(50); samples.push(moved()); }
     const stage = b.battleActors.debugState();
     return { samples, reduced: stage.reducedMotion, hitStops: stage.hitStops, frozen: stage.frozen };
