@@ -13,6 +13,8 @@ export interface StaggerSpec {
   name: string;
   /** Row order: reading order down the screen, or across it. */
   axis?: 'y' | 'x';
+  /** The frame is a hit area drawn after its contents, not before them. */
+  drawnLast?: boolean;
 }
 
 interface Session { start: number; live: boolean }
@@ -64,9 +66,9 @@ export function staggerLists(scene: Phaser.Scene, specs: readonly StaggerSpec[])
         const siblings = frame.parentContainer?.list ?? scene.children.list;
         const from = siblings.indexOf(frame);
         renderPose(frame, pose);
-        for (let at = from + 1; at < siblings.length; at += 1) {
+        for (let at = spec.drawnLast ? 0 : from + 1; at < siblings.length; at += 1) {
           const member = siblings[at] as Framed;
-          if (member.name === spec.name || !('getBounds' in member) || member.name === 'quiet-button-bevel') continue;
+          if (member === frame || member.name === spec.name || !('getBounds' in member) || member.name === 'quiet-button-bevel') continue;
           const box = member.getBounds();
           if (box.width <= bounds.width + 4 && box.height <= bounds.height + 4 && bounds.contains(box.centerX, box.centerY)) renderPose(member, pose);
         }

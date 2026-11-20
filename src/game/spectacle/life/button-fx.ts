@@ -49,7 +49,7 @@ function draw(entry: Dressed, pressed: boolean) {
   bevel.fillStyle(0x000000, 0.42);
   bevel.fillRoundedRect(left + 2, top + h - 3, w - 4, 6, { tl: 0, tr: 0, bl: radius, br: radius });
   // Light from above: a soft sheen over the top half and a bright top edge.
-  bevel.fillStyle(0xffffff, kind === 'primary' ? 0.14 : 0.05);
+  bevel.fillStyle(0xffffff, kind === 'primary' ? 0.1 : 0.05);
   bevel.fillRoundedRect(left + 2, top + 2, w - 4, h * 0.46, { tl: radius - 1, tr: radius - 1, bl: 0, br: 0 });
   bevel.lineStyle(1, 0xffffff, kind === 'primary' ? 0.5 : 0.22);
   bevel.lineBetween(left + radius, top + 1.5, left + w - radius, top + 1.5);

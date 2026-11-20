@@ -57,13 +57,13 @@ function build(scene: RouteRead, index: number) {
     .setLetterSpacing(5).setName('district-arrival-card-kicker');
   const name = text(360, district.place, UI_DISPLAY_FONT, 84, '#fff6e0').setShadow(0, 4, '#000000', 14, false, true)
     .setName('district-arrival-card-name');
-  const premise = text(440, district.premise, UI_FONT, 26, '#e8f1f7').setName('district-arrival-card-premise');
-  const rule = scene.add.rectangle(width / 2, 406, 360, 2, accent, 0.9);
+  const premise = text(456, district.premise, UI_FONT, 26, '#e8f1f7').setName('district-arrival-card-premise');
+  const rule = scene.add.rectangle(width / 2, 420, 360, 2, accent, 0.9);
   const bars = [scene.add.rectangle(width / 2, 42, width, 84, 0x020409, 0.94), scene.add.rectangle(width / 2, height - 42, width, 84, 0x020409, 0.94)];
   card.add([
     scene.add.rectangle(width / 2, height / 2, width, height, 0x05070c, 1), art,
-    scene.add.rectangle(width / 2, height / 2, width, height, 0x05070c, 0.3),
-    scene.add.rectangle(width / 2, 366, width, 250, 0x05090f, 0.66),
+    scene.add.rectangle(width / 2, height / 2, width, height, 0x05070c, 0.1),
+    scene.add.rectangle(width / 2, 372, width, 262, 0x05090f, 0.58),
     ...bars, rule, kicker, name, premise,
     text(height - 42, 'Any key or click to continue', UI_FONT, 19, '#9fb2bd').setName('district-arrival-card-hint'),
   ]);
@@ -122,7 +122,7 @@ export function dressArrivalCard(route: Phaser.Scene) {
     parts.rule.setScale(enter, 1);
     parts.lines.forEach((line, order) => {
       const rise = easeOut(clamp01((now - start! - paced(90 + order * 110)) / paced(ENTER_MS)));
-      line.setAlpha(rise).setY([288, 360, 440][order] + (1 - rise) * 18);
+      line.setAlpha(rise).setY([288, 360, 456][order] + (1 - rise) * 18);
     });
   }, finish);
 }

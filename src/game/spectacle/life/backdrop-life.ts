@@ -116,7 +116,7 @@ function litWindows(scene: Phaser.Scene, key: string, limit: number) {
     const warmth = (x: number, y: number) => {
       const i = (y * columns + x) * 4;
       const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
-      return r > 170 && r - b > 50 && g > 90 ? r + g - b : 0;
+      return r > 140 && r - b > 40 && g > 70 ? r + g - b : 0;
     };
     for (let y = 2; y < rows - 2; y += 1) {
       for (let x = 2; x < columns - 2; x += 1) {

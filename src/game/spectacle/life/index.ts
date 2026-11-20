@@ -20,9 +20,8 @@ const LISTS: Record<string, readonly StaggerSpec[]> = {
     { name: 'title-run-mode-option', axis: 'x' }, { name: 'title-leader-choice-backplate', axis: 'x' },
   ],
   RouteScene: [
-    { name: 'route-choice-option-frame' }, { name: 'district-contract-card', axis: 'x' },
-    { name: 'route-reward-card-frame', axis: 'x' }, { name: 'route-supply-reward-frame', axis: 'x' },
-    { name: 'market-listing-frame' },
+    { name: 'route-choice-option-frame' }, { name: 'district-contract-option', axis: 'x' },
+    { name: 'route-reward-card-hit', axis: 'x', drawnLast: true }, { name: 'market-card-offer-frame', axis: 'x' },
   ],
 };
 

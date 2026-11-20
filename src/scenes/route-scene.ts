@@ -937,18 +937,17 @@ export class RouteScene extends Phaser.Scene {
     // It sits in the header row beside the district banner: the graph below
     // is reserved for nodes, which the old lower-left plate used to cover.
     this.add.rectangle(872, 158, 252, 40, 0x050b14, 0.94)
-      .setDepth(7).setName('flyway-restoration');
+      .setName('flyway-restoration');
     const segmentWidth = (224 - (totalSegments - 1) * 6) / totalSegments;
     for (let index = 0; index < totalSegments; index += 1) {
       this.add.rectangle(760 + index * (segmentWidth + 6), 172, segmentWidth, 3,
         index < restoredSegments ? UI_FIELD.cyan : 0x49606d, 0.9)
         .setOrigin(0, 0.5)
-        .setDepth(8)
         .setName('flyway-restoration');
     }
     this.add.text(760, 152, `FLYWAY  ${restoredSegments}/${totalSegments} RESTORED`, {
       fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: '#bff8ff', resolution: 2,
-    }).setOrigin(0, 0.5).setDepth(8).setName('flyway-restoration');
+    }).setOrigin(0, 0.5).setName('flyway-restoration');
   }
 
   private flywayRestorationProgress() {

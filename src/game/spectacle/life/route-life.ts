@@ -26,7 +26,7 @@ interface RouteLifeState {
 const states = new WeakMap<Phaser.Scene, RouteLifeState>();
 const LEGEND: ReadonlyArray<readonly [type: string, label: string]> = [
   ['street', 'Fight'], ['rival', 'Rival'], ['signal', 'Signal'], ['basin', 'Roost'],
-  ['nest', 'Workshop'], ['cache', 'Cache'], ['market', 'Market'], ['boss', 'Boss'],
+  ['nest', 'Nest'], ['cache', 'Cache'], ['market', 'Market'], ['boss', 'Boss'],
 ];
 const ARRIVE_MS = 620;
 const TRAIL = 0xbfe8c0;
@@ -82,8 +82,8 @@ function animate(scene: Phaser.Scene, state: RouteLifeState) {
 function buildMarker(scene: Phaser.Scene, x: number, y: number) {
   const bird = birdTexture(scene);
   const marker = scene.add.container(x, y).setName('route-flock-marker');
-  marker.add(scene.add.circle(0, 0, 17, 0xffe1a3, 0.2));
-  ([[5, 0, 0.6], [-8, -8, 0.44], [-8, 8, 0.44]] as const).forEach(([dx, dy, scale]) => {
+  marker.add(scene.add.circle(0, 0, 22, 0x06111a, 0.86).setStrokeStyle(2, 0xffe1a3, 0.9));
+  ([[6, 0, 0.82], [-11, -10, 0.6], [-11, 10, 0.6]] as const).forEach(([dx, dy, scale]) => {
     marker.add(scene.add.image(dx, dy, bird).setScale(scale).setTint(0xfff3d0).setData('scale', scale));
   });
   return marker;

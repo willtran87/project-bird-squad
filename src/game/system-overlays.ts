@@ -38,6 +38,12 @@ import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_TYPE, MENU_UI } from '
 const { gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT, field: UI_FIELD } = MENU_UI;
 import { bindActionFocus } from './action-focus';
 import type { UiIconId } from '../art-assets';
+import { overlayEntrance } from './spectacle/life/overlay-fx';
+
+// Dim and soften: a slate wash mutes the scene's colour as well as its light.
+// A real blur is a full-screen shader pass, which the software renderers that
+// WebKit and CI use cannot afford (see docs/project/performance-notes.md).
+const SCRIM = 0x0a121c, SCRIM_ALPHA = 0.84;
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
@@ -688,7 +694,8 @@ function renderSettingsGraphicsQualitySwitch(
 export function renderPauseMenuOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: PauseOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+  addTo = overlayEntrance(scene, 'pause', addTo);
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, SCRIM, SCRIM_ALPHA)
     .setName('pause-actions').setInteractive());
   const frame = renderQuietMenuPanel(scene, addTo, 620, 580);
   dependencies.renderAudioToggleControl(scene, addTo, frame.right - 58, frame.top + 50, options.onToggleAudio);
@@ -742,7 +749,8 @@ export function renderPauseMenuOverlay(
 export function renderConfirmRunExitOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: ConfirmRunExitOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+  addTo = overlayEntrance(scene, 'confirm', addTo);
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, SCRIM, SCRIM_ALPHA)
     .setName('confirm-exit-actions').setInteractive());
   renderQuietMenuPanel(scene, addTo, 680, 320);
   addUi(addTo, scene.add.text(640, 254, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
@@ -793,6 +801,7 @@ export function renderSettingsMenuOverlay(
   // A deferred scene redraw can replace a panel before its old destroy callback.
   // Retire the previous input owner before attaching replacement handlers.
   settingsInputCleanups.get(scene)?.();
+  addTo = overlayEntrance(scene, 'settings', addTo);
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }));
   const settingsInputKey = settingsOverlayInputRegistryKey(scene);
@@ -1618,6 +1627,7 @@ export function renderHowToPlayOverlay(
   options: HowToPlayOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
+  addTo = overlayEntrance(scene, 'how-to-play', addTo);
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }).setName('how-to-play-actions'));
   const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
