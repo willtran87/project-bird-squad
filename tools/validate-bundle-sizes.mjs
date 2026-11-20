@@ -21,14 +21,9 @@ const budgets = [
   { label: 'canal markets lazy module', pattern: /^canal-markets-.*\.js$/, maxKb: 10, hard: true },
   { label: 'signal spires lazy module', pattern: /^signal-spires-.*\.js$/, maxKb: 12, hard: true },
   { label: 'opening district lazy module', pattern: /^opening-district-.*\.js$/, maxKb: 9, hard: true },
-<<<<<<< HEAD
   // Retained actor stage: animation clock, hit-stop, body motion and hand fan. Replaces the breathing tween module.
   { label: 'battle actors lazy module', pattern: /^battle-actors-.*\.js$/, maxKb: 10, hard: true },
-  { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // sat at 10.0; import aliases shift with the entry chunk's export table
-=======
-  { label: 'enemy breathing lazy module', pattern: /^enemy-breathing-.*\.js$/, maxKb: 2, hard: true },
   { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // +7 bytes of import renames from the scene-life chunk
->>>>>>> codex/modern-polish
   { label: 'route transition FX lazy module', pattern: /^route-transition-fx-.*\.js$/, maxKb: 7, hard: true },
   { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
   { label: 'battle outcome scene lazy module', pattern: /^battle-outcome-scene-.*\.js$/, maxKb: 8, hard: true },
