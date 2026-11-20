@@ -78,6 +78,8 @@ export default defineConfig(({ command }) => ({
             || moduleId.endsWith('/src/art-assets.ts')
           ) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
+          // Title, route and chrome life: loaded after the stage, never part of boot.
+          if (moduleId.includes('/src/game/spectacle/life/')) return 'scene-life';
           if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';
           if (moduleId.endsWith('/src/game/district-framing.ts')) return 'district-framing';
           if (moduleId.endsWith('/src/game/build-guidance.ts')) return 'build-guidance';

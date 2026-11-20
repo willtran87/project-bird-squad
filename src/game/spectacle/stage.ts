@@ -284,6 +284,8 @@ function dressBattle(scene: Phaser.Scene) {
     addLights(scene, layer, plan.lights, !reduced);
     if (!reduced) addWeather(scene, layer, plan);
     gradeBackdrop(scene, backdrop);
+    // Dusk, night or dawn, by how far the run has come.
+    if (painting) life?.gradeBattlePainting(scene, painting);
     if (!reduced && /boss/.test(key)) addLightning(scene, layer);
   };
   scene.events.on(Phaser.Scenes.Events.UPDATE, sync);
@@ -389,13 +391,16 @@ function bloom(scene: Phaser.Scene, object: Phaser.GameObjects.Image, amount: nu
 }
 
 /** Place a layer directly above one object, wherever that object lives. */
-function layerAbove(scene: Phaser.Scene, object: Phaser.GameObjects.GameObject) {
-  const layer = scene.add.container(0, 0).setName('spectacle-ambient');
+function layerAbove(scene: Phaser.Scene, object: Phaser.GameObjects.GameObject, name = 'spectacle-ambient') {
+  const layer = scene.add.container(0, 0).setName(name);
   const parent = object.parentContainer;
   if (parent) parent.addAt(layer, parent.getIndex(object) + 1);
   else {
     layer.setDepth((object as unknown as Phaser.GameObjects.Components.Depth).depth);
-    scene.children.moveAbove(layer as Phaser.GameObjects.GameObject, object);
+    // `moveAbove` is a no-op for a layer that is already later in the list,
+    // which a new layer always is. That left the rain drawn over every panel
+    // sharing the painting's depth, the pause panel included.
+    scene.children.moveTo(layer as Phaser.GameObjects.GameObject, scene.children.getIndex(object) + 1);
   }
   return layer;
 }
@@ -409,26 +414,41 @@ const TITLE_PLAN: StagePlan = {
     [1043, 592, PANEL, 60], [700, 372, WARM, 90]],
 };
 
-function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjects.Image) => boolean, plan: StagePlan, bloomAmount: number) {
+// Route weather follows the district: steady rain on the roofs, a lighter fall
+// over the canals, a driven one in the Spires and clear air at High Roost.
+const ROUTE_WEATHER: Array<[match: string, plan: StagePlan]> = [
+  ['rooftop-blocks', { ...FALLBACK_STAGE, rain: 0.35, wind: 11 }],
+  ['canal-markets', { ...FALLBACK_STAGE, rain: 0.25, motes: 0.5, fog: 0x8a5a2e, wind: 7 }],
+  ['signal-spires', { ...FALLBACK_STAGE, rain: 0.5, fog: 0x2a3f8f, wind: 16 }],
+  ['high-roost', { ...FALLBACK_STAGE, rain: 0, fog: 0x4a5fa0 }],
+];
+
+function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjects.Image) => boolean,
+  planFor: StagePlan | ((key: string) => StagePlan), bloomAmount: number) {
   let painting: Phaser.GameObjects.Image | undefined;
   let layer: Phaser.GameObjects.Container | undefined;
+  let weather: Phaser.GameObjects.Container | undefined;
   let signature = '';
   const clear = () => {
-    if (layer) { scene.tweens.killTweensOf(layer.list); layer.destroy(); }
-    layer = undefined;
+    for (const each of [layer, weather]) {
+      if (each) { scene.tweens.killTweensOf(each.list); each.destroy(); }
+    }
+    layer = weather = undefined;
   };
   const sync = () => {
     if (!painting?.active) painting = findImage(scene, match);
     const lean = prefersLeanEffects(), reduced = prefersReducedMotion();
     const next = painting && !lean ? `${painting.texture.key}|${reduced}` : '';
-    if (next === signature && (!next || layer?.active)) return;
+    if (next === signature && (!next || (layer?.active && (reduced || weather?.active)))) return;
     signature = next;
     clear();
     if (!next || !painting) return;
     ensureSpectacleTextures(scene);
+    const plan = typeof planFor === 'function' ? planFor(painting.texture.key) : planFor;
+    // Weather is its own, nearer layer so it can drift against the painting.
+    if (!reduced) addWeather(scene, weather = layerAbove(scene, painting, 'spectacle-weather'), plan);
     layer = layerAbove(scene, painting);
     addLights(scene, layer, plan.lights, !reduced);
-    if (!reduced) addWeather(scene, layer, plan);
     bloom(scene, painting, bloomAmount);
   };
   scene.events.on(Phaser.Scenes.Events.UPDATE, sync);
@@ -490,8 +510,13 @@ const isBackdrop = (image: Phaser.GameObjects.Image) => image.displayWidth >= 12
 const DRESSERS: Record<string, (scene: Phaser.Scene) => void> = {
   BattleScene: (scene) => { dressBattle(scene); dressTargeting(scene); dressOutcomeGrade(scene); },
   MenuScene: (scene) => dressBackdropScene(scene, image => image.texture.key === 'splash' && isBackdrop(image), TITLE_PLAN, 0.6),
-  RouteScene: (scene) => dressBackdropScene(scene, isBackdrop, { ...FALLBACK_STAGE, rain: 0.35 }, 0.7),
+  RouteScene: (scene) => dressBackdropScene(scene, image => image.name === 'route-map-backdrop' && isBackdrop(image),
+    key => ROUTE_WEATHER.find(([match]) => key.includes(match))?.[1] ?? { ...FALLBACK_STAGE, rain: 0.35 }, 0.7),
 };
+
+/** The title, route and chrome "life" layer: a second lazy chunk, applied the
+ * same way. Without it every scene still gets the dressing above. */
+let life: typeof import('./life') | undefined;
 
 const PANEL_RADIUS = 8;
 
@@ -565,13 +590,21 @@ export function installSpectacle(game: Phaser.Game) {
     adopted.add(scene);
     const dress = (arriving: boolean) => {
       DRESSERS[scene.scene.key]?.(scene);
-      if (arriving && scene.scene.key !== 'BootScene') arrivalSweep(scene);
+      // A wing wipe carries its own light; the sweep covers every other arrival.
+      const wiped = life?.dressLife(scene, arriving) ?? false;
+      if (arriving && !wiped && scene.scene.key !== 'BootScene') arrivalSweep(scene);
       if (scene.scene.key !== 'BootScene') filmGrain(scene);
     };
     scene.events.on(Phaser.Scenes.Events.CREATE, () => dress(true));
     if (scene.sys.isActive()) dress(false);
   };
   const scan = () => game.scene.scenes.forEach(adopt);
-  scan();
-  game.events.on(Phaser.Core.Events.STEP, scan);
+  // BootScene waits on this promise, so the first menu is dressed in full.
+  return import('./life').then((module) => {
+    life = module;
+    module.installLife(game);
+  }).catch(() => undefined).then(() => {
+    scan();
+    game.events.on(Phaser.Core.Events.STEP, scan);
+  });
 }

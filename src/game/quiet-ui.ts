@@ -82,6 +82,8 @@ export function quietButton(scene: Phaser.Scene, options: {
     });
   if (enabled) hit.setInteractive({ useHandCursor: true });
   paint();
+  // Optional depth dressing (bevel, glow, press) lives in a lazy chunk.
+  scene.events.emit('quiet-button', hit);
   return hit;
 }
 

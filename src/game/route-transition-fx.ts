@@ -3,6 +3,8 @@ import Phaser from 'phaser';
 import { uiIconAssets, birdAudio, activeMapIndex, currentMap, prefersReducedMotion, clamp } from '../main';
 import { prefersLeanEffects } from './graphics-quality';
 import { UI_FONT, UI_BOLD } from './theme';
+import { ROUTE_BOSS_NODE_RADIUS, ROUTE_NODE_RADIUS } from './shared/layout-constants';
+import { flyFlockMarker } from './spectacle/life/route-life';
 const ROUTE_COMMIT_STREAK_TEXTURE = 'route-commit-streak';
 
 export function renderRouteBossBeaconRing(scene: Phaser.Scene, x: number, y: number, completed: boolean) {
@@ -169,6 +171,12 @@ export function routeCommitStreakFx(scene: any, routeNodeId: string) {
     const reduced = prefersReducedMotion();
     const leanEffects = prefersLeanEffects();
     scene.routeCommitStreakBursts += 1;
+    if (targetNode) {
+      const here = scene.nodePosition(targetNode);
+      flyFlockMarker(scene, { id: targetNode.id, x: here.x, y: here.y,
+        radius: targetNode.type === 'boss' ? ROUTE_BOSS_NODE_RADIUS : ROUTE_NODE_RADIUS },
+        scene.runState.currentRouteNodeId, scene.routeCommitDelayMs());
+    }
 
     const rail = scene.add.graphics().setName('route-commit-streak');
     rail.lineStyle(3, 0x8df4ff, reduced ? 0.5 : 0.72);
