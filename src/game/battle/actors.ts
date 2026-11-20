@@ -260,12 +260,16 @@ export class BattleActorStage {
     if (!actor || this.still || (style !== 'swoop' && style !== 'shove')) return;
     const target = this.actors.get(`enemy:${enemyId}`)?.slot ?? { x: actor.slot.x + 420, y: actor.slot.y };
     const dx = target.x - actor.slot.x, dy = target.y - actor.slot.y, length = Math.max(1, Math.hypot(dx, dy));
-    const reach = Math.min(74, length * 0.17) * (style === 'shove' ? 0.78 : 1);
+    // The played card's ghost owns the pocket beside the leader (and, in a
+    // four-enemy fight, the one above its head), so the dive stays short of it
+    // and never climbs.
+    const crowded = (this.scene.enemies?.length ?? 0) >= 4;
+    const reach = Math.min(crowded ? 12 : 40, length * 0.17) * (style === 'shove' ? 0.78 : 1);
     const ux = dx / length, uy = dy / length, span = Math.max(180, budget || 0);
-    const strike: MotionKey = [span * 0.48, ux * reach, uy * reach - (style === 'swoop' ? 10 : 0), 0.03, -0.022,
+    const strike: MotionKey = [span * 0.48, ux * reach, Math.max(0, uy * reach) + (style === 'swoop' ? 5 : 0), 0.03, -0.022,
       style === 'swoop' ? 5 : 3, style === 'shove' ? cubicIn : sineInOut];
     this.play(actor.id, { name: 'dive', channel: 'action', keys: [
-      [span * 0.22, -ux * 10, 5, 0.022, -0.03, -2.5, quadOut],
+      [span * 0.22, -ux * 8, 4, 0.022, -0.03, -2.5, quadOut],
       strike,
       [span * 0.3 + 90, strike[1], strike[2], strike[3], strike[4], strike[5], linear],
       [230, 0, 0, 0, 0, 0, cubicOut],

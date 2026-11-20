@@ -76,7 +76,9 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
           goalClear: !goal || art.every((r: any) => clear(goal.getBounds(), r))
             && panels.every((p: any) => clear(goal.getBounds(), p.getBounds())),
           previewClear: !frame || panels.every((p: any) => clear(p.getBounds(), frame) && (!command || clear(p.getBounds(), command))),
-          targetsInteractive: visible.every((g: any) => g.list[0].getByName('combat-enemy-portrait').input?.enabled),
+          // The silhouette's hit area belongs to the slot, not the animated portrait.
+          targetsInteractive: visible.every((g: any) => b.root.list.some((o: any) => o.name === 'combat-enemy-hit'
+            && o.getData('enemyId') === g.getData('enemyId') && o.input?.enabled && !g.list[0].getByName('combat-enemy-portrait').input)),
           eliteLabels: b.enemies.filter((e: any) => e.runtime.type === 'elite').every((e: any) => {
             const label = b.root.list.find((o: any) => o.name === 'combat-elite-label' && o.getData('enemyId') === e.id);
             const panel = panels.find((o: any) => o.name === 'combat-elite-badge' && o.getData('enemyId') === e.id);

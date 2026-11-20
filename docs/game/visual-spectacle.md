@@ -41,14 +41,14 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 3 | Post-processing | Done | Bloom and grade on battle, title and route backdrops; hardware GL only |
 | 4 | Living backdrop | Partial | Lamps, beacons, rain, splash rings, fog, motes. No parallax or crossing birds |
 | 5 | Less shading over the battlefield | Partial | Backdrop shade lightened; fixed enemy tint unchanged |
-| 6 | Hand fan, hover lift, tilt | Partial | Hover brightens the halo. Lift was built and removed: card bounds are a layout contract |
+| 6 | Hand fan, hover lift, tilt | Done | The hand fans; the hovered card lifts and straightens while neighbours part; cards slide to new slots. Drawn only: card bounds and hit areas stay on the slot (`battle/actors.ts`) |
 | 7 | Card frame, radius, shadow, cost coin | Done | |
 | 8 | Rarity treatment | Not started | |
 | 9 | Upgraded cards look different | Partial | Gilt inner frame. Changed numbers are not highlighted |
 | 10 | Deal and discard as card objects | Not started | Existing pile motion retained |
 | 11 | Playable and unplayable states | Done | Unplayable art desaturates; playable cards carry a suit halo |
 | 12 | Large inspect view | Not started | |
-| 13 | Hit-stop | Partial | The camera holds a beat on contact; game clocks are not frozen |
+| 13 | Hit-stop | Done | Contact freezes the actor clock for 2–4 frames (enemy, flock and hand bodies). Game logic, FX tweens and particles keep running |
 | 14 | Camera punch and flash | Done | Follows Screen Shake and Flash Effects |
 | 15 | Enemy death | Done | Defeat stagger plus feathers. Spawn verified; full playout not observed under the test harness |
 | 16 | Status icons | Not started | |
@@ -57,7 +57,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 19 | Targeting arc | Done | |
 | 20 | Surge as a set piece | Not started | A flash was tried on `combatFlowSurge`; it fires on every Flow gain, so it was removed |
 | 21 | Intent icon badges | Not started | |
-| 22 | Character frame animation | Not started | Needs art or the retained-mode refactor |
+| 22 | Character frame animation | Not started | Needs art. Bodies are now retained, so frames can be swapped on a live object |
 | 23 | One panel material | Partial | Every authored panel is rounded from one place; no texture or layered depth |
 | 24 | Button bevel, glow, press depth | Partial | Rounded, plus a brief press dip on shared buttons |
 | 25 | HUD rebuild | Not started | |
@@ -74,7 +74,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 36 | Victory and defeat moments | Partial | Gold edge flash on victory; grey grade on defeat, never observed |
 | 37 | Lighting across a run | Not started | Per-district plans exist but do not progress |
 | 38 | Device-pixel-ratio rendering | Not started | Touches every screen's coordinates; belongs in its own change |
-| 39 | Retained-mode battle rendering | Not started | Largest single unlock for character motion |
+| 39 | Retained-mode battle rendering | Partial | Enemy bodies, the flock body and hand cards are retained actors with a logical slot and a visual pose. HUD, vitals, intent badges, shadows, reticles and overlays are still immediate-mode. See the runtime architecture doc |
 | 40 | More particle systems | Done | Contact dressing in `spectacle/impact.ts` |
 | 41 | Respect quality and motion tiers | Done | `tests/spectacle-stage.spec.ts` |
 
@@ -82,9 +82,9 @@ used software rendering with `?fx=full` forcing the shader passes on.
 
 | # | Item | Status | Notes |
 | --- | --- | --- | --- |
-| 1 | Three beats per hit | Partial | Camera hold only; no attacker wind-up or freeze |
-| 2 | Enemies react physically | Not started | Existing hit motion unchanged |
-| 3 | Feedback scales with damage | Partial | Light and punch scale; the heavy threshold is still 8 |
+| 1 | Three beats per hit | Done | Crouch, dive or lunge, then a frozen contact frame and a recoil |
+| 2 | Enemies react physically | Done | Wind-up, lunge toward the flock, recoil scaled by damage, stagger on a heavy hit |
+| 3 | Feedback scales with damage | Partial | Body motion and hit-stop scale with the share of maximum Cohesion removed (heavy from 20%). Sound, sparks and camera shake still use the fixed 8 |
 | 4 | Finishing blows | Partial | Punch, gold flash and defeat stagger; no slow motion |
 | 5 | Cover feels like armour | Done | Sparks on block; heavier sparks on shatter |
 | 6 | Each suit strikes differently | Done | Plumes slash, Basins ripple, Quills volley, Nests thud |
@@ -93,7 +93,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 9 | Surge as a state | Not started | |
 | 10 | Combo feedback | Not started | |
 | 11 | Status effects have a body | Not started | |
-| 12 | Animate characters | Not started | |
+| 12 | Animate characters | Partial | Whole-body motion on retained actors: breathing, dive, brace, lunge, recoil, stagger. No frame animation |
 | 13 | Layered hit sounds | Done | `attack` and `heavyAttack` gain a body thud and a bright tick |
 | 14 | Recorded bird calls | Not started | No audio assets |
 | 15 | Duck music on big moments | Not started | |
@@ -215,10 +215,34 @@ raised deliberately: hand renderer 10 to 12 KiB, hand plus reward allowance
 - Captures inspected: title, route, one- and three-enemy battles, a card play,
   a kill, and reward screens, at 1280×720 with `?fx=full`.
 
+## Retained actors — November 19–20, 2026
+
+`renderAll()` used to destroy every combatant and card on each state change,
+so nothing could hold a motion. Enemy bodies, the flock body and hand cards
+are now retained actors on one stage (`src/game/battle/actors.ts`).
+
+- Each actor has a logical slot (layout, bounds, hit area) and a visual pose
+  (offset, scale, tilt, flash). Animation writes only the pose.
+- Hand cards keep their logical transforms at all times; the pose is applied
+  while the card is drawn. That is why the hover lift that failed in the first
+  pass (see Failures) now ships without touching a layout contract.
+- One actor clock follows scene time and the manual `advanceTime` test clock,
+  scales with Animation Pace, stops for Reduced Motion and freezes for
+  hit-stop. Stagger judder follows Screen Shake; the hit flash follows Flash
+  Effects.
+- Still immediate-mode: the HUD, vitals and intent badges, contact shadows,
+  target reticle, selection preview, pager and every overlay.
+
+Specs changed: `spectacle-stage` (hover now lifts the drawn card; bounds and
+selection must still not change), `p0-encounter-catalog` (the click target is
+the slot-owned `combat-enemy-hit`, not the animated portrait). New:
+`tests/retained-actors.spec.ts`.
+
 ## Open handoff
 
 - Merge #26 when CI is green, then open `codex/modern-polish` as its own PR.
 - Decide whether the reversed effect-ownership rule stands.
 - Check bloom, grain and frame rate on real GPUs, including Safari on Mac.
-- Remaining items above, starting with the retained-mode battle refactor and
-  device-pixel-ratio rendering, each as its own change.
+- Remaining items above, starting with device-pixel-ratio rendering and the
+  rest of the retained-mode work (vitals and HP drains as retained objects,
+  deal and discard as card actors), each as its own change.

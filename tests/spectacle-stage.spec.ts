@@ -100,13 +100,15 @@ test('requested filters grade the backdrop only, and the hand keeps full portrai
   expect(errors).toEqual([]);
 });
 
-test('hovering a card brightens its halo without moving it or changing selection', async ({ page }) => {
+test('hovering a card brightens its halo and lifts the drawn card without moving its bounds or changing selection', async ({ page }) => {
   await openBattle(page, '');
   const read = (id?: string) => page.evaluate(id => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     const [cardId, rect] = id ? [id, b.handCardRects.get(id)] : [...b.handCardRects.entries()][2];
     const box = b.game.canvas.getBoundingClientRect(), scale = box.width / 1280, bounds = rect.getBounds();
     return { id: cardId, halo: rect.getData('halo').alpha, selected: b.selectedInstanceId,
+      // The lift is a visual pose on the retained actor; the card's bounds are its logical slot.
+      lift: b.battleActors.debugState().actors.find((actor: any) => actor.id === `card:${cardId}`).pose.y,
       bounds: [bounds.x, bounds.y, bounds.width, bounds.height],
       x: box.left + rect.x * scale, y: box.top + rect.y * scale };
   }, id);
@@ -114,6 +116,9 @@ test('hovering a card brightens its halo without moving it or changing selection
   await page.mouse.move(before.x, before.y);
   await page.waitForFunction(({ id, halo }) =>
     (window as any).__birdSquadGame.scene.getScene('BattleScene').handCardRects.get(id).getData('halo').alpha > halo, before);
+  expect((await read(before.id)).bounds).toEqual(before.bounds);
+  await page.waitForFunction(id => (window as any).__birdSquadGame.scene.getScene('BattleScene').battleActors.debugState()
+    .actors.find((actor: any) => actor.id === `card:${id}`).pose.y < -10, before.id);
   expect((await read(before.id)).bounds).toEqual(before.bounds);
   await page.mouse.move(4, 4);
   await page.waitForFunction(({ id, halo }) =>

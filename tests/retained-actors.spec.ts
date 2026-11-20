@@ -252,7 +252,8 @@ test('the flock dives toward its target on an attack card and braces on Cover', 
   });
   expect(result.diveMotion).toEqual(['dive']);
   expect(result.target.x).toBeGreaterThan(result.slot.x);
-  expect(result.dive.x).toBeGreaterThan(30);
+  expect(result.dive.x).toBeGreaterThan(20);
+  expect(result.dive.y).toBeGreaterThanOrEqual(-5);
   expect(result.drawn.x).toBeCloseTo(result.slot.x + result.dive.x, 3);
   // Bracing is a crouch: lower, wider, leaning back.
   expect(result.braceMotion).toEqual(['brace']);

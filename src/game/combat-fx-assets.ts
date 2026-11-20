@@ -733,7 +733,6 @@ export function resolveEnemyTurnAnimated(
             if (enemy.hp <= 0 || host.flock.hp <= 0) break;
             host.resolveEnemyEffect(enemy, effect, move.label);
           }
-          if (dealsDamage(move)) host.enemyMotionCues.delete(enemy.id);
           host.runSeenEnemyMoves.add(host.enemyMovePacingKey(enemy, move));
           host.advanceEnemyIntent(enemy);
           host.renderAll();
