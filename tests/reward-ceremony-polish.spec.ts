@@ -36,9 +36,11 @@ for (const mode of ['cardReward', 'upgradeReward', 'waymarkReward']) test(`cerem
       const collect = (items: any[]): any[] => items.flatMap(o => [o, ...collect(o.list ?? [])]);
       const all = collect(b.root.list), issues: any[] = [];
       for (const o of all.filter(o => o.type === 'Text' && o.text && o.visible)) {
-        const primary = /reward-(card-(name|cost|effect|inspect-label|take-label)|waymark-(title|effect|command)|skip-title)$/.test(o.name);
+        const primary = /reward-(card-(name|cost|inspect-label|take-label)|waymark-(title|effect|command)|skip-title)$/.test(o.name);
         const bounds = o.getBounds(), font = parseFloat(o.style.fontSize) * scale;
-        if (font < (primary ? 16 : 14) || bounds.left < 0 || bounds.right > 1280 || bounds.top < 0 || bounds.bottom > 720)
+        // Card rules carry every effect now: secondary floor, dense faces lower.
+        const floor = primary ? 16 : /-1[5-7]@/.test(o.getData('faceTier') ?? '') ? 11.5 : 14;
+        if (font < floor || bounds.left < 0 || bounds.right > 1280 || bounds.top < 0 || bounds.bottom > 720)
           issues.push({ name: o.name, text: o.text, font, bounds });
       }
       const controls = all.filter(o => /reward-(card-(inspect|take)-|waymark-(inspect-)?|skip-)hit$/.test(o.name));
@@ -68,7 +70,7 @@ for (const mode of ['cardReward', 'upgradeReward', 'waymarkReward']) test(`cerem
         const title = label('reward-card-name'), cost = label('reward-card-cost');
         const family = label('reward-card-family'), effect = label('reward-card-effect');
         if (!title || !cost || !family || !effect || title.bottom > cost.top - 4 || cost.bottom > family.top - 4
-          || a.bottom > family.top || family.bottom > effect.top - 4 || effect.bottom > 499)
+          || a.bottom > family.top || family.bottom > effect.top - 4 || effect.bottom > 545)
           issues.push({ hierarchy: id, title, cost, family, effect, art: a });
       }
       return issues;

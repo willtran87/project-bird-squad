@@ -4558,6 +4558,7 @@ private playBattleIntro(onComplete?: () => void) {
         boldFontStyle: UI_BOLD,
         cyan: UI_FIELD.cyan,
         gold: UI_FIELD.gold,
+        onConfirm: () => this.selectedInstanceId && this.onCardClicked(this.selectedInstanceId),
       }, view);
       return;
     }

@@ -35,7 +35,9 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
         const panel = named('combat-card-rules-panel')[i].getBounds();
         const contains = (outer: any, inner: any) => inner.left >= outer.left && inner.right <= outer.right && inner.top >= outer.top && inner.bottom <= outer.bottom;
         return { titleFits: contains(header, title.getBounds()), rulesFit: contains(panel, summary.getBounds()),
-          primaryReadable: Math.min(parseFloat(title.style.fontSize), parseFloat(summary.style.fontSize)) * cssScale >= 16,
+          // Rules may use the secondary floor so no effect hides behind Inspect.
+          primaryReadable: parseFloat(title.style.fontSize) * cssScale >= 16 && parseFloat(summary.style.fontSize) * cssScale >= 14,
+          noOmission: !summary.getData('truncated') && !/Inspect/.test(summary.text),
           text: summary.text, wrapped: summary.getWrappedText(),
           authored: summary.getData('fullText') === b.activeCardContract(b.hand[i]).text.replace(/\s+/g,' ').trim(),
           omissionMarked: !summary.getData('truncated') || /Inspect/.test(summary.text),
@@ -43,7 +45,7 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
       });
     });
     expect(result.length).toBeGreaterThan(0);
-    expect(result.filter((r: any) => !r.primaryReadable || !r.titleFits || !r.rulesFit || !r.authored || !r.omissionMarked || !r.linkedQuantities)).toEqual([]);
+    expect(result.filter((r: any) => !r.primaryReadable || !r.noOmission || !r.titleFits || !r.rulesFit || !r.authored || !r.omissionMarked || !r.linkedQuantities)).toEqual([]);
     await page.screenshot({path:info.outputPath(`hand-${viewport.width}.png`)});
   }
   await page.setViewportSize({width:2560,height:1600});

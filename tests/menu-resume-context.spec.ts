@@ -21,7 +21,9 @@ test('saved-flight context and secondary actions remain readable without changin
   await page.setViewportSize({ width: 2560, height: 1600 });
   await page.goto('./');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleFocus?.current === 'primaryRun');
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter'); // Start Run opens the leader choice
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
+  await page.keyboard.press('Enter'); // fly with the selected Leader
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.isActive('RouteScene'));
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').routeAssetsReady);
   const run = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').runState);

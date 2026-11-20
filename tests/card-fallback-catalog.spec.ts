@@ -32,12 +32,15 @@ test('fallback catalog retains bounded identity, rules and controls without cere
       const view = b.rewardCardView(b.rewardChoices[0], 0);
       for (const [name, full, right, bottom] of [
         ['reward-fallback-choice-name', view.name, 454, 334],
-        ['reward-fallback-effect', view.quickRead.primary, 454, 427],
+        // The face now carries every rule (full text in readable lines).
+        ['reward-fallback-effect', view.summary, 454, 546],
       ] as const) {
         const o = b.root.getByName(name), r = o.getBounds();
+        const effect = name === 'reward-fallback-effect';
         if (o.getData('fullText') !== full || r.right > right || r.bottom > bottom || o.style.resolution !== 2
-          || (o.text !== full && !o.text.endsWith('...'))) failures.push(`${card.id}/${mode}/${upgraded}/${name}`);
-        if (name === 'reward-fallback-effect' && o.text !== full) failures.push(`${card.id}/primary-clause-truncated`);
+          || (!effect && o.text !== full && !o.text.endsWith('...'))) failures.push(`${card.id}/${mode}/${upgraded}/${name}`);
+        if (effect && /\.\.\.$|…$|Inspect/.test(o.text))
+          failures.push(`${card.id}/rules-truncated`);
       }
       const context = b.root.getByName('reward-fallback-decision-context');
       if (context.getBounds().bottom > 546 || context.getBounds().right > 454) failures.push(`${card.id}/context`);

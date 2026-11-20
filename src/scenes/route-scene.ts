@@ -246,7 +246,9 @@ export class RouteScene extends Phaser.Scene {
     setActiveSeed(this.runState.seed ?? 'alpha');
     this.ensureDistrictContract();
     this.districtContractCelebration = undefined;
-    this.districtContractFocusIndex = 0;
+    // Right after a claimed card reward, never default to "Skip two card rewards".
+    this.districtContractFocusIndex = this.runState.rewardEvents?.at(-1)?.skipped === false
+      && this.districtContractChoices()[0].id === 'lean_route' ? 1 : 0;
     const completedContract = this.runState.districtContracts?.find((contract) => contract.completed && !contract.celebrated);
     const completedContractDefinition = completedContract
       ? DISTRICT_CONTRACT_DEFINITIONS.find((definition) => definition.id === completedContract.id)
@@ -2455,7 +2457,6 @@ export class RouteScene extends Phaser.Scene {
     birdAudio.play('routeChoice', 0.86);
     this.renderAll();
   }
-
 
   private nodeChoiceList(node: RouteNode): NodeChoiceOption[] {
     const lockFor = (effects: string[], explicitCost?: number, requirements?: string[], lockedText?: string) => {

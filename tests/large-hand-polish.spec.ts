@@ -64,7 +64,10 @@ for (const remapped of [false, true]) test(`large hands remain readable and page
       selected: b.selectedInstanceId ?? null, energy: b.energy, hp: b.enemies.map((e: any) => e.hp),
       unobscured: rects.every((r: any, i: number) => r.width === 180 && r.height === 270 && r.left >= 142 && r.right <= 1140
         && r.right + 4 <= roost.left && (i === 0 || rects[i - 1].right + 10 <= r.left)),
-      typeReadable: names.every((n: any) => parseFloat(n.style.fontSize) * scale >= 16),
+      // Titles keep the primary floor; rules may step down to the secondary
+      // floor (dense faces lower still) so every effect stays on the card.
+      typeReadable: names.every((n: any) => parseFloat(n.style.fontSize) * scale
+        >= (n.name === 'combat-card-title' ? 16 : /-1[5-7]$|overflow/.test(n.getData('faceTier') ?? '') ? 11.5 : 14)),
       targets: controls.every(c => c.width * scale >= 44 && c.height * scale >= 44),
       disabled: controls.filter(c => !c.getData('enabled')).every(c => !c.input?.enabled),
       description: b.getTextState().combatInputFocus.handPage,
