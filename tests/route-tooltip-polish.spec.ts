@@ -78,7 +78,7 @@ test('route tooltips keep readable decisions contained across all nodes', async 
         const restoration = r.children.list.filter((o: any) => o.name === 'flyway-restoration');
         const restorationContained = restoration.every((o: any) => {
           const b = o.getBounds();
-          return b.left >= 84 && b.right <= 336 && b.top >= 590 && b.bottom <= 630 && !o.input?.enabled;
+          return b.left >= 746 && b.right <= 998 && b.top >= 138 && b.bottom <= 178 && !o.input?.enabled;
         });
         const restorationLabels = restoration.filter((o: any) => o.type === 'Text');
         const contractLabels = ['district-contract-title', 'district-contract-goal'].map(name => r.children.getByName(name)).filter(Boolean);

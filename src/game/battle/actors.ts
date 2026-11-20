@@ -147,8 +147,8 @@ export class BattleActorStage {
 
   private get still() { return prefersReducedMotion(); }
 
-  /** Create an actor, or move an existing one to a new logical slot. The body
-   * slides from where it was drawn instead of popping. */
+  /** Create an actor, or move an existing one to a new logical slot. A card
+   * slides there from where it was drawn; a combatant takes the slot at once. */
   ensure(id: string, kind: BattleActor['kind'], x: number, y: number, scale = 1): BattleActor {
     let actor = this.actors.get(id);
     if (!actor) {
@@ -156,7 +156,9 @@ export class BattleActorStage {
       this.actors.set(id, actor);
       return actor;
     }
-    if (!this.still) {
+    // Only hand cards slide: their bounds are logical. A combatant's drawn body is
+    // what layout checks measure, so it takes its new slot at once.
+    if (kind === 'card' && !this.still) {
       actor.settle.x += actor.slot.x - x;
       actor.settle.y += actor.slot.y - y;
     }

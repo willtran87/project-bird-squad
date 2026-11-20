@@ -21,9 +21,14 @@ const budgets = [
   { label: 'canal markets lazy module', pattern: /^canal-markets-.*\.js$/, maxKb: 10, hard: true },
   { label: 'signal spires lazy module', pattern: /^signal-spires-.*\.js$/, maxKb: 12, hard: true },
   { label: 'opening district lazy module', pattern: /^opening-district-.*\.js$/, maxKb: 9, hard: true },
+<<<<<<< HEAD
   // Retained actor stage: animation clock, hit-stop, body motion and hand fan. Replaces the breathing tween module.
   { label: 'battle actors lazy module', pattern: /^battle-actors-.*\.js$/, maxKb: 10, hard: true },
   { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // sat at 10.0; import aliases shift with the entry chunk's export table
+=======
+  { label: 'enemy breathing lazy module', pattern: /^enemy-breathing-.*\.js$/, maxKb: 2, hard: true },
+  { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // +7 bytes of import renames from the scene-life chunk
+>>>>>>> codex/modern-polish
   { label: 'route transition FX lazy module', pattern: /^route-transition-fx-.*\.js$/, maxKb: 7, hard: true },
   { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
   { label: 'battle outcome scene lazy module', pattern: /^battle-outcome-scene-.*\.js$/, maxKb: 8, hard: true },
@@ -50,6 +55,10 @@ const budgets = [
   // Full-portrait card faces, state halos and hover lift live here.
   { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 13.5, hard: true }, // +hand reconciliation: cards are retained, not rebuilt
   // Living-stage lighting, weather, bloom and motion; never part of boot.
+  // Title/route/chrome life: route legend and flock, arrival card, wing wipes,
+  // overlay and list entrances, living backdrops, button depth. Loaded after
+  // the stage; never part of boot.
+  { label: 'scene life lazy module', pattern: /^scene-life-.*.js$/, maxKb: 30, hard: true },
   { label: 'spectacle stage lazy module', pattern: /^spectacle-.*\.js$/, maxKb: 24, hard: true },
   { label: 'combat card reading panel', pattern: /^combat-card-detail-.*\.js$/, maxKb: 4, hard: true },
   { label: 'shared reward card face', pattern: /^reward-card-face-.*\.js$/, maxKb: 5, hard: true }, // +full rules and larger portrait on reward faces
@@ -63,10 +72,10 @@ const budgets = [
   { label: 'saved Flight Folios lazy module', pattern: /^saved-decks-.*\.js$/, maxKb: 8, hard: true },
   // Includes measured rule pagination and contextual term reading in both phases.
   { label: 'Route supply drawer lazy module', pattern: /^route-supply-drawer-.*\.js$/, maxKb: 5, hard: true },
-  { label: 'Route reward overlay lazy module', pattern: /^route-reward-overlay-.*\.js$/, maxKb: 6, hard: true },
+  { label: 'Route reward overlay lazy module', pattern: /^route-reward-overlay-.*\.js$/, maxKb: 6.25, hard: true }, // same import-rename drift
   { label: 'Waymark review lazy module', pattern: /^waymark-review-.*\.js$/, maxKb: 8, hard: true },
   { label: 'Route text-state lazy module', pattern: /^route-debug-state-.*\.js$/, maxKb: 24.25, hard: true },
-  { label: 'Route map renderer lazy module', pattern: /^route-map-renderer-.*\.js$/, maxKb: 5, hard: true },
+  { label: 'Route map renderer lazy module', pattern: /^route-map-renderer-.*\.js$/, maxKb: 5.5, hard: true }, // +calls into route life (legend, trails, flock)
   { label: 'Route map inspection lazy module', pattern: /^route-map-inspection-.*\.js$/, maxKb: 5, hard: true },
   { label: 'flock stats overlay lazy module', pattern: /^flock-stats-overlay-.*\.js$/, maxKb: 8, hard: true },
   { label: 'screen reader runtime lazy module', pattern: /^screen-reader-runtime-.*\.js$/, maxKb: 4, hard: true },

@@ -144,7 +144,9 @@ test('strategy presentation stays off title boot and a failed download offers re
   await page.waitForFunction(()=>(window as any).__birdSquadGame?.scene.getScene('MenuScene').openFlyway);
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(e=>/\/opening-district-/.test(e.name)))).toBe(false);
   await page.route('**/assets/opening-district-*.js',route=>route.abort());
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter'); // Start Run opens the leader choice
+  await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
+  await page.keyboard.press('Enter'); // fly with the selected Leader
   await page.waitForFunction(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');return r.routeEssentialAssetsReady&&r.openFlyway;});
   await expect(page.getByRole('dialog',{name:'Download recovery'})).toBeVisible();
   await page.getByRole('button',{name:'Keep playing',exact:true}).click();

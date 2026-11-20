@@ -215,6 +215,10 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
     }
   }
   const poseGroup = body.pose!;
+  // District stances (High Roost) treat the pose as new on every redraw and
+  // ease it from neutral; hand them the same clean pose a rebuild used to.
+  scene.tweens.killTweensOf(poseGroup);
+  poseGroup.setAngle(0).data?.reset();
   const art = poseGroup.getByName('combat-enemy-portrait') as Phaser.GameObjects.Image | null;
   context.registerEnemyPose(enemy.id, poseGroup, s);
   // Authored enamel target art keeps its native proportions under the feet.
@@ -240,13 +244,14 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
   // The silhouette is a selection target, but its hit area belongs to the slot:
   // a lunge or recoil never moves what the player can click. Transparent export
   // padding stays outside it, so it cannot steal input from the HUD or a neighbour.
-  let hitX = enemy.x, hitY = enemy.y, hitW = 174 * s, hitH = 136 * s, restTop = hitY;
+  let hitX = enemy.x, hitY = enemy.y, hitW = 174 * s, hitH = 136 * s, restTop = hitY, restBottom = enemy.y + contact.y;
   if (art) {
     const fit = enemy.artFit, bounds = placement?.hitBounds ?? { x: 0, y: 0, width: art.width, height: art.height };
     hitW = bounds.width * fit; hitH = bounds.height * fit;
     hitX = enemy.x + art.x + (bounds.x - art.width / 2) * fit + hitW / 2;
     hitY = enemy.y + art.y + (bounds.y - art.height / 2) * fit + hitH / 2;
     restTop = enemy.y + art.y + art.height * fit * (context.textureTop(art.texture.key) - 0.5);
+    restBottom = hitY + hitH / 2;
   }
   identifyEnemy(slotHit(context, hitX, hitY, hitW, hitH, 'combat-enemy-hit'), 'combat-enemy-hit', enemy.id)
     .on('pointerdown', () => context.onEnemyClicked(enemy.id));
@@ -255,11 +260,19 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
   let breath: ActorBreath | undefined;
   if (!context.reducedMotion) {
     const seed = [...enemy.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    // Feet stay planted on the contact shadow; only the top of the body rises.
-    const anchor = contact.y, stretch = 0.028 + (seed % 3) * 0.003;
+    // The lowest visible pixel stays planted; only the top of the body rises,
+    // so nothing under the silhouette (its own vitals included) is approached.
+    const anchor = restBottom - enemy.y + 0.5, stretch = 0.028 + (seed % 3) * 0.003;
     const rise = (anchor + Math.max(0, enemy.y - restTop)) * stretch;
     // Two pixels of margin also keep floating-point bounds clear of the 106px HUD edge.
-    const strength = art ? Math.min(1, Math.max(0, restTop - 108) / Math.max(0.001, rise)) : 1;
+    // In a cluster the ceiling may instead be another enemy's vitals stack.
+    let ceiling = 108;
+    for (const other of context.enemies) {
+      const bar = other.hpBar, bottom = bar.y + (other.block > 0 || other.weak > 0 ? 40 : 15);
+      if (other.id !== enemy.id && bottom <= restTop && bottom > ceiling
+        && Math.abs(bar.x - hitX) < (bar.w + 8 + hitW) / 2) ceiling = bottom;
+    }
+    const strength = art ? Math.min(1, Math.max(0, restTop - ceiling) / Math.max(0.001, rise)) : 1;
     breath = { anchor, stretch: stretch * strength, squeeze: 0.008 + (seed % 2) * 0.002,
       period: 1500 + seed % 420, delay: seed % 420 };
   }

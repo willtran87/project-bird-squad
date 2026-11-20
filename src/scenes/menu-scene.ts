@@ -374,7 +374,7 @@ export class MenuScene extends Phaser.Scene {
 
   private activateMenuFocus() {
     if (this.settingsOverlay || this.helpOverlay || this.titleRunLaunchPending) return;
-    playUiSound('confirm');
+    birdAudio.play('ui.confirm');
     switch (this.menuFocus) {
       case 'configure':
         this.setSetupOpen(!this.setupOpen);

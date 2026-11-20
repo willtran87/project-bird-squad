@@ -73,6 +73,8 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
             return clear(p.getBounds(), z.getBounds());
           })),
           artClear: art.every((r: any) => r.left >= 0 && r.right <= 1280 && r.top >= 106 && panels.every((p: any) => clear(p.getBounds(), r))),
+          artConflicts: art.flatMap((r: any) => [...(r.left >= 0 && r.right <= 1280 && r.top >= 106 ? [] : [{ name: 'stage', art: r }]),
+            ...panels.filter((p: any) => !clear(p.getBounds(), r)).map((p: any) => ({ name: p.name, panel: p.getBounds(), art: r }))]),
           goalClear: !goal || art.every((r: any) => clear(goal.getBounds(), r))
             && panels.every((p: any) => clear(goal.getBounds(), p.getBounds())),
           previewClear: !frame || panels.every((p: any) => clear(p.getBounds(), frame) && (!command || clear(p.getBounds(), command))),
@@ -93,7 +95,7 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
       expect(result.targetsInteractive, encounter.id).toBe(true);
       expect(result.eliteLabels, encounter.id).toBe(true);
       expect(result.fits, encounter.id).toBe(true); expect(result.separated, encounter.id).toBe(true);
-      expect(result.artClear, encounter.id).toBe(true); expect(result.previewClear, encounter.id).toBe(true);
+      expect(result.artClear, `${encounter.id}: ${JSON.stringify(result.artConflicts)}`).toBe(true); expect(result.previewClear, encounter.id).toBe(true);
       expect(result.goalClear, encounter.id).toBe(true);
       await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${encounter.id}-${width}.png`) });

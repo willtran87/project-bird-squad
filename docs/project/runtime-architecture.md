@@ -366,7 +366,7 @@ To animate an actor:
 - `actor.rest`: a persistent target the pose eases toward (the hand fan and
   hover lift are written in `layoutHand`).
 - `stage.ensure(id, kind, x, y)` / `bindNode(...)`: move the slot; the drawn
-  body slides from where it was.
+  hand card slides from where it was; a combatant body takes the slot at once.
 - The scene announces events and the stage chooses the motion:
   `queueEnemyMotion(id, 'windup' | 'attack' | 'hit', detail)` and
   `queueFlockMotion(cue, detail)` emit `living-enemy-cue` / `living-flock-cue`;
