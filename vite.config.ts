@@ -79,6 +79,11 @@ export default defineConfig(({ command }) => ({
           ) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
           if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';
+          // Audio stays lazy: pure rules, the event voices and the district beds
+          // are each measurable beside the legacy cue and music chunks.
+          if (moduleId.endsWith('/src/game/audio-events.ts')) return 'audio-events';
+          if (moduleId.endsWith('/src/game/audio-voices.ts') || moduleId.endsWith('/src/game/audio-cue-budget.ts')) return 'audio-voices';
+          if (moduleId.endsWith('/src/game/audio-ambience.ts')) return 'audio-ambience';
           if (moduleId.endsWith('/src/game/district-framing.ts')) return 'district-framing';
           if (moduleId.endsWith('/src/game/build-guidance.ts')) return 'build-guidance';
           if (moduleId.endsWith('/src/game/flight-highlights.ts')) return 'flight-highlights';

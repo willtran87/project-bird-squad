@@ -1187,6 +1187,7 @@ export class BattleScene extends Phaser.Scene {
     loadFlyway(this);
     syncSceneAnimationPace(this);
     birdAudio.setMood(this.battlefieldMood() === 'boss' ? 'boss' : 'battle');
+    birdAudio.play('battle.enter', { tier: this.battlefieldMood() === 'boss' ? 'boss' : this.enemies.some((enemy) => enemy.runtime.type === 'elite') ? 'elite' : 'street', district: this.flywayMapIndex });
     observeChoiceInput(this);
     window.__birdSquadAudio = () => birdAudio.snapshot();
     this.time.paused = false;
@@ -4015,6 +4016,7 @@ private playBattleIntro(onComplete?: () => void) {
       return;
     }
     this.pauseOverlayOpen = paused;
+    birdAudio.play('overlay.set', { id: 'pause', open: paused });
     this.settingsOverlayOpen = false;
     if (paused) {
       playUiSound('confirm');
@@ -7627,6 +7629,7 @@ private playBattleIntro(onComplete?: () => void) {
     if (now === this.lastFlockState) return;
     const prev = this.lastFlockState;
     this.lastFlockState = now;
+    birdAudio.play('flock.formation', { state: now });
     if (now === 'surging') {
       this.statSurgesTriggered += 1;
       birdAudio.play('formation', 1.08);
@@ -7688,6 +7691,7 @@ private playBattleIntro(onComplete?: () => void) {
     const bar = this.enemyHpBar(enemy);
     const meta = suitFxMeta(card?.runtime.suit);
     if (damage > 0) {
+      birdAudio.play('hit.impact', { damage, maxHp: enemy.maxHp, lethal: enemy.hp <= 0, coverBroke: hadCover && enemy.block <= 0 });
       birdAudio.play(damage >= 8 ? 'heavyAttack' : 'attack', damage >= 8 ? 1.2 : 0.9);
       birdAudio.play('hitConfirm', damage >= 8 ? 1.1 : 0.9);
       this.queueEnemyMotion(enemy.id, 'hit');
@@ -8470,6 +8474,7 @@ private playBattleIntro(onComplete?: () => void) {
     // keeps the flock together (Cover earns a second job: holding formation).
     if (damage > 0) this.flock.flow = 0;
     if (damage > 0) {
+      birdAudio.play('hit.impact', { damage, maxHp: this.flock.maxHp, target: 'flock', coverBroke: blocked > 0 });
       birdAudio.play(damage >= 8 ? 'heavyAttack' : 'attack', damage >= 8 ? 1.18 : 0.92);
       this.queueFlockMotion('hit');
       const from = this.enemyView(enemy);
