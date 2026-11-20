@@ -39,7 +39,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 1 | Hand cards show the full illustration | Done | `render-hand.ts`; `card-pool-layout` now requires art to fill the card with a 90px clear window |
 | 2 | Real typeface | Done | Barlow (UI) and Fraunces (display), SIL OFL; see Typography |
 | 3 | Post-processing | Done | Bloom and grade on battle, title and route backdrops; hardware GL only |
-| 4 | Living backdrop | Partial | Lamps, beacons, rain, splash rings, fog, motes. No parallax or crossing birds |
+| 4 | Living backdrop | Partial | Title and route: three depth layers drift with the pointer; birds cross, windows light and vents steam, per district (`life/backdrop-life.ts`). Battle keeps lamps, rain, fog and motes only |
 | 5 | Less shading over the battlefield | Partial | Backdrop shade lightened; fixed enemy tint unchanged |
 | 6 | Hand fan, hover lift, tilt | Partial | Hover brightens the halo. Lift was built and removed: card bounds are a layout contract |
 | 7 | Card frame, radius, shadow, cost coin | Done | |
@@ -59,20 +59,20 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 21 | Intent icon badges | Not started | |
 | 22 | Character frame animation | Not started | Needs art or the retained-mode refactor |
 | 23 | One panel material | Partial | Every authored panel is rounded from one place; no texture or layered depth |
-| 24 | Button bevel, glow, press depth | Partial | Rounded, plus a brief press dip on shared buttons |
+| 24 | Button bevel, glow, press depth | Done | `life/button-fx.ts` dresses every `quietButton`: lip, top light, hover and focus glow, and a press that sinks at draw time. Hit areas and labels untouched |
 | 25 | HUD rebuild | Not started | |
 | 26 | Letterbox atmosphere | Reverted | Doubled WebKit frame time; see Performance |
-| 27 | Overlay blur and slide | Not started | |
+| 27 | Overlay blur and slide | Partial | Pause, settings, how to play and confirm rise and gather in over a slate scrim; rain no longer draws over them. No blur: see Performance |
 | 28 | Wider icon use | Not started | |
 | 29 | Animated numbers | Partial | Tabular figures only (list 3, item 10) |
-| 30 | Outgoing transitions | Partial | Arrival light sweep on every scene; no exit transition |
+| 30 | Outgoing transitions | Done | Wing wipe between menu, route and battle; a slower gold wipe into a new district. The scene change itself stays instant (`life/transitions.ts`) |
 | 31 | Animated title | Done | Rain, glowing puddles and neon, bloom. No wordmark shimmer |
-| 32 | District arrival card | Not started | |
+| 32 | District arrival card | Done | Full-screen title over the district painting, once per district per run, skippable. Not modal: see Rules changed |
 | 33 | Boss entrance | Not started | Boss fights gain sheet lightning instead (list 2, item 32) |
-| 34 | Route map life | Partial | Light rain, bloom, lighter panel. No flock marker or fog of war |
+| 34 | Route map life | Done | Flock marker that flies the chosen edge, pulsing reachable nodes, flown edges drawn as flight trails, node legend. No fog of war |
 | 35 | Reward reveal | Not started | |
 | 36 | Victory and defeat moments | Partial | Gold edge flash on victory; grey grade on defeat, never observed |
-| 37 | Lighting across a run | Not started | Per-district plans exist but do not progress |
+| 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
 | 38 | Device-pixel-ratio rendering | Not started | Touches every screen's coordinates; belongs in its own change |
 | 39 | Retained-mode battle rendering | Not started | Largest single unlock for character motion |
 | 40 | More particle systems | Done | Contact dressing in `spectacle/impact.ts` |
@@ -104,7 +104,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 20 | One frame material | Not started | |
 | 21 | Tarot made visible in play | Not started | |
 | 22 | Suit colour everywhere | Partial | Strikes and card halos |
-| 23 | District identity kit | Partial | Per-district light and weather plans |
+| 23 | District identity kit | Partial | Per-district light, weather, ambient life and arrival card |
 | 24 | Leader visual signature | Not started | |
 | 25 | Consistent button wording | Not started | |
 | 26 | Icons from the world | Not started | |
@@ -128,8 +128,8 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 13–16 | Layered panels, elevation, accents, overlay blur | Not started | Needs one shared panel component across ~550 call sites |
 | 17 | Film grain | Done | Hardware GL only; see Performance |
 | 18 | Contrast in context | Not started | |
-| 19–23 | Transitions, easing, stagger, numbers, bar trails | Not started | Fades change opacity during frames that geometry tests read |
-| 24 | Pressed, hover and focus states | Partial | Press dip on shared buttons |
+| 19–23 | Transitions, easing, stagger, numbers, bar trails | Partial | Transitions and staggered list entrances are built as draw-time poses, which leave the geometry and opacity tests read untouched. Numbers and bar trails not started |
+| 24 | Pressed, hover and focus states | Done | See list 1, item 24 |
 | 25–26 | Continuity transitions; motion-reduced cross-fades | Not started | |
 | 27–33 | Feedback and micro-interactions | Not started | Includes drag-to-play and haptics, which are new features |
 | 34 | Loading state | Partial | Boot screen in the game's palette and title treatment |
