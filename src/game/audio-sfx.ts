@@ -1,6 +1,12 @@
-import { AudioCueBudget } from './audio-cue-budget';
+import { budgetFor } from './audio-cue-budget';
+import { impactScale, leaderCall, type LeaderCallId } from './audio-events';
+import {
+  birdCall, chord, coverAbsorb, coverBreak, impact, metalTap, noise, paperDiscard, paperDraw, paperShuffle, stinger,
+  tone, uiCancel, uiClick, voiceState, woodKnock,
+} from './audio-voices';
 
-const cueBudgets = new WeakMap<AudioContext, AudioCueBudget>();
+export { playAudioEvent } from './audio-voices';
+export { audioDuck } from './audio-events';
 
 export type SynthAudioCue =
   | 'flockSparrow' | 'flockChorus' | 'flockShrike' | 'flockHeron' | 'flockWeaver' | 'flockJackdaw' | 'rooftopAir' | 'canalAir' | 'spireAir' | 'roostAir'
@@ -53,85 +59,12 @@ export type SynthAudioCue =
   | 'victoryFanfare'
   | 'defeat';
 
-type SynthContext = {
-  ctx: AudioContext;
-  master: GainNode;
-  sfxVolume: number;
-};
-
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-function tone(
-  audio: SynthContext,
-  startFreq: number,
-  endFreq: number,
-  duration: number,
-  type: OscillatorType,
-  volume: number,
-  pan = 0,
-) {
-  const { ctx, master, sfxVolume } = audio;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const panner = 'StereoPannerNode' in window ? ctx.createStereoPanner() : undefined;
-  const now = ctx.currentTime;
-  osc.type = type;
-  osc.frequency.setValueAtTime(Math.max(1, startFreq), now);
-  osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * sfxVolume), now + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  if (panner) {
-    panner.pan.setValueAtTime(clamp(pan, -1, 1), now);
-    osc.connect(gain);
-    gain.connect(panner);
-    panner.connect(master);
-  } else {
-    osc.connect(gain);
-    gain.connect(master);
-  }
-  osc.start(now);
-  osc.stop(now + duration + 0.02);
-  osc.onended = () => { osc.disconnect(); gain.disconnect(); panner?.disconnect(); };
-}
-
-function chord(
-  audio: SynthContext,
-  freqs: number[],
-  duration: number,
-  type: OscillatorType,
-  volume: number,
-) {
-  freqs.forEach((freq, index) => {
-    window.setTimeout(
-      () => tone(audio, freq, freq * 1.08, duration, type, volume / Math.sqrt(freqs.length), (index - 1) * 0.16),
-      index * 22,
-    );
-  });
-}
-
-function noise(audio: SynthContext, duration: number, filterFreq: number, volume: number) {
-  const { ctx, master, sfxVolume } = audio;
-  const sampleCount = Math.max(1, Math.floor(ctx.sampleRate * duration));
-  const buffer = ctx.createBuffer(1, sampleCount, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < sampleCount; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / sampleCount);
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(filterFreq, ctx.currentTime);
-  filter.Q.setValueAtTime(1.8, ctx.currentTime);
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(Math.max(0.0001, volume * sfxVolume), ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(master);
-  source.start();
-  source.stop(ctx.currentTime + duration + 0.02);
-  source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
-}
+const FLOCK_CALLS: Record<string, LeaderCallId> = {
+  flockSparrow: 'fledgling', flockChorus: 'spark_caller', flockShrike: 'talon',
+  flockHeron: 'tidewarden', flockWeaver: 'roostkeeper', flockJackdaw: 'jackdaw',
+};
 
 export function playAudioCue(
   ctx: AudioContext,
@@ -140,17 +73,19 @@ export function playAudioCue(
   cue: SynthAudioCue,
   intensity = 1,
 ) {
-  const budget = cueBudgets.get(ctx) ?? new AudioCueBudget();
-  cueBudgets.set(ctx, budget);
-  if (!budget.accepts(cue, ctx.currentTime * 1000)) return false;
+  const state = voiceState(ctx);
+  const nowMs = ctx.currentTime * 1000;
+  // A turn boundary restarts the rising pitch of consecutive card plays.
+  if (cue === 'turn' || cue === 'playerTurnRally') state.ladder.reset();
+  // A damage-scaled `hit.impact` event in the same tick already voiced this blow.
+  if ((cue === 'attack' || cue === 'heavyAttack') && nowMs - state.impactAtMs < 30) return false;
+  if (!budgetFor(ctx).accepts(cue, nowMs)) return false;
   const audio = { ctx, master, sfxVolume: sfxVolume * clamp(intensity, 0.45, 1.8) };
   switch (cue) {
-    case 'flockSparrow': case 'flockChorus': case 'flockShrike': case 'flockHeron': case 'flockWeaver': case 'flockJackdaw': {
-      const notes = {flockSparrow:[1100,1600],flockChorus:[740,1110],flockShrike:[1800,900],flockHeron:[240,320],flockWeaver:[1300,1900],flockJackdaw:[420,260]}[cue];
-      tone(audio,notes[0],notes[1],.11,'sine',.014,-.15);
-      tone(audio,notes[1],notes[0]*1.05,.20,'triangle',.006,.15);
+    // Stylised leader signatures: chirp, trill and caw shapes, not recordings.
+    case 'flockSparrow': case 'flockChorus': case 'flockShrike': case 'flockHeron': case 'flockWeaver': case 'flockJackdaw':
+      birdCall(audio, leaderCall(FLOCK_CALLS[cue]));
       break;
-    }
     case 'rooftopAir': noise(audio,.65,280,.004); break;
     case 'canalAir': noise(audio,.8,180,.004); break;
     case 'spireAir': noise(audio,.7,620,.003); break;
@@ -178,23 +113,15 @@ export function playAudioCue(
       chord(audio, [330, 440, 660], .3, 'triangle', .012);
       noise(audio, .045, 1200, .006);
       break;
-    case 'confirm':
-      tone(audio, 420, 610, 0.09, 'sine', 0.036);
-      break;
-    case 'close':
-      tone(audio, 280, 190, 0.1, 'triangle', 0.03);
-      break;
+    case 'confirm': uiClick(audio); break;
+    case 'close': uiCancel(audio); break;
     case 'locked':
       tone(audio, 145, 118, 0.13, 'triangle', 0.026);
       break;
     case 'route':
       chord(audio, [220, 330, 440], 0.16, 'triangle', 0.018);
       break;
-    case 'routeChoice':
-      noise(audio, 0.035, 1460, 0.008);
-      tone(audio, 330, 520, 0.1, 'triangle', 0.012, -0.08);
-      tone(audio, 660, 820, 0.12, 'sine', 0.012, 0.12);
-      break;
+    case 'routeChoice': woodKnock(audio); break;
     case 'districtAdvance':
       noise(audio, 0.06, 1720, 0.012);
       tone(audio, 220, 340, 0.14, 'triangle', 0.014, -0.12);
@@ -216,9 +143,8 @@ export function playAudioCue(
       tone(audio, 240, 165, 0.16, 'sine', 0.009, 0.12);
       break;
     case 'marketPurchase':
-      noise(audio, 0.045, 1680, 0.012);
-      tone(audio, 360, 620, 0.11, 'triangle', 0.018, -0.12);
-      tone(audio, 720, 980, 0.1, 'sine', 0.014, 0.1);
+      metalTap(audio);
+      tone(audio, 720, 980, 0.1, 'sine', 0.01, 0.1, 0.05);
       break;
     case 'encounter':
       noise(audio, 0.055, 1320, 0.013);
@@ -237,20 +163,9 @@ export function playAudioCue(
       tone(audio, 720, 460, 0.09, 'triangle', 0.016, -0.1);
       tone(audio, 1040, 760, 0.07, 'sine', 0.01, 0.14);
       break;
-    // Three layers per blow: a low body thud, the mid crack, a bright tick.
-    case 'attack':
-      noise(audio, 0.08, 680, 0.035);
-      tone(audio, 150, 82, 0.1, 'sawtooth', 0.024);
-      tone(audio, 78, 42, 0.13, 'sine', 0.05);
-      noise(audio, 0.03, 3400, 0.014);
-      break;
-    case 'heavyAttack':
-      noise(audio, 0.12, 520, 0.045);
-      tone(audio, 110, 48, 0.16, 'sawtooth', 0.034);
-      tone(audio, 62, 28, 0.24, 'sine', 0.075);
-      tone(audio, 196, 98, 0.09, 'square', 0.014);
-      noise(audio, 0.04, 3000, 0.02);
-      break;
+    // Without a `hit.impact` event the blow falls back to a fixed light or heavy share.
+    case 'attack': impact(audio, impactScale(12, 100)); break;
+    case 'heavyAttack': impact(audio, impactScale(42, 100)); break;
     case 'hitConfirm':
       noise(audio, 0.055, 1780, 0.018);
       tone(audio, 610, 940, 0.08, 'triangle', 0.016, -0.08);
@@ -262,15 +177,7 @@ export function playAudioCue(
       tone(audio, 720, 1180, 0.12, 'sine', 0.014, 0.08);
       tone(audio, 1080, 760, 0.08, 'triangle', 0.008, 0.16);
       break;
-    case 'coverBlock':
-      noise(audio, 0.07, 1260, 0.022);
-      tone(audio, 340, 210, 0.09, 'square', 0.014, -0.1);
-      tone(audio, 760, 520, 0.06, 'triangle', 0.008, 0.12);
-      break;
-    case 'block':
-      noise(audio, 0.08, 1150, 0.026);
-      tone(audio, 310, 250, 0.07, 'square', 0.016);
-      break;
+    case 'coverBlock': case 'block': coverAbsorb(audio); break;
     case 'cover':
       chord(audio, [196, 247, 330], 0.12, 'triangle', 0.014);
       break;
@@ -287,27 +194,10 @@ export function playAudioCue(
       tone(audio, 190, 150, 0.13, 'square', 0.014, -0.08);
       tone(audio, 410, 290, 0.09, 'triangle', 0.01, 0.12);
       break;
-    case 'coverBreak':
-      noise(audio, 0.09, 1450, 0.024);
-      tone(audio, 520, 260, 0.1, 'square', 0.016, -0.12);
-      tone(audio, 980, 620, 0.08, 'triangle', 0.011, 0.14);
-      break;
-    case 'draw':
-      noise(audio, 0.045, 1800, 0.01);
-      tone(audio, 420, 780, 0.1, 'sine', 0.017, -0.14);
-      tone(audio, 760, 1120, 0.09, 'triangle', 0.012, 0.1);
-      break;
-    case 'discard':
-      noise(audio, 0.06, 1220, 0.014);
-      tone(audio, 520, 310, 0.1, 'triangle', 0.014, -0.12);
-      tone(audio, 760, 420, 0.08, 'sine', 0.009, 0.12);
-      break;
-    case 'shuffle':
-      noise(audio, 0.085, 1720, 0.015);
-      tone(audio, 320, 620, 0.13, 'triangle', 0.016, -0.12);
-      tone(audio, 690, 1040, 0.12, 'sine', 0.012, 0.1);
-      tone(audio, 1040, 760, 0.08, 'triangle', 0.008, 0.18);
-      break;
+    case 'coverBreak': coverBreak(audio); break;
+    case 'draw': paperDraw(audio); break;
+    case 'discard': paperDiscard(audio); break;
+    case 'shuffle': paperShuffle(audio); break;
     case 'drain':
       noise(audio, 0.1, 760, 0.024);
       tone(audio, 420, 148, 0.16, 'triangle', 0.026, -0.08);
@@ -366,23 +256,12 @@ export function playAudioCue(
       tone(audio, 660, 1040, 0.16, 'sine', 0.015, 0.08);
       tone(audio, 990, 780, 0.1, 'triangle', 0.009, 0.16);
       break;
-    case 'reward':
-      chord(audio, [392, 494, 659], 0.22, 'sine', 0.017);
-      break;
+    case 'reward': stinger(audio, 'reward'); break;
     case 'victory':
       chord(audio, [330, 415, 554, 659], 0.52, 'sine', 0.02);
       break;
-    case 'victoryFanfare':
-      noise(audio, 0.12, 1900, 0.012);
-      tone(audio, 196, 294, 0.18, 'triangle', 0.018, -0.18);
-      window.setTimeout(() => tone(audio, 330, 494, 0.2, 'sine', 0.018, 0.12), 95);
-      window.setTimeout(() => chord(audio, [392, 494, 659, 784], 0.46, 'sine', 0.022), 190);
-      window.setTimeout(() => noise(audio, 0.08, 2600, 0.008), 280);
-      break;
-    case 'defeat':
-      tone(audio, 196, 82, 0.62, 'triangle', 0.038);
-      noise(audio, 0.28, 360, 0.016);
-      break;
+    case 'victoryFanfare': stinger(audio, 'victory'); break;
+    case 'defeat': stinger(audio, 'defeat'); break;
     default: {
       const exhaustiveCue: never = cue;
       return exhaustiveCue;

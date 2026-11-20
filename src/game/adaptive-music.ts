@@ -1,4 +1,7 @@
 import type { CardSuit } from './types';
+import {
+  selectMusicLayers, type DuckProfile, type EncounterTier, type FormationState, type MusicLayerId, type MusicLayerPlan,
+} from './audio-events';
 
 export type AdaptiveMusicMood = 'menu' | 'route' | 'battle' | 'boss' | 'victory' | 'defeat';
 export type CardAudioVoice = CardSuit | 'neutral';
@@ -6,6 +9,12 @@ export type CardAudioVoice = CardSuit | 'neutral';
 export interface AdaptiveMusicSnapshot {
   flightState?: string;
   district?: number;
+  formation?: FormationState;
+  tier?: EncounterTier;
+  /** Stems sounding in the current phrase. */
+  layers?: MusicLayerId[];
+  /** Times the music stepped back under a big moment. */
+  ducks?: number;
   pattern: string;
   active: boolean;
   step: number;
@@ -33,12 +42,21 @@ export class AdaptiveMusicSequencer {
   private flightState = 'planning';
   private pendingFlightState = 'planning';
   private district = 0;
-  setFlightState(state: string, district: number) {
+  private formation: FormationState = 'holding';
+  private tier: EncounterTier = 'street';
+  private plan: MusicLayerPlan = selectMusicLayers({ mood: 'menu' });
+  private ducks = 0;
+  /** Flight state, formation and tier all take effect at the next four-step phrase. */
+  setFlightState(state: string, district: number, formation: FormationState = 'holding', tier: EncounterTier = 'street') {
     this.pendingFlightState = ['planning','flow','surge','molt','open-sky','boss-phase'].includes(state) ? state : 'planning';
     this.district = Math.max(0, Math.min(3, Math.floor(district)));
+    this.formation = formation;
+    this.tier = tier;
   }
   private ctx?: AudioContext;
   private bus?: GainNode;
+  private duckGain?: GainNode;
+  private hatBuffer?: AudioBuffer;
   private mood: AdaptiveMusicMood = 'menu';
   private timer?: number;
   private step = 0;
@@ -60,14 +78,16 @@ export class AdaptiveMusicSequencer {
     this.volume = clamp(volume, 0, 1);
     this.step = 0;
     const profile = musicProfile(mood);
+    this.plan = this.selectPlan();
     const bus = ctx.createGain();
     bus.gain.setValueAtTime(0.0001, ctx.currentTime);
-    bus.gain.exponentialRampToValueAtTime(
-      Math.max(0.0001, profile.volume * this.volume),
-      ctx.currentTime + 0.8,
-    );
-    bus.connect(master);
+    bus.gain.exponentialRampToValueAtTime(Math.max(0.0001, this.busLevel()), ctx.currentTime + 0.8);
+    // Ducking has its own stage so it never fights the volume and layer ramps.
+    const duckGain = ctx.createGain();
+    bus.connect(duckGain);
+    duckGain.connect(master);
     this.bus = bus;
+    this.duckGain = duckGain;
     this.generation += 1;
     this.schedule(profile, this.generation);
   }
@@ -76,28 +96,58 @@ export class AdaptiveMusicSequencer {
     if (this.timer !== undefined) window.clearTimeout(this.timer);
     this.timer = undefined;
     this.generation += 1;
-    if (this.bus && this.ctx) {
+    const bus = this.bus;
+    const duckGain = this.duckGain;
+    if (bus && this.ctx) {
       const now = this.ctx.currentTime;
-      this.bus.gain.cancelScheduledValues(now);
-      this.bus.gain.setValueAtTime(Math.max(0.0001, this.bus.gain.value), now);
-      this.bus.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+      bus.gain.cancelScheduledValues(now);
+      bus.gain.setValueAtTime(Math.max(0.0001, bus.gain.value), now);
+      bus.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+      window.setTimeout(() => { bus.disconnect(); duckGain?.disconnect(); }, 900);
     }
     this.bus = undefined;
+    this.duckGain = undefined;
+  }
+
+  /** Step the music back under a heavy hit, finishing blow, stinger or boss entrance, then let it return. */
+  duck(profile: DuckProfile) {
+    const gain = this.duckGain?.gain;
+    if (!gain || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const floor = Math.min(profile.depth, Math.max(0.05, gain.value));
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(Math.max(0.05, gain.value), now);
+    gain.linearRampToValueAtTime(floor, now + profile.attackS);
+    gain.setValueAtTime(floor, now + profile.attackS + profile.holdS);
+    gain.linearRampToValueAtTime(1, now + profile.attackS + profile.holdS + profile.releaseS);
+    this.ducks += 1;
+  }
+
+  private selectPlan() {
+    return selectMusicLayers({ mood: this.mood, flightState: this.flightState, formation: this.formation, tier: this.tier });
+  }
+
+  private busLevel() {
+    return musicProfile(this.mood).volume * this.volume * this.plan.gainScale;
+  }
+
+  private rampBus(seconds: number) {
+    if (!this.bus || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.bus.gain.cancelScheduledValues(now);
+    this.bus.gain.setValueAtTime(Math.max(0.0001, this.bus.gain.value), now);
+    this.bus.gain.exponentialRampToValueAtTime(Math.max(0.0001, this.busLevel()), now + seconds);
   }
 
   setVolume(volume: number) {
     this.volume = clamp(volume, 0, 1);
-    if (!this.bus || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    const target = musicProfile(this.mood).volume * this.volume;
-    this.bus.gain.cancelScheduledValues(now);
-    this.bus.gain.setValueAtTime(Math.max(0.0001, this.bus.gain.value), now);
-    this.bus.gain.exponentialRampToValueAtTime(Math.max(0.0001, target), now + 0.16);
+    this.rampBus(0.16);
   }
 
   snapshot(): AdaptiveMusicSnapshot {
     return {
       flightState: this.flightState, district: this.district,
+      formation: this.formation, tier: this.tier, layers: [...this.plan.layers], ducks: this.ducks,
       pattern: musicProfile(this.mood).id,
       active: Boolean(this.bus && this.volume > 0.001),
       step: this.step,
@@ -109,20 +159,11 @@ export class AdaptiveMusicSequencer {
     };
   }
 
-  playCardVoice(
-    ctx: AudioContext,
-    master: GainNode,
-    voiceVolume: number,
-    voice: CardAudioVoice,
-    usesMolt: boolean,
-    intensity: number,
-  ) {
+  /** Records which suit voice a card play asked for; the sound itself is the `card.play` event. */
+  noteCardVoice(voice: CardAudioVoice, usesMolt: boolean, voiceVolume: number) {
     this.cardVoiceRequests[voice] = (this.cardVoiceRequests[voice] ?? 0) + 1;
     const sequence = ++this.cardVoiceSequence;
-    const variant = (sequence - 1) % 3;
-    const volume = clamp(voiceVolume, 0, 1);
-    this.lastCardVoice = { voice, usesMolt, sequence, variant, volume };
-    playCardAudioVoice(ctx, master, volume, voice, usesMolt, intensity, variant);
+    this.lastCardVoice = { voice, usesMolt, sequence, variant: (sequence - 1) % 3, volume: clamp(voiceVolume, 0, 1) };
   }
 
   private schedule(profile: MusicProfile, generation: number) {
@@ -130,25 +171,38 @@ export class AdaptiveMusicSequencer {
       if (!this.bus || generation !== this.generation) return;
       if (this.volume > 0.001) {
         // Orchestration changes at the start of a four-step phrase.
-        if (this.step % 4 === 0) this.flightState = this.pendingFlightState;
+        if (this.step % 4 === 0) {
+          this.flightState = this.pendingFlightState;
+          const before = this.plan.gainScale;
+          this.plan = this.selectPlan();
+          if (this.plan.gainScale !== before) this.rampBus(0.3);
+        }
+        const on = (layer: MusicLayerId) => this.plan.layers.includes(layer);
+        const filter = profile.filter * this.plan.filterScale;
         const interval = profile.intervals[this.step % profile.intervals.length];
         const frequency = profile.base * Math.pow(2, interval / 12);
         const accented = this.step % profile.accentEvery === 0;
         const pan = ((this.step % 5) - 2) * 0.1;
-        this.tone(frequency, profile.duration, profile.type, accented ? 0.36 : 0.24, profile.filter, pan);
-        if (accented) {
+        this.tone(frequency, profile.duration, profile.type, accented ? 0.36 : 0.24, filter, pan);
+        if (accented && on('harmony')) {
           const harmony = frequency * Math.pow(2, profile.harmony / 12);
-          this.tone(harmony, profile.duration * 0.82, 'sine', 0.13, profile.filter * 1.2, -pan, 0.035);
+          this.tone(harmony, profile.duration * 0.82, 'sine', 0.13, filter * 1.2, -pan, 0.035);
         }
         if (this.mood === 'battle' || this.mood === 'boss') {
-          const active = this.flightState;
           const root = [110, 98, 123.47, 130.81][this.district];
-          if (this.step % 4 === 0) this.tone(root, .3, 'triangle', .13, 800, -.2);
-          if (active === 'flow' || active === 'surge') this.tone(root * 2, .09, 'sine', active === 'surge' ? .15 : .08, 1800, pan);
-          if (active === 'surge' && this.step % 2 === 0) this.tone(root * 3, .18, 'triangle', .1, 2200, -pan, .08);
-          if (active === 'molt') this.tone(root * 2 ** ([0,7,12,7][this.step % 4] / 12), .13, 'triangle', .18, 2100, pan);
-          if (active === 'open-sky' && this.step % 4 === 0) this.tone(root / 2, .6, 'sine', .16, 500, 0);
-          if (active === 'boss-phase' && this.step % 2 === 0) this.tone(root / 2, .14, 'triangle', .2, 1000, 0);
+          const beat = this.step % 4 === 0;
+          const even = this.step % 2 === 0;
+          const offBeat = profile.stepMs / 2000;
+          if (beat && on('bass')) this.tone(root, .3, 'triangle', .13, 800, -.2);
+          if (on('shimmer')) this.tone(root * 2, .09, 'sine', on('lead') ? .15 : .08, 1800, pan);
+          if (even && on('lead')) this.tone(root * 3, .18, 'triangle', .1, 2200, -pan, .08);
+          if (on('hat')) this.hat(even ? .05 : .03, on('drive') ? offBeat : 0);
+          // Elites and bosses push an off-beat fifth between the main steps.
+          if (on('drive')) this.tone(root * 1.5, .08, 'sawtooth', .07, 1200, pan, offBeat);
+          if (beat && on('sub')) this.tone(root / 2, .5, 'sine', .2, 300, 0);
+          if (on('molt')) this.tone(root * 2 ** ([0,7,12,7][this.step % 4] / 12), .13, 'triangle', .18, 2100, pan);
+          if (beat && on('drone')) this.tone(root / 2, .6, 'sine', .16, 500, 0);
+          if (even && on('alarm')) this.tone(root / 2, .14, 'triangle', .2, 1000, 0);
         }
         this.pulses += 1;
       }
@@ -156,6 +210,33 @@ export class AdaptiveMusicSequencer {
       this.timer = window.setTimeout(pulse, profile.stepMs);
     };
     this.timer = window.setTimeout(pulse, 140);
+  }
+
+  /** A filtered-noise tick on the step, doubled on the off-beat when the drive layer is on. */
+  private hat(volume: number, echoS: number) {
+    const ctx = this.ctx;
+    const bus = this.bus;
+    if (!ctx || !bus) return;
+    if (!this.hatBuffer || this.hatBuffer.sampleRate !== ctx.sampleRate) {
+      const length = Math.max(1, Math.floor(ctx.sampleRate * 0.04));
+      this.hatBuffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = this.hatBuffer.getChannelData(0);
+      for (let index = 0; index < length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / length);
+    }
+    for (const delay of echoS > 0 ? [0, echoS] : [0]) {
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      source.buffer = this.hatBuffer;
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(6200, ctx.currentTime);
+      gain.gain.setValueAtTime(delay ? volume * 0.6 : volume, ctx.currentTime);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(bus);
+      source.start(ctx.currentTime + delay);
+      source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+    }
   }
 
   private tone(
@@ -194,6 +275,7 @@ export class AdaptiveMusicSequencer {
     }
     osc.start(start);
     osc.stop(start + duration + 0.03);
+    osc.onended = () => { osc.disconnect(); filter.disconnect(); gain.disconnect(); panner?.disconnect(); };
   }
 }
 
@@ -225,101 +307,6 @@ function musicProfile(mood: AdaptiveMusicMood): MusicProfile {
       stepMs: 660, duration: 0.36, volume: 0.068, type: 'triangle', filter: 1480, accentEvery: 4, harmony: 7,
     };
   }
-}
-
-type CardAudioTone = readonly [number, number, number, OscillatorType, number, number];
-
-const CARD_AUDIO_VOICES: Record<CardAudioVoice, {
-  noise: readonly [number, number, number];
-  tones: readonly CardAudioTone[];
-}> = {
-  plumes: {
-    noise: [0.045, 1940, 0.008],
-    tones: [[420, 840, 0.1, 'sawtooth', 0.012, -0.12], [840, 1260, 0.11, 'triangle', 0.012, 0.14]],
-  },
-  quills: {
-    noise: [0.035, 2600, 0.009],
-    tones: [[1180, 740, 0.08, 'triangle', 0.014, -0.14], [1560, 980, 0.07, 'sine', 0.01, 0.16]],
-  },
-  basins: {
-    noise: [0.055, 820, 0.007],
-    tones: [[330, 440, 0.15, 'sine', 0.016, -0.12], [495, 370, 0.17, 'sine', 0.014, 0.14]],
-  },
-  nests: {
-    noise: [0.065, 560, 0.011],
-    tones: [[180, 240, 0.13, 'triangle', 0.017, -0.1], [270, 360, 0.1, 'square', 0.009, 0.12]],
-  },
-  neutral: {
-    noise: [0.055, 1320, 0.01],
-    tones: [[390, 330, 0.1, 'triangle', 0.014, -0.1], [620, 510, 0.08, 'sine', 0.009, 0.12]],
-  },
-};
-
-function playCardAudioVoice(
-  ctx: AudioContext,
-  master: GainNode,
-  voiceVolume: number,
-  voice: CardAudioVoice,
-  usesMolt: boolean,
-  intensity: number,
-  variant: number,
-) {
-  const loudness = clamp(intensity, 0.45, 1.8) * voiceVolume;
-  const pitch = [0.97, 1, 1.03][variant];
-  playCardNoise(ctx, master, [0.045, 1540, 0.012], loudness);
-  playCardTone(ctx, master, [520, 680, 0.07, 'triangle', 0.014, -0.08], loudness, pitch);
-  const plan = CARD_AUDIO_VOICES[voice];
-  playCardNoise(ctx, master, plan.noise, loudness);
-  plan.tones.forEach((tone) => playCardTone(ctx, master, tone, loudness, pitch));
-  if (usesMolt) playCardTone(ctx, master, [690, 1380, 0.12, 'sine', 0.01, 0], loudness, pitch);
-}
-
-function playCardTone(ctx: AudioContext, master: GainNode, tone: CardAudioTone, loudness: number, pitch: number) {
-  const [startFrequency, endFrequency, duration, type, volume, pan] = tone;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const panner = 'StereoPannerNode' in window ? ctx.createStereoPanner() : undefined;
-  const now = ctx.currentTime;
-  osc.type = type;
-  osc.frequency.setValueAtTime(startFrequency * pitch, now);
-  osc.frequency.exponentialRampToValueAtTime(endFrequency * pitch, now + duration);
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * loudness), now + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  osc.connect(gain);
-  if (panner) {
-    panner.pan.setValueAtTime(pan, now);
-    gain.connect(panner);
-    panner.connect(master);
-  } else gain.connect(master);
-  osc.start(now);
-  osc.stop(now + duration + 0.02);
-}
-
-function playCardNoise(
-  ctx: AudioContext,
-  master: GainNode,
-  noise: readonly [number, number, number],
-  loudness: number,
-) {
-  const [duration, filterFrequency, volume] = noise;
-  const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * duration)), ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let index = 0; index < data.length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / data.length);
-  const source = ctx.createBufferSource();
-  const filter = ctx.createBiquadFilter();
-  const gain = ctx.createGain();
-  source.buffer = buffer;
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(filterFrequency, ctx.currentTime);
-  filter.Q.setValueAtTime(1.8, ctx.currentTime);
-  gain.gain.setValueAtTime(Math.max(0.0001, volume * loudness), ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(master);
-  source.start();
-  source.stop(ctx.currentTime + duration + 0.02);
 }
 
 function clamp(value: number, min: number, max: number) {
