@@ -91,6 +91,10 @@ function buildMarker(scene: Phaser.Scene, x: number, y: number) {
 
 function renderLegend(context: RouteMapRendererContext) {
   const { scene } = context;
+  // Full-screen readers are drawn over the map; a legend underneath would only
+  // add stray words ("Nest", "Market") to a screen about something else.
+  const covered = scene as unknown as Record<string, unknown>;
+  if (['cardPickerMode', 'marketOpen', 'deckOverlayOpen', 'nodeChoiceOpen', 'flockOverlayOpen'].some(flag => covered[flag])) return;
   const present = new Set(context.nodes.map(node => node.type));
   const rows = LEGEND.filter(([type]) => present.has(type));
   if (!rows.length) return;
