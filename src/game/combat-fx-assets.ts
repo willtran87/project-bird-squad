@@ -711,15 +711,13 @@ export function resolveEnemyTurnAnimated(
     setBeat('windup', move.label, windupDelay, canHustle);
     host.events.emit('living-enemy-start', enemy.id, windupDelay + releaseDelay + anticipationDelay);
     host.queueEnemyMotion(enemy.id, 'windup');
-    host.playQueuedEnemyMotion(enemy.id);
     host.refreshBeatProgressBadge();
     host.enemyAttackWindupFx(enemy, move);
     schedule(windupDelay, () => {
       if (host.mode !== 'battle') return abort();
       setBeat('release', move.label, releaseDelay, canHustle);
       if (dealsDamage(move)) {
-        host.queueEnemyMotion(enemy.id, 'attack');
-        host.playQueuedEnemyMotion(enemy.id);
+        host.queueEnemyMotion(enemy.id, 'attack', anticipationDelay);
       }
       host.refreshBeatProgressBadge();
       host.enemyAttackCommitmentSealFx(enemy, move);
@@ -735,7 +733,6 @@ export function resolveEnemyTurnAnimated(
             if (enemy.hp <= 0 || host.flock.hp <= 0) break;
             host.resolveEnemyEffect(enemy, effect, move.label);
           }
-          if (dealsDamage(move)) host.enemyMotionCues.delete(enemy.id);
           host.runSeenEnemyMoves.add(host.enemyMovePacingKey(enemy, move));
           host.advanceEnemyIntent(enemy);
           host.renderAll();

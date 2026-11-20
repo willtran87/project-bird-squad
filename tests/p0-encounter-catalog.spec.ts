@@ -73,10 +73,14 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
             return clear(p.getBounds(), z.getBounds());
           })),
           artClear: art.every((r: any) => r.left >= 0 && r.right <= 1280 && r.top >= 106 && panels.every((p: any) => clear(p.getBounds(), r))),
+          artConflicts: art.flatMap((r: any) => [...(r.left >= 0 && r.right <= 1280 && r.top >= 106 ? [] : [{ name: 'stage', art: r }]),
+            ...panels.filter((p: any) => !clear(p.getBounds(), r)).map((p: any) => ({ name: p.name, panel: p.getBounds(), art: r }))]),
           goalClear: !goal || art.every((r: any) => clear(goal.getBounds(), r))
             && panels.every((p: any) => clear(goal.getBounds(), p.getBounds())),
           previewClear: !frame || panels.every((p: any) => clear(p.getBounds(), frame) && (!command || clear(p.getBounds(), command))),
-          targetsInteractive: visible.every((g: any) => g.list[0].getByName('combat-enemy-portrait').input?.enabled),
+          // The silhouette's hit area belongs to the slot, not the animated portrait.
+          targetsInteractive: visible.every((g: any) => b.root.list.some((o: any) => o.name === 'combat-enemy-hit'
+            && o.getData('enemyId') === g.getData('enemyId') && o.input?.enabled && !g.list[0].getByName('combat-enemy-portrait').input)),
           eliteLabels: b.enemies.filter((e: any) => e.runtime.type === 'elite').every((e: any) => {
             const label = b.root.list.find((o: any) => o.name === 'combat-elite-label' && o.getData('enemyId') === e.id);
             const panel = panels.find((o: any) => o.name === 'combat-elite-badge' && o.getData('enemyId') === e.id);
@@ -91,7 +95,7 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
       expect(result.targetsInteractive, encounter.id).toBe(true);
       expect(result.eliteLabels, encounter.id).toBe(true);
       expect(result.fits, encounter.id).toBe(true); expect(result.separated, encounter.id).toBe(true);
-      expect(result.artClear, encounter.id).toBe(true); expect(result.previewClear, encounter.id).toBe(true);
+      expect(result.artClear, `${encounter.id}: ${JSON.stringify(result.artConflicts)}`).toBe(true); expect(result.previewClear, encounter.id).toBe(true);
       expect(result.goalClear, encounter.id).toBe(true);
       await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${encounter.id}-${width}.png`) });
