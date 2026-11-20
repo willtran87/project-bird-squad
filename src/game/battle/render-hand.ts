@@ -1,5 +1,6 @@
 import { setTextureFilter } from '../texture-filter';
 import { attachCardBody, battleActors } from './actors';
+import { addRarityFrame, cardObjects, handFaceInfo, mountInspectFace, numberTintsFor, tintFaceNumbers } from './card-objects';
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
@@ -25,8 +26,27 @@ export function renderCombatHistory(context: Omit<CardDetailContext, 'ui' | 'typ
   return renderHistoryReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, entries);
 }
 
-export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, card: BattleHandCardPreviewView) {
-  return renderCardReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, card);
+/**
+ * The card inspector: the card itself, large, beside its full rules, with
+ * rarity and flavor under it. Reading only.
+ */
+export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, card: BattleHandCardPreviewView,
+  source?: { instanceId: string; id: string }) {
+  const { scene } = context, host = scene as Phaser.Scene & Record<string, any>;
+  const faced = Boolean(source && typeof host.battleHandCardView === 'function');
+  const layer = renderCardReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, card, source, faced);
+  if (!source || !faced) return layer;
+  const view: BattleHandCardView = { ...host.battleHandCardView(source), canPay: true, selected: false, guideCard: false, guideMolt: false,
+    flowVisible: false, retainOrder: undefined, retainSelectable: false, discardSelectable: undefined, discardSelected: false, discardFocused: false };
+  const base = host.battleHandRenderContext() as BattleHandRenderContext, info = handFaceInfo(scene, source.instanceId);
+  mountInspectFace(scene, layer, source, {
+    label: `${view.label}${view.preview.upgraded ? ' · Preened' : ''}`, rarity: info.rarity,
+    fontFamily: context.fontFamily, boldFontStyle: context.boldFontStyle, fontSize: UI_TYPE.secondary,
+    softColor: DECISION_UI.secondary, resolution: DECISION_UI.resolution, cardHeight: base.cardHeight,
+    draw: face => renderCard({ ...base, target: face, handY: 0, cards: [view], onCardClick: () => undefined, onCardHover: () => undefined,
+      onCardOut: () => undefined }, emptyHand(), view, -base.cardWidth / 2, info),
+  });
+  return layer;
 }
 
 export interface BattleHandCardPreviewView {
@@ -310,11 +330,25 @@ export function renderBattleHandCardArt(
 }
 
 
+type HandFaceInfo = ReturnType<typeof handFaceInfo>;
+
+/** Recolour the numbers a Preen or current status changed. The overlays join
+ * the card's body; the rules label keeps its text. */
+function applyNumberTints(scene: Phaser.Scene, target: Phaser.GameObjects.Container, summary: Phaser.GameObjects.Text, info: HandFaceInfo) {
+  const overlays = tintFaceNumbers(scene, summary, numberTintsFor(summary.text, info));
+  // Directly above the label, so a later repaint keeps the card's draw order.
+  overlays.forEach((overlay, index) => target.addAt(overlay, target.getIndex(summary) + 1 + index));
+  summary.setData('tintKey', info.key).setData('tintOverlays', overlays);
+  return overlays;
+}
+
 function renderCard(
   context: BattleHandRenderContext,
   result: BattleHandRenderResult,
   card: BattleHandCardView,
   left: number,
+  info: HandFaceInfo = handFaceInfo(context.scene, card.instanceId),
+  order = 0,
 ) {
   const { scene, target, handY, cardWidth, cardHeight, fontFamily, boldFontStyle } = context;
   const presentationStart = target.list.length;
@@ -339,9 +373,12 @@ function renderCard(
   rect.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
     event?.stopPropagation();
     context.onCardClick(card.instanceId);
+    // The press is handled exactly as before; moving the pointer now drags.
+    cardObjects(scene).armDrag(card.instanceId, _pointer);
   });
   const fan = battleActors(scene).hand;
   rect.on('pointerover', () => {
+    if (fan.dragged) return;
     hoverCard(rect, true);
     fan.hovered = card.instanceId;
     context.onCardHover(card.instanceId);
@@ -460,6 +497,14 @@ function renderCard(
       iconOnly: true,
     });
   }
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, panelHeight, 0x081624, 0.95)
+    .setName('combat-card-rules-panel'));
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
+    .setName('combat-card-rules-rule'));
+  // Rarity reads from the frame: weight and ornament rise with rarity, and
+  // rare and above catch the light. It sits over the panels, under the coin.
+  for (const part of addRarityFrame(scene, centerX, handY, cardWidth, cardHeight, info.rarity,
+    { alpha: card.canPay ? 1 : 0.5, name: 'combat-card-rarity', phase: order })) target.add(part);
   // The cost sits in the banner as a recessed coin: dark face, bright rim.
   const coinY = top + CARD_ART_INSET + 19;
   target.add(scene.add.circle(left + 22, coinY, 15, 0x05080e, 1)
@@ -472,10 +517,6 @@ function renderCard(
     color: card.cost === 0 ? '#8df4ff' : card.canPay ? '#ffd76a' : '#b9a36a', resolution: 2,
   }).setOrigin(0.5).setName('combat-card-cost'));
 
-  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, panelHeight, 0x081624, 0.95)
-    .setName('combat-card-rules-panel'));
-  target.add(scene.add.rectangle(centerX, bottom - panelHeight - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
-    .setName('combat-card-rules-rule'));
   if (card.preview.upgraded) {
     // A Preened card wears a gilt inner frame, so an upgrade reads at a glance.
     target.add(scene.add.rectangle(centerX, handY, cardWidth - CARD_ART_INSET * 2 - 2, cardHeight - CARD_ART_INSET * 2 - 2)
@@ -487,7 +528,9 @@ function renderCard(
     .setData('faceTier', excerpt.tier).setData('panelHeight', panelHeight);
   summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
     .setData('quickRead', card.summary);
+  summary.setData('rarity', info.rarity);
   target.add(summary);
+  applyNumberTints(scene, target, summary, info);
 
   if (card.buildsFlow) {
     const container = scene.add.container(0, 0);
@@ -517,6 +560,19 @@ const emptyHand = (): BattleHandRenderResult => ({
 interface HandCardBody { sig: string; art: string; left: number; rect: Phaser.GameObjects.Rectangle; objects: Phaser.GameObjects.GameObject[]; parts: BattleHandRenderResult }
 const HAND_BODIES = new WeakMap<Phaser.GameObjects.Container, Map<string, HandCardBody>>();
 
+/** Status changed since this face was drawn: move the highlights, keep the face. */
+function retintCard(scene: Phaser.Scene, body: HandCardBody, info: HandFaceInfo) {
+  const summary = body.objects.find(object => object.name === 'combat-card-readable-summary') as Phaser.GameObjects.Text | undefined;
+  const target = summary?.parentContainer;
+  if (!summary?.active || !target || summary.getData('tintKey') === info.key) return false;
+  const stale = (summary.getData('tintOverlays') ?? []) as Phaser.GameObjects.Text[];
+  for (const overlay of stale) { body.objects.splice(body.objects.indexOf(overlay), 1); overlay.destroy(); }
+  const overlays = applyNumberTints(scene, target, summary, info);
+  body.objects.splice(body.objects.indexOf(summary) + 1, 0, ...overlays);
+  if (!summary.visible) for (const overlay of overlays) overlay.setVisible(false);
+  return true;
+}
+
 /**
  * Reconcile the hand instead of rebuilding it. A card keeps its objects for as
  * long as it stays in hand and its face is unchanged; a card whose slot moved
@@ -529,10 +585,19 @@ export function renderBattleHand(context: BattleHandRenderContext): BattleHandRe
   const bodies = new Map<string, HandCardBody>(), result = emptyHand(), keep = new Set<Phaser.GameObjects.GameObject>();
   HAND_BODIES.set(target, bodies);
   const ready = (key?: string) => Boolean(key && textureReady(scene, key));
+  const objects = cardObjects(scene);
+  // A card that left the hand travels to its pile as the object it was. A
+  // played card was already hidden when it was thrown.
+  let leaving = 0;
+  for (const [id, body] of known) {
+    if (cards.some(card => card.instanceId === id) || !body.rect.active) continue;
+    objects.depart(id, body.objects, body.rect.visible ? objects.fateOf(id) : undefined, leaving);
+    if (body.rect.visible) leaving += 1;
+  }
   cards.forEach((card, index) => {
-    const id = card.instanceId, left = context.cardLeft(index, cards.length);
+    const id = card.instanceId, left = context.cardLeft(index, cards.length), info = handFaceInfo(scene, id);
     const sig = JSON.stringify([{ ...card, selected: 0, flowVisible: 0, surgeNext: 0 },
-      ready(context.assets.cardFrame), context.reinforcedColorCues]);
+      ready(context.assets.cardFrame), context.reinforcedColorCues, info.rarity]);
     const art = `${ready(card.artKey)}${ready(card.preview.artKey)}`;
     let body = known.get(id);
     if (body?.sig === sig && body.rect.active && body.rect.visible) {
@@ -545,7 +610,7 @@ export function renderBattleHand(context: BattleHandRenderContext): BattleHandRe
       body.art = art;
     } else {
       const parts = emptyHand();
-      renderCard(context, parts, card, left);
+      renderCard(context, parts, card, left, info, index);
       const rect = parts.rects.get(id)!;
       body = { sig, art, left, rect, objects: rect.getData('presentation'), parts };
       if (stage.hand.hovered === id) stage.hand.hovered = undefined;
@@ -557,11 +622,16 @@ export function renderBattleHand(context: BattleHandRenderContext): BattleHandRe
       const part = body.parts[name].get(id);
       if (part) (result[name] as Map<string, unknown>).set(id, part);
     }
-    attachCardBody(stage, id, body.objects, left + context.cardWidth / 2, context.handY, () => live.active);
+    retintCard(scene, body, info);
+    const fresh = !stage.actors.has(`card:${id}`);
+    const actor = attachCardBody(stage, id, body.objects, left + context.cardWidth / 2, context.handY, () => live.active);
+    if (fresh) objects.arrive(id, actor);
   });
   for (const child of [...target.list]) if (!keep.has(child)) child.destroy();
   // Draw order follows hand order, whichever cards were kept or redrawn.
   for (const body of bodies.values()) for (const object of body.objects) target.bringToTop(object);
+  const dragged = stage.hand.dragged && bodies.get(stage.hand.dragged.id);
+  if (dragged) for (const object of dragged.objects) target.bringToTop(object);
   for (const id of known.keys()) if (!bodies.has(id)) stage.retire(`card:${id}`);
   stage.hand.order = cards.map(card => card.instanceId);
   if (cards.length) refreshBattleHandSelection(context, cards, result);
@@ -591,10 +661,16 @@ export function refreshBattleHandSelection(
   cards: BattleHandSelectionView[],
   result: BattleHandRenderResult,
 ) {
-  battleActors(context.scene).hand.selected = cards.find(card => card.selected)?.instanceId;
+  const stage = battleActors(context.scene);
+  stage.hand.selected = cards.find(card => card.selected)?.instanceId;
   cards.forEach((card) => {
     const rect = result.rects.get(card.instanceId);
     if (!rect?.scene) return;
+    // Winded, Ruffled and formation change what a number lands for without
+    // changing the face; follow them here, where every refresh passes.
+    const body = HAND_BODIES.get(rect.parentContainer)?.get(card.instanceId);
+    if (body?.rect === rect && retintCard(context.scene, body, handFaceInfo(context.scene, card.instanceId)))
+      attachCardBody(stage, card.instanceId, body.objects, rect.x, rect.y, () => rect.active);
     const guided = card.guideMolt || card.guideCard;
     rect.setStrokeStyle(
       card.selected ? 3 : guided ? 3 : 2,

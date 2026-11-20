@@ -2,6 +2,7 @@ import { setTextureFilter } from '../texture-filter';
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 import { fitTextExcerpt } from '../text-excerpt';
+import { addRarityFrame, handFaceInfo } from './card-objects';
 import { bindChoiceHint } from '../choice-input-hints';
 import { controlBindingLabel } from '../input-bindings';
 
@@ -205,6 +206,13 @@ function renderRow(context: BattleInspectRenderContext, card: BattleInspectCardV
 
 
 function renderCardArt(context: BattleInspectRenderContext, card: BattleInspectCardView) {
+  paintCardArt(context, card);
+  // Pile cards wear the same rarity frame as the hand and reward faces.
+  context.target.add(addRarityFrame(context.scene, DETAIL.artX, DETAIL.artY, DETAIL.artW + 12, DETAIL.artH + 12,
+    handFaceInfo(context.scene, card.id).rarity, { name: 'combat-pile-card-rarity' }));
+}
+
+function paintCardArt(context: BattleInspectRenderContext, card: BattleInspectCardView) {
   if (card.artKey && textureReady(context.scene, card.artKey)) {
     context.target.add(context.scene.add.image(DETAIL.artX, DETAIL.artY, card.artKey)
       .setDisplaySize(DETAIL.artW, DETAIL.artH)

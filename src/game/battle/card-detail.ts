@@ -16,9 +16,13 @@ export interface CardDetailContext {
   createButton: typeof import('../quiet-ui').quietButton;
 }
 
+/** How far the reading column moves right to make room for the large card. */
+export const READER_FACE_SHIFT = 150;
+
 /** Read-only, explicitly opened card help. It never mutates a combat decision. */
-export function renderCombatCardDetail(context: CardDetailContext, card: BattleHandCardPreviewView) {
+export function renderCombatCardDetail(context: CardDetailContext, card: BattleHandCardPreviewView, _source?: unknown, faceColumn = false) {
   return renderCombatReader(context, {
+    faceColumn,
     name: card.name, kind: 'card', badge: `${card.cost} Wingbeat${card.cost === 1 ? '' : 's'}`,
     sections: [
       { heading: card.usesMolt ? 'ACTIVE · MOLT' : 'ACTIVE · NOW', body: card.currentText },
@@ -40,19 +44,23 @@ export function renderCombatHistory(context: CardDetailContext, entries: string[
 
 export function renderCombatReader(context: CardDetailContext, content: {
   name: string; kind: 'card' | 'history' | 'waymark'; badge: string; sections: Array<{ heading: string; body: string }>;
+  /** Widen the panel and leave its left column free for the large card. */
+  faceColumn?: boolean;
 }) {
   const { scene, fontFamily, boldFontStyle, ui: UI, typography } = context;
   const layer = scene.add.container(0, 0).setDepth(900).setName('combat-card-detail');
   const add = <T extends Phaser.GameObjects.GameObject>(object: T) => { layer.add(object); return object; };
+  // With a face column the reading column keeps its width and moves right.
+  const ox = content.faceColumn ? READER_FACE_SHIFT : 0;
   const text = (x: number, y: number, value: string, size = UI.bodySize as number, width = 664) =>
-    add(scene.add.text(x, y, value, {
+    add(scene.add.text(x + ox, y, value, {
       fontFamily, fontSize: `${size}px`, color: UI.text, resolution: UI.resolution,
       wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 4,
     }));
   // A full-stage hit surface prevents pointer-through, including outside the panel.
   add(scene.add.rectangle(640, 360, 1280, 720, 0x02070d, 0.78).setInteractive()
     .setName('combat-card-detail-shield'));
-  add(scene.add.rectangle(640, 360, 760, 568, UI.surface, 1)
+  add(scene.add.rectangle(640, 360, content.faceColumn ? 1100 : 760, 568, UI.surface, 1)
     .setStrokeStyle(1, UI.border, 1).setName('combat-card-detail-panel'));
   layer.setData('kind', content.kind);
   text(288, 100, `${content.kind === 'history' ? 'COMBAT HISTORY' : content.kind === 'waymark' ? 'WAYMARK DETAILS' : 'CARD DETAILS'} · READING ONLY`, typography.secondary).setColor(UI.secondary);
@@ -64,7 +72,7 @@ export function renderCombatReader(context: CardDetailContext, content: {
   text(991, 140, content.badge, typography.secondary, 135)
     .setOrigin(1, 0).setColor(UI.secondary);
   const headingY = Math.max(224, title.y + title.height + 20);
-  add(scene.add.rectangle(640, headingY - 16, 704, 1, UI.border, 0.7));
+  add(scene.add.rectangle(640 + ox, headingY - 16, 704, 1, UI.border, 0.7));
   const heading = text(288, headingY, '', typography.secondary).setColor('#ffe7b0').setFontStyle(boldFontStyle)
     .setName('combat-card-detail-heading');
   const body = text(288, headingY + 30, '').setName('combat-card-detail-body');
@@ -105,7 +113,7 @@ export function renderCombatReader(context: CardDetailContext, content: {
     context.announce(`${content.name}. ${pages[page].heading}. Page ${page + 1} of ${pages.length}. ${pages[page].body}`);
   };
   const button = (x: number, label: string, name: string, action: () => void) => {
-    const hit = add(context.createButton(scene, { x, y: 588, width: 210, label, name, onActivate: action }));
+    const hit = add(context.createButton(scene, { x: x + ox, y: 588, width: 210, label, name, onActivate: action }));
     const caption = add(hit.getData('labelObject') as Phaser.GameObjects.Text);
     buttons.push(hit); labels.push(caption);
   };

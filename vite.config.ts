@@ -94,6 +94,8 @@ export default defineConfig(({ command }) => ({
           if (moduleId.endsWith('/src/game/signal-spires.ts')) return 'signal-spires';
           // Retained combatants and hand cards, their animation clock and hit-stop.
           if (moduleId.endsWith('/src/game/battle/actors.ts')) return 'battle-actors';
+          // Cards as objects: flight, deal, discard, drag, rarity frames and number highlights.
+          if (moduleId.endsWith('/src/game/battle/card-objects.ts') || moduleId.endsWith('/src/game/battle/card-object-rules.ts')) return 'battle-card-objects';
           if (moduleId.endsWith('/src/game/run-hud.ts')) return 'run-hud';
           if (moduleId.endsWith('/src/game/term-introductions.ts') || moduleId.endsWith('/src/game/battle/term-callout.ts')) return 'term-introductions';
           if (moduleId.endsWith('/src/game/route-transition-fx.ts')) return 'route-transition-fx';
