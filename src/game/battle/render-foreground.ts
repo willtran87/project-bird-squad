@@ -3,6 +3,7 @@ import { fitTextExcerpt } from '../text-excerpt';
 import { artContact } from './art-grounding';
 import type { enemyIntentLabel } from '../enemy-intent';
 import { battleActors, type ActorBreath } from './actors';
+import { combatLife } from './combat-life';
 
 export interface BattleForegroundArtPlacement {
   artX: number;
@@ -117,6 +118,7 @@ function retainedStage(context: BattleForegroundRenderContext) {
  * and are re-seated, in draw order, by the next foreground render. */
 export function parkBattleActors(target: Phaser.GameObjects.Container) {
   const stage = RETAINED.get(target);
+  ((target.scene as any)?.combatLife as ReturnType<typeof combatLife> | undefined)?.park(target);
   if (!stage?.parking.active) return;
   for (const body of stage.bodies.values()) if (body.node.active) stage.parking.add(body.node);
 }
@@ -440,6 +442,8 @@ export function renderBattleForeground(context: BattleForegroundRenderContext) {
   for (const body of retained.bodies.values()) body.seen = false;
   context.enemies.forEach((enemy) => renderEnemyArt(context, enemy));
   renderLeader(context);
+  const life = combatLife(context.scene);
+  life.seatFlock(context.target);
   // A combatant that was not drawn this pass has left play.
   for (const [key, body] of retained.bodies) {
     if (body.seen) continue;
@@ -450,4 +454,6 @@ export function renderBattleForeground(context: BattleForegroundRenderContext) {
   // Container insertion order is the render order. Keep every status and Tell
   // above every combatant, including art belonging to a later front-row enemy.
   context.enemies.forEach((enemy) => renderEnemyLabels(context, enemy));
+  // Status and intent badges, ghost health and body status effects: retained, seated above the labels.
+  life.seatEnemies(context.target, context.enemies);
 }

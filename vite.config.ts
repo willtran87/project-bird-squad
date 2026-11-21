@@ -99,6 +99,8 @@ export default defineConfig(({ command }) => ({
           if (moduleId.endsWith('/src/game/signal-spires.ts')) return 'signal-spires';
           // Retained combatants and hand cards, their animation clock and hit-stop.
           if (moduleId.endsWith('/src/game/battle/actors.ts')) return 'battle-actors';
+          // Combat life: status/intent badges, ghost health, counter rolls, combo, set pieces and Leader flourishes.
+          if (moduleId.endsWith('/src/game/battle/combat-life.ts') || moduleId.endsWith('/src/game/battle/combat-life-rules.ts')) return 'battle-life';
           // Cards as objects: flight, deal, discard, drag, rarity frames and number highlights.
           if (moduleId.endsWith('/src/game/battle/card-objects.ts') || moduleId.endsWith('/src/game/battle/card-object-rules.ts')) return 'battle-card-objects';
           if (moduleId.endsWith('/src/game/run-hud.ts')) return 'run-hud';
