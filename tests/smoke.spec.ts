@@ -14398,8 +14398,8 @@ test('reward Preens across every rarity add decisions instead of only larger num
   expect(result.previewText).toContain('Crossed Quills+');
   expect(result.previewText.join(' ')).toContain('Preened');
   expect(result.previewText.join(' ')).toContain('Gain 1 Wingbeat');
-  // The focused combat dossier is rules-only; the card illustration stays in hand.
-  expect(result.previewImages.some((item: {key: string}) => /^card-(?:thumb-)?swords_02$/.test(item.key))).toBe(false);
+  // The combat dossier now shows the large card face, illustration included.
+  expect(result.previewImages.some((item: {key: string}) => /^card-(?:thumb-)?swords_02$/.test(item.key))).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/common-preen-crossed-quills.png' });
 });
 

@@ -27,7 +27,7 @@ async function enterDistrict(page: Page, mapIndex: number, leaderId: string, sta
   await frames(page);
 }
 
-test('each district opens with a Leader line picked by the seed, and never takes input', async ({ page }, info) => {
+test('each district opens with a Leader line picked by the seed, and never acts on the route', async ({ page }, info) => {
   const errors = await startRoute(page, 'thread-a');
   const first = await page.evaluate(() => {
     const w = window as any, route = w.__birdSquadGame.scene.getScene('RouteScene');
@@ -47,7 +47,7 @@ test('each district opens with a Leader line picked by the seed, and never takes
   expect(first.thread.bottom).toBeLessThan(first.hint.y);
   expect(first.thread.x).toBeGreaterThanOrEqual(16);
   expect(first.thread.right).toBeLessThanOrEqual(1264);
-  // The route beneath stays live: the card is a picture, not a modal.
+  // The route beneath stays live; only a confirm press is held back by the card.
   expect(first).toMatchObject({ mode: 'routeSelection', cardInput: 0 });
   expect(first.interactive).toBeGreaterThan(0);
   await page.waitForTimeout(900);

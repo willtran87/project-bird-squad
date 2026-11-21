@@ -144,7 +144,7 @@ test('a four-lane district keeps every node clear of the header row, the Flyway 
   }
 });
 
-test('district arrival card shows once per district per run, is skippable and never blocks the route', async ({ page }) => {
+test('district arrival card shows once per district per run, is skippable and only dismisses itself', async ({ page }) => {
   const errors = await openRoute(page);
   const first = await page.evaluate(() => {
     const w = window as any, route = w.__birdSquadGame.scene.getScene('RouteScene');
@@ -154,12 +154,19 @@ test('district arrival card shows once per district per run, is skippable and ne
   });
   expect(first.card).toMatchObject({ district: 0, name: 'Rooftop Blocks' });
   expect(first.card.depth).toBeGreaterThan(24002);
-  // The route under the card is live, and the card owns no input.
+  // The route under the card is live, and the card itself takes no pointer input.
   expect(first).toMatchObject({ mode: 'routeSelection', cardInput: 0 });
   expect(first.selectable).toBeGreaterThan(0);
   expect(first.interactive).toBeGreaterThan(0);
-  await skipCard(page);
+  // Confirm only dismisses the card: it never acts on the hidden route.
+  const before = await page.evaluate(() => JSON.parse((window as any).render_game_to_text()));
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => (window as any).advanceTime(400));
+  await frames(page);
   expect((await life(page)).arrivalCard).toBeUndefined();
+  const after = await page.evaluate(() => JSON.parse((window as any).render_game_to_text()));
+  expect({ mode: after.mode, selected: after.selectedNodeId, node: after.currentNodeId })
+    .toEqual({ mode: before.mode, selected: before.selectedNodeId, node: before.currentNodeId });
   // Same district, same run: not again.
   await enterDistrict(page, 0, 'alpha');
   expect((await life(page)).arrivalCard).toBeUndefined();

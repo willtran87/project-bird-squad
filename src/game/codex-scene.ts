@@ -66,6 +66,7 @@ import {
 } from './codex-saved-views';
 import { collectionMilestoneSnapshots } from './collection-milestones';
 import { unlockCollectionMilestones } from './collection-milestone-progress';
+import { retireCeremony } from './ceremony-queue';
 import {
   activateRenderedAudioToggleControl, addSupplyArtImage,
   addUiIconImage, addWaymarkArtImage,
@@ -376,8 +377,11 @@ export class CodexScene extends Phaser.Scene {
 
   create() {
     birdAudio.setMood('menu');
-    // New cards, Leaders and achievements get their reveal here as well as on the title.
-    void import('./engagement').then((module) => { if (this.scene.isActive()) module.presentCeremony(this); }).catch(() => {});
+    // New cards, Leaders and achievements get their reveal here as well as on
+    // the title. Opening straight to a card's dossier is that card's reveal,
+    // and nothing else may cover the dossier the player asked for.
+    if (this.openCardOnCreate) retireCeremony('card', this.openCardOnCreate);
+    else void import('./engagement').then((module) => { if (this.scene.isActive()) module.presentCeremony(this); }).catch(() => {});
     this.cameras.main.fadeIn(180);
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash').setDisplaySize(GAME_WIDTH, GAME_HEIGHT).setAlpha(0.32);
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.82);

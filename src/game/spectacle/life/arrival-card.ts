@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { districtFraming } from '../../district-framing';
 import { districtArrivalLine } from '../../narrative-threads';
+import { controlActionForCode } from '../../input-bindings';
 import { safeStorageGet, safeStorageSet } from '../../safe-storage';
 import { runDistrictOrdinal, runMapIndices } from '../../shared/gameplay-constants';
 import { UI_DISPLAY_FONT, UI_FONT } from '../../ui-tokens';
@@ -10,10 +11,12 @@ import { clamp01, eachFrame, easeOut, motion, paced, sceneNow } from './kit';
  * District arrival card: a full-screen title moment the first time a run
  * enters each district, over that district's painting.
  *
- * It is a picture, not a modal. The route beneath is interactive from its
- * first frame and the card never takes input ownership; any key or click
- * dismisses it and still reaches the screen underneath. That keeps every
- * route flow, and every test that drives one, exactly as it was.
+ * While it shows, a confirm press only dismisses it: the route beneath is
+ * hidden, so confirm may not commit anything the player cannot see (it used to
+ * accept the default contract). The confirm key is taken in the window's
+ * capture phase, before Phaser's keyboard sees it. Other keys and clicks
+ * dismiss the card and still reach the route, which stays live underneath, as
+ * do scene-level emits. The card also plays out on the scene clock.
  *
  * Under the premise sits the flight's narrative thread: one Leader-specific
  * line for this district, picked by the run seed (see narrative-threads.ts).
@@ -88,6 +91,13 @@ export function dressArrivalCard(route: Phaser.Scene) {
   let skipAt: number | undefined;
   let done = false;
   let parts: ReturnType<typeof build> | undefined;
+  const swallow = (event: KeyboardEvent) => {
+    if (done || start === undefined) return;
+    skip(event);
+    if (controlActionForCode(event.code) !== 'confirm') return;
+    event.stopPropagation();
+    event.preventDefault();
+  };
   const skip = (event?: { repeat?: boolean }) => {
     if (event?.repeat) return;
     skipAt ??= sceneNow(scene);
@@ -99,6 +109,8 @@ export function dressArrivalCard(route: Phaser.Scene) {
     scene.input.keyboard?.off('keydown', skip);
     scene.input.off('pointerdown', skip);
     scene.events.off('spectacle-skip-arrival', skip);
+    scene.input.gamepad?.off('down', skip);
+    window.removeEventListener('keydown', swallow, true);
     parts?.card.destroy();
     scene.registry.set('district-arrival-card', undefined);
   };
@@ -112,6 +124,8 @@ export function dressArrivalCard(route: Phaser.Scene) {
       scene.input.keyboard?.on('keydown', skip);
       scene.input.on('pointerdown', skip);
       scene.events.on('spectacle-skip-arrival', skip);
+      scene.input.gamepad?.on('down', skip);
+      window.addEventListener('keydown', swallow, true);
     }
     // A paused clock would freeze the card over the pause panel.
     if (scene.time.paused) { finish(); return; }
