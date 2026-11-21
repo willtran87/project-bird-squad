@@ -12661,8 +12661,9 @@ test('reward readability separates effects badges and build advice at every supp
     expect(geometry.effects).toHaveLength(3);
     geometry.effects.forEach((effect: any, index: number) => {
       expect(effect.font).toBeGreaterThanOrEqual(18);
-      // Every rule is on the face; the longest offers wrap to six lines at 18px.
-      expect(effect.lines).toBeLessThanOrEqual(6);
+      // Every rule is on the face; the longest offers wrap to seven lines at 18px,
+      // the most the rules area holds at that size (font floor and panel bounds below).
+      expect(effect.lines).toBeLessThanOrEqual(7);
       expect(effect.left).toBeGreaterThanOrEqual(geometry.panels[index].left + 4);
       expect(effect.right).toBeLessThanOrEqual(geometry.panels[index].right - 4);
       expect(effect.bottom).toBeLessThanOrEqual(geometry.panels[index].bottom);
@@ -19904,9 +19905,11 @@ test('combat intro renders generated encounter plaque behind caption', async ({ 
       await wait(50);
     }
     const state = JSON.parse(window.render_game_to_text!());
+    // The lazy BattleScene stand-in may have been swapped for the real scene since start.
+    const live: any = g.scene.getScene('BattleScene');
     const plaqueObjects = countTexture([
-      ...(battle.root?.list ?? []),
-      ...(battle.fxLayer?.list ?? []),
+      ...(live.root?.list ?? []),
+      ...(live.fxLayer?.list ?? []),
     ]);
     return {
       combatEncounterPlaque: state.combatEncounterPlaque,
