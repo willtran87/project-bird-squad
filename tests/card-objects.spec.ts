@@ -26,15 +26,33 @@ async function openBattle(page: Page, storage: Record<string, string> = {}, arra
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
   });
-  await page.waitForFunction(freeze => {
+  if (freezeWhenReady) {
+    // Stop wall-clock frames while the intro is still playing, then step the
+    // scene clock alone until it clears: one slow real frame on a loaded
+    // machine can no longer run past the start of the deal.
+    await page.waitForFunction(() => {
+      const w = window as any, s = JSON.parse(w.render_game_to_text?.() ?? '{}');
+      const b = w.__birdSquadGame.scene.getScene('BattleScene');
+      if (s.scene !== 'BattleScene' || !s.assetReadiness?.fullArt || !b.battleActors || !b.cardObjects || !b.battleHandRendererModule) return false;
+      w.__birdSquadGame.loop.sleep();
+      return true;
+    });
+    await page.evaluate(() => {
+      const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
+      const ready = () => {
+        const s = JSON.parse(w.render_game_to_text?.() ?? '{}');
+        return !s.combatIntro?.active && !s.combatAnimationPending && b.handCardRects.size === b.hand.length && !b.battleRenderQueued;
+      };
+      for (let i = 0; i < 2000 && !ready(); i += 1) w.advanceTime(5);
+      if (!ready()) throw new Error('intro did not clear on the scene clock');
+    });
+  }
+  await page.waitForFunction(() => {
     const w = window as any, s = JSON.parse(w.render_game_to_text?.() ?? '{}');
     const b = w.__birdSquadGame.scene.getScene('BattleScene');
     return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active && !s.combatAnimationPending
-      && b.battleActors && b.cardObjects && b.battleHandRendererModule && b.handCardRects.size === b.hand.length && !b.battleRenderQueued
-      // Stop wall-clock frames in the same frame the state is observed, so
-      // the caller steps the scene clock alone with advanceTime.
-      && (!freeze || (w.__birdSquadGame.loop.sleep(), true));
-  }, freezeWhenReady);
+      && b.battleActors && b.cardObjects && b.battleHandRendererModule && b.handCardRects.size === b.hand.length && !b.battleRenderQueued;
+  });
   if (!arrange) return errors;
   // A known hand: an enemy-target attack first, then a Cover card, on a sturdy enemy.
   await page.evaluate(() => {
@@ -388,7 +406,8 @@ test('an unaffordable card cannot be dragged: it shakes, says why and stays dimm
   const points = await handPoints(page);
   const attack = points.cards.find((card: any) => card.target === 'enemy')!;
   const press = await canvasPoint(page, attack.x, attack.y), enemy = await canvasPoint(page, points.enemy.x, points.enemy.y);
-  const cues = () => page.evaluate(() => Object.values((window as any).__birdSquadAudio().cueRequests as Record<string, number>).reduce((sum, count) => sum + count, 0));
+  // The refusal is the soft `locked` cue. Counting only it keeps unrelated timed cues out of the check.
+  const cues = () => page.evaluate(() => ((window as any).__birdSquadAudio().cueRequests as Record<string, number>).locked ?? 0);
   const cuesBefore = await cues();
   await page.mouse.move(press.x, press.y);
   await page.mouse.down();

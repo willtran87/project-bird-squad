@@ -3,8 +3,8 @@ import { settleCanvas } from './helpers/settled-canvas';
 import {targetGeometry,checkTargetGeometry} from './helpers/target-geometry';
 
 test('one to four enemy clusters keep statuses, vitals and forecasts separate', async ({ page }, info) => {
-  // Thirty-six full-resolution scene captures share this whole-test budget.
-  test.setTimeout(90000);
+  // Thirty-six full-resolution scene captures share this whole-test budget; room for parallel runs.
+  test.setTimeout(240000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 2560, height: 1600 });

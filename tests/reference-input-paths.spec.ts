@@ -8,8 +8,9 @@ import { settleCanvas } from './helpers/settled-canvas';
 const referenceJourneys = new WeakMap<Page, any[]>();
 for (const input of ['pointer', 'controller'] as const) test(`${input}-only reference flight reaches outcome and replay`, async ({ page }, info) => {
   // Linux controller input can still be progressing at decision 260 after
-  // twenty minutes. Preserve action/decision bounds while allowing completion.
-  test.setTimeout(1800000);
+  // twenty minutes, and it takes about 17 minutes beside other parallel
+  // workers. Preserve action/decision bounds while allowing completion.
+  test.setTimeout(2700000);
   if (input === 'controller') await installVirtualController(page);
   await page.addInitScript(() => { (window as any).__testKeyboardEvents = 0; addEventListener('keydown', () => (window as any).__testKeyboardEvents++); });
   const press = (key: string, decision?: any) => inputAction(page, input, key, decision);
