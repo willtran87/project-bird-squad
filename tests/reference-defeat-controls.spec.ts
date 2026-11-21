@@ -17,8 +17,13 @@ test('reference flight reaches natural defeat and replay through live keyboard c
   });
   // A live player's first confirm only dismisses the district arrival card.
   const arrival = await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').registry.get('district-arrival-card') !== undefined,
-    undefined, { timeout: 1500 }).then(() => true, () => false);
-  if (arrival) { await page.keyboard.press('Enter'); await page.waitForTimeout(400); }
+    undefined, { timeout: 4000 }).then(() => true, () => false);
+  if (arrival) {
+    await page.keyboard.press('Enter');
+    // The route takes no confirm until the card has finished leaving.
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').registry.get('district-arrival-card') === undefined,
+      undefined, { timeout: 5000 }).catch(() => {});
+  }
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('RouteScene').shouldChooseDistrictContract());
   await page.keyboard.press('Enter');
