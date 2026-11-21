@@ -1,6 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {resolveScriptedBattle} from './helpers/scripted-battle';
 import {settleCanvas} from './helpers/settled-canvas';
+import {skipTitleReveals} from './helpers/title-reveals';
 import {installVirtualController,pressController} from './helpers/virtual-controller';
 const sizes=[{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
 async function route(page:Page){
@@ -132,7 +133,8 @@ for(const story of ['chorus-line','clean-cut'])test(`Flock Identity ${story} rec
         'run-outcome-command-frame', 'progression-unlock-flourish', 'run-outcome-title-plaque',
         'run-outcome-flourish', 'run-outcome-crest'].every(id => b.textures.exists(`ui-icon-${id}`));
   });
-  await page.reload();await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
+  // The finished flight's unlocks are revealed on the title first; skip them.
+  await page.reload();await skipTitleReveals(page);await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
   await expect(page.getByRole('heading',{name:story==='chorus-line'?'Every roof answers':'A path for smaller wings',exact:true})).toBeVisible();await expect(page.getByText(/Having yielded three wagers/)).toBeVisible();
   await expect(page.getByText(story==='chorus-line'?'Answering Chorus · amber wave journal seal':'Clear Passage · silver quill journal seal',{exact:true})).toBeVisible();
   for(const size of sizes){await page.setViewportSize(size);await page.getByRole('heading',{name:story==='chorus-line'?'Every roof answers':'A path for smaller wings',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath(`story-${size.width}.png`)});}

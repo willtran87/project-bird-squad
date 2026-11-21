@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { dismissArrivalCard } from './helpers/route-arrival';
 
 for (const failure of ['outbox', 'account', 'history', 'checkpoint-removal']) {
   test(`finished flight survives ${failure} failure and retry without duplicate records`, async ({ page }, info) => {
@@ -7,7 +8,7 @@ for (const failure of ['outbox', 'account', 'history', 'checkpoint-removal']) {
     await page.goto('./?flight=finished-recovery&length=quick');
     await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+    await dismissArrivalCard(page);
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
