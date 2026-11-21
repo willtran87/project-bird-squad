@@ -59,6 +59,8 @@ const PREFERENCE_KEYS = {
 const ALL_OWNED_STORAGE_KEYS = [
   ...Object.values(JOURNALED_KEYS).flatMap((key) => [key, `${key}.backup`, `${key}.corrupt`]),
   ...Object.values(PREFERENCE_KEYS),
+  // Local-only engagement records: cleared with the profile, never exported.
+  'birdsquad.daily', 'birdsquad.daily.backup', 'birdsquad.daily.corrupt', 'birdsquad.ceremony', 'birdsquad.recapSeen',
 ];
 
 export interface SaveBackupPreferences {

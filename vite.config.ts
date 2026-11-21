@@ -86,6 +86,11 @@ export default defineConfig(({ command }) => ({
           if (moduleId.endsWith('/src/game/audio-events.ts')) return 'audio-events';
           if (moduleId.endsWith('/src/game/audio-voices.ts') || moduleId.endsWith('/src/game/audio-cue-budget.ts')) return 'audio-voices';
           if (moduleId.endsWith('/src/game/audio-ambience.ts')) return 'audio-ambience';
+          // Daily Flight, run recap and the Collection ceremony: asked for by the title after it has drawn.
+          if (moduleId.includes('/src/game/engagement/')) return 'engagement';
+          // Shared by setup, the Collection and the engagement scenes; owned by none of them.
+          if (moduleId.endsWith('/src/game/leader-portrait-assets.ts')) return 'leader-portraits';
+          if (moduleId.endsWith('/src/game/narrative-threads.ts') || moduleId.endsWith('/src/game/narrative-content.ts')) return 'narrative-threads';
           if (moduleId.endsWith('/src/game/district-framing.ts')) return 'district-framing';
           if (moduleId.endsWith('/src/game/build-guidance.ts')) return 'build-guidance';
           if (moduleId.endsWith('/src/game/flight-highlights.ts')) return 'flight-highlights';

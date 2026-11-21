@@ -79,6 +79,8 @@ export class MenuScene extends Phaser.Scene {
   private primaryRunAction?: () => void;
   private secondaryRunAction?: () => void;
   private menuHasSavedRun = false;
+  /** Focus stops added by the lazy engagement chunk (Daily Flight, Flight Recap). */
+  menuExtraFocus: MenuFocus[] = [];
 
   constructor() {
     super('MenuScene');
@@ -112,6 +114,7 @@ export class MenuScene extends Phaser.Scene {
     this.titleRunLaunchFlourishBursts = 0;
     this.leaderChoicePresented = false;
     this.codexOpening = false;
+    this.menuExtraFocus = [];
     if (!data.reopenSettings && !data.reopenHelp && !data.reopenLeaderTooltip) {
       this.setupOpen = false;
       this.menuFocus = 'primaryRun';
@@ -285,6 +288,9 @@ export class MenuScene extends Phaser.Scene {
     this.menuFocusTargets.set('configure', this.makeMenuButton(260, 478, 286, 'Flight setup', 'configure', () => this.setSetupOpen(!this.setupOpen)));
 
     this.installMenuFocusInput();
+    void import('../game/engagement').then((module) => {
+      if (generation === this.menuGeneration && this.scene.isActive()) module.installMenuEngagement(this);
+    }).catch(() => {});
     this.renderMenuFocusHint();
     this.refreshTitleLayout();
     this.updateMenuFocusRing();
@@ -297,7 +303,7 @@ export class MenuScene extends Phaser.Scene {
     const order: MenuFocus[] = this.setupOpen ? ['leader', 'difficulty', 'runMode', 'primaryRun'] : ['primaryRun'];
     if (this.menuHasSavedRun) order.push('secondaryRun');
     order.push('configure');
-    if (!this.setupOpen) order.push('howToPlay', 'settings', 'codex', 'profile');
+    if (!this.setupOpen) order.push('howToPlay', 'settings', 'codex', 'profile', ...this.menuExtraFocus);
     return order;
   }
 
@@ -407,6 +413,9 @@ export class MenuScene extends Phaser.Scene {
         return;
       case 'profile':
         openProfileScene(this);
+        return;
+      default:
+        this.menuFocusTargets.get(this.menuFocus)?.emit('pointerdown');
         return;
     }
     this.updateMenuFocusRing();
@@ -531,6 +540,7 @@ export class MenuScene extends Phaser.Scene {
       if (button.input) button.input.enabled = !this.setupOpen;
       (button.getData('labelObject') as Phaser.GameObjects.Text).setVisible(!this.setupOpen);
     }
+    this.events.emit('title-layout');
   }
   private updateMenuFocusRing() {
     const target = this.menuFocusTarget();

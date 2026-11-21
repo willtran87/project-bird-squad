@@ -1,6 +1,7 @@
 import { flockLeaders } from './leaders';
 import { MAX_DIFFICULTY } from './difficulty';
 import { readJournaledJson, writeJournaledJson } from './safe-storage';
+import { queueCeremony } from './ceremony-queue';
 import type { SavedDeckRecord } from './saved-decks';
 
 // Persistent player meta-progression: lifetime stats, achievements, and
@@ -353,6 +354,8 @@ export function recordRun(record: RunRecord): { saved: boolean; account: PlayerA
   account.unlockedLeaders.push(...newLeaders);
   if (record.receipt) account.recentCardClaims = [...(account.recentCardClaims ?? []), record.receipt].slice(-256);
   const saved = saveAccount(account);
+  // Each unlock gets one reveal the next time the player is on the title.
+  if (saved) { queueCeremony('leader', newLeaders); queueCeremony('achievement', newAchievements); }
   return { saved, account, newLeaders, newAchievements, newContractBadges, newEnemyMoves, newPersonalRecords };
 }
 

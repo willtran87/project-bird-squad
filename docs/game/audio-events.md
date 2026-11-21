@@ -98,6 +98,13 @@ Each is one added line at an existing event site.
 - `create()`, after `setMood`: `birdAudio.play('district.enter', { district: activeMapIndex })`
 - `setRoutePaused()`: `birdAudio.play('overlay.set', { id: 'pause', open: paused })`
 
+`src/game/engagement/` (lazy scenes; no new events)
+
+- Collection ceremony: `stinger.play` `reward` when the queue opens, then per
+  reveal `material.tap` `paper`, plus `voice.leader` for a Leader. Skipping the
+  rest plays `ui.cancel`.
+- Run recap: `material.tap` `paper` as the card lands (full motion only).
+
 When `hit.impact` and the legacy `attack` or `heavyAttack` cue arrive in the
 same tick, the scaled impact plays and the fixed cue is dropped.
 
