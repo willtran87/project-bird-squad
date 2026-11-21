@@ -11,7 +11,7 @@ import { clamp01, eachFrame, easeOut, motion, paced, sceneNow } from './kit';
  * District arrival card: a full-screen title moment the first time a run
  * enters each district, over that district's painting.
  *
- * While it shows, a confirm press only dismisses it: the route beneath is
+ * While it shows, a confirm press that first dismisses it does only that: the route beneath is
  * hidden, so confirm may not commit anything the player cannot see (it used to
  * accept the default contract). The confirm key is taken in the window's
  * capture phase, before Phaser's keyboard sees it. Other keys and clicks
@@ -93,8 +93,11 @@ export function dressArrivalCard(route: Phaser.Scene) {
   let parts: ReturnType<typeof build> | undefined;
   const swallow = (event: KeyboardEvent) => {
     if (done || start === undefined) return;
+    // Only the press that first dismisses the card is held back; once the
+    // player has acknowledged it, later presses belong to the route.
+    const first = skipAt === undefined;
     skip(event);
-    if (controlActionForCode(event.code) !== 'confirm') return;
+    if (!first || controlActionForCode(event.code) !== 'confirm') return;
     event.stopPropagation();
     event.preventDefault();
   };
