@@ -1565,6 +1565,8 @@ export class RouteScene extends Phaser.Scene {
         setTextPacePreference(value);
         this.refreshRouteSystemOverlay();
       },
+      onSetFastModePreference: () => this.refreshRouteSystemOverlay(),
+      onSetRumblePreference: () => this.refreshRouteSystemOverlay(),
       onSetScreenReaderPreference: (value) => {
         setScreenReaderPreference(value);
         this.refreshRouteSystemOverlay();

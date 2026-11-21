@@ -3,6 +3,7 @@ import type { RuntimeImageAsset } from './runtime-images';
 import Phaser from 'phaser';
 import { birdAudio, GAME_WIDTH, motionState, combatPacingState } from '../main';
 import { controlBindingCode, controlPanelOwnsInput, matchesControlAction } from './input-bindings';
+import { fastModeEnabled } from './shared/preferences';
 
 import combatFxAtlasUrl from '../../assets/runtime/fx/combat-fx-atlas.webp';
 import combatCardBackUrl from '../../assets/runtime/fx/combat-card-back.webp';
@@ -537,7 +538,8 @@ class EnemyTurnAccelerationController {
   }
 
   state(): EnemyTurnAccelerationState {
-    const held = this.keyboardHeld || this.pointerHeld || this.gamepadHeld;
+    // Fast Mode is Hustle held for the whole turn; the readable minimum per beat still applies.
+    const held = this.keyboardHeld || this.pointerHeld || this.gamepadHeld || fastModeEnabled();
     const minimum = HUSTLE_MINIMUM_MS[this.beat] ?? Number.POSITIVE_INFINITY;
     return {
       available: this.available,

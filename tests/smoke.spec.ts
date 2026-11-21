@@ -15389,7 +15389,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
   }
   await clickNamedGameObject(page, 'MenuScene', 'system-settings-section-0-hit');
 
-  expect(settingsTargets).toHaveLength(25);
+  expect(settingsTargets).toHaveLength(27);
   expect(settingsTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   const settingsFooter = await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -17434,9 +17434,9 @@ test('grouped Settings isolate hidden controls and preserve focus and values acr
   await boot(page);
   const sections = [
     { label: 'Audio', rows: [0, 1, 2, 3, 4] },
-    { label: 'Presentation', rows: [8, 9, 10, 11] },
+    { label: 'Presentation', rows: [8, 9, 10, 11, 16] },
     { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15] },
-    { label: 'Controls', rows: [5] },
+    { label: 'Controls', rows: [5, 17] },
   ];
   const snapshot = () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text!());
@@ -17556,7 +17556,7 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   expect(beforeOpenListeners).toBe(1);
   expect(opened.listenerCount).toBe(2);
   expect(opened.focusRings).toBe(1);
-  expect(opened.rowTargets).toBe(16);
+  expect(opened.rowTargets).toBe(18);
   expect(opened.ring).toMatchObject({ index: 0, label: 'Audio' });
 
   const initialMusic = opened.state.audio.musicVolume;

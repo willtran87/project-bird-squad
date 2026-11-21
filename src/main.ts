@@ -36,6 +36,7 @@ import { buttonIconForLabel, collectionGoalSummary } from './game/shared/ui-icon
 import { activeMapIndex, activeSeed, buildOutcomeFlightDetailsFor, cardLibrary, currentCombatNodes, currentMap } from './game/shared/run-session';
 import { birdAudio } from './game/shared/bird-audio-director';
 import { setSpectacleReady } from './game/shared/spectacle-ready';
+import { fastModeState } from './game/shared/preferences';
 import { MenuScene } from './scenes/menu-scene';
 import { BootScene } from './scenes/boot-scene';
 import { RouteScene } from './scenes/route-scene';
@@ -77,6 +78,7 @@ declare global {
       music?: { pattern: string; active: boolean; step: number; pulses: number };
     };
     __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => boolean;
+    __birdSquadFastMode?: () => ReturnType<typeof fastModeState>;
   }
 }
 
@@ -221,6 +223,8 @@ window.__routeAudit = [
 ];
 
 window.__birdSquadAudio = () => birdAudio.snapshot();
+
+window.__birdSquadFastMode = () => fastModeState();
 
 window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: number, y: number) => {
   const scene = window.__birdSquadGame?.scene.getScene(sceneKey);

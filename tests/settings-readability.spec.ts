@@ -14,7 +14,7 @@ test('Settings explains every focused option and preserves readable geometry', a
     await page.setViewportSize(size); await settleCanvas(page);
     // Walk all rows without changing a preference; focus is preserved between sizes.
     const explanations = new Set<string>();
-    for (let index = 0; index < 16; index++) {
+    for (let index = 0; index < 18; index++) {
       const layout = await page.evaluate(() => {
         const s = (window as any).__birdSquadGame.scene.getScene('MenuScene');
         const objects = s.settingsOverlay.list.filter((o: any) => o.visible && o.active);
@@ -44,7 +44,7 @@ test('Settings explains every focused option and preserves readable geometry', a
       if (layout.focus.position === 1) await page.screenshot({ path: info.outputPath(`${layout.focus.section}-${size.width}.png`) });
       await page.keyboard.press('ArrowDown'); await settleCanvas(page);
     }
-    expect(explanations.size).toBe(16);
+    expect(explanations.size).toBe(18);
   }
   expect(errors).toEqual([]);
 });
@@ -75,7 +75,7 @@ test('Settings reports session-only changes and recovers persistence for every p
   });
   for (const blocked of [true, false]) {
     if (!blocked) await page.evaluate(() => (window as any).restoreSettingsStorage());
-    for (let index = 0; index < 16; index++) {
+    for (let index = 0; index < 18; index++) {
       const before = await inspect();
       if (before.focus.label === 'Controls') {
         await page.keyboard.press('Enter'); await settleCanvas(page);

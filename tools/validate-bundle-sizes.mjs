@@ -101,8 +101,10 @@ const combinedBootBudget = {
   // BattleScene (~267 KB with its combat-only imports) is now a lazy chunk:
   // a tiny loader holds its Scene Manager slot and boot fetches it beside the
   // title fonts (src/scenes/battle-scene-loader.ts). Was 702.8 KB; now 449.0 KB.
-  maxKb: 451,
-  targetKb: 450,
+  // +1.6 KB: Fast Mode / Rumble preferences (scene pace syncs at boot) and the
+  // context-aware rotate/too-small gate copy. Measured 450.6 KB.
+  maxKb: 452,
+  targetKb: 451,
 };
 
 if (!fs.existsSync(assetsDir)) {

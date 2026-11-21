@@ -5,8 +5,9 @@ import { controlPanelRegistryKey, controlPanelFocusRegistryKey, controlPanelPage
 import { screenShakeState, flashEffectsState } from '../visual-accessibility';
 import type { AnimationPace, CombatPace, MotionPreference, TextPace } from './runtime-types';
 import { COMBAT_INTRO_MIN_DISMISS_MS } from './fx-textures';
+import { FAST_MODE_TIME_SCALE, normalizeFastMode, normalizeRumble, type FastModePreference, type RumblePreference } from '../pace-rules';
 
-const SETTINGS_CONTROL_LABELS = ['Audio', 'Music', 'SFX', 'Card Voices', 'Ambience', 'Controls', 'Motion', 'Contrast', 'Effects', 'Combat Pace', 'Animation Pace', 'Text Pace', 'Screen Reader', 'Color Cues', 'Screen Shake', 'Flashes'] as const;
+const SETTINGS_CONTROL_LABELS = ['Audio', 'Music', 'SFX', 'Card Voices', 'Ambience', 'Controls', 'Motion', 'Contrast', 'Effects', 'Combat Pace', 'Animation Pace', 'Text Pace', 'Screen Reader', 'Color Cues', 'Screen Shake', 'Flashes', 'Fast Mode', 'Rumble'] as const;
 
 
 export function settingsFocusState(scene: Phaser.Scene, open: boolean) {
@@ -48,6 +49,10 @@ const COMBAT_PACE_STORAGE_KEY = 'birdsquad.combatPace';
 const ANIMATION_PACE_STORAGE_KEY = 'birdsquad.animationPace';
 
 const TEXT_PACE_STORAGE_KEY = 'birdsquad.textPace';
+
+const FAST_MODE_STORAGE_KEY = 'birdsquad.fastMode';
+
+const RUMBLE_STORAGE_KEY = 'birdsquad.rumble';
 
 
 function systemPrefersReducedMotion(): boolean {
@@ -113,16 +118,61 @@ export function animationPacePreference(): AnimationPace {
 }
 
 
-export function animationPaceTimeScale(preference = animationPacePreference()) {
-  if (preference === 'relaxed') return 0.8;
-  if (preference === 'fast') return 1.3;
-  return 1;
+/** Fast Mode multiplies every presentation clock (tweens, sprite animation,
+ *  retained actors, set pieces) and shortens combat pauses. It never touches
+ *  rules or the deterministic `advanceTime` clock, which still steps real ms. */
+export function fastModePreference(): FastModePreference {
+  if (typeof window === 'undefined') return 'off';
+  return normalizeFastMode(safeStorageGet(FAST_MODE_STORAGE_KEY));
+}
+
+
+export function fastModeEnabled() {
+  return fastModePreference() === 'on';
+}
+
+
+export function fastModeState() {
+  const enabled = fastModeEnabled();
+  return { preference: fastModePreference(), enabled, timeScale: enabled ? FAST_MODE_TIME_SCALE : 1 };
+}
+
+
+export function setFastModePreference(scene: Phaser.Scene | undefined, value: FastModePreference) {
+  if (typeof window !== 'undefined') safeStorageSet(FAST_MODE_STORAGE_KEY, value);
+  scene?.game.scene.getScenes(true).forEach(syncSceneAnimationPace);
+}
+
+
+/** Controller and touch vibration on big moments. Defaults on; Screen Shake off
+ *  (or Reduced Motion) keeps it silent too. */
+export function rumblePreference(): RumblePreference {
+  if (typeof window === 'undefined') return 'on';
+  return normalizeRumble(safeStorageGet(RUMBLE_STORAGE_KEY));
+}
+
+
+export function setRumblePreference(value: RumblePreference) {
+  if (typeof window !== 'undefined') safeStorageSet(RUMBLE_STORAGE_KEY, value);
+}
+
+
+export function rumbleState() {
+  const preference = rumblePreference();
+  const shake = currentScreenShakeState();
+  return { preference, enabled: preference === 'on' && shake.enabled, blockedByScreenShake: preference === 'on' && !shake.enabled };
+}
+
+
+export function animationPaceTimeScale(preference = animationPacePreference(), fast = fastModeEnabled()) {
+  const base = preference === 'relaxed' ? 0.8 : preference === 'fast' ? 1.3 : 1;
+  return fast ? base * FAST_MODE_TIME_SCALE : base;
 }
 
 
 export function animationPacingState(scene?: Phaser.Scene) {
   const preference = animationPacePreference();
-  const timeScale = animationPaceTimeScale(preference);
+  const timeScale = animationPaceTimeScale(preference, false) * (fastModeEnabled() ? FAST_MODE_TIME_SCALE : 1);
   return {
     preference,
     timeScale,

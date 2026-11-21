@@ -53,7 +53,9 @@ import type { ActiveCardContract, BattleSceneData, BossDossierModule, Card, Card
 import { isRunOutcome, LAZY_LOAD_FAILED, PLAYTEST_MODE } from '../game/shared/session-config';
 import { cardCoverOutcome, cardDamageOutcome, flockStateOf, hitWeight, intentCoverValue, moveDealsDamage } from '../game/combat-rules';
 import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
-import { animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
+import { fastModeDelay } from '../game/pace-rules';
+import { pulseHaptic } from '../game/haptics';
+import { fastModeEnabled, animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
 import { SceneAssetReadinessTracker } from '../game/shared/scene-asset-readiness';
 import { CARD_H, CARD_W, COMBAT_REDUCED_MOTION_MIN_DELAY_MS, COMBAT_REDUCED_MOTION_TIMING_SCALE, COMBAT_SNAPPY_MIN_DELAY_MS, COMBAT_SNAPPY_TIMING_SCALE, COMBAT_STANDARD_REPEAT_TIMING_SCALE, ENEMY_ATTACK_RECOVER_MS, ENEMY_ATTACK_WINDUP_MS, ENEMY_HP_BAR, ENEMY_TURN_PREAMBLE_MS, FLOCK_ART_X, FLOCK_ART_Y, FLOCK_FX_X, FLOCK_FX_Y, FLOCK_HP_BAR, FLOW_HUD_PIP_GAP, FLOW_HUD_PIP_OFFSET, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, GAME_HEIGHT, GAME_WIDTH, HAND_Y, HUD_MENU_PANEL, PLAYER_ATTACK_RESOLVE_DELAY_MS, PLAYER_CARD_FEEDBACK_SETTLE_MS, PLAYER_CARD_RESOLVE_DELAY_MS, PLAYER_TURN_HANDOFF_DELAY_MS } from '../game/shared/layout-constants';
 import { COMBAT_ACTION_TRAIL_TEXTURE, COMBAT_ATMOSPHERE_TEXTURE, COMBAT_CARD_BACK_TEXTURE, COMBAT_CAST_FOCUS_BURST_TEXTURE, COMBAT_ENCOUNTER_INTRO_TEXTURE, COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE, COMBAT_ENEMY_WINDUP_PLAQUE_TEXTURE, COMBAT_FX_PARTICLE_TEXTURE, COMBAT_FX_TEXTURE, COMBAT_TARGET_LOCK_PULSE_TEXTURE, COMBAT_TARGET_RETICLE_TEXTURE, COMBAT_WINGBEAT_SPEND_TEXTURE, SUIT_FX_ANIM } from '../game/shared/fx-textures';
@@ -3981,6 +3983,8 @@ private playBattleIntro(onComplete?: () => void) {
           setTextPacePreference(value);
           this.queueBattleSystemOverlayRender();
         },
+        onSetFastModePreference: () => this.queueBattleSystemOverlayRender(),
+        onSetRumblePreference: () => this.queueBattleSystemOverlayRender(),
         onSetScreenReaderPreference: (value) => {
           setScreenReaderPreference(value);
           this.queueBattleSystemOverlayRender();
@@ -6670,7 +6674,7 @@ private playBattleIntro(onComplete?: () => void) {
     const minimum = prefersReducedMotion()
       ? COMBAT_REDUCED_MOTION_MIN_DELAY_MS
       : paceScale < 1 ? COMBAT_SNAPPY_MIN_DELAY_MS : 0;
-    return Math.max(minimum, Math.round(ms * paceScale * reducedScale));
+    return fastModeDelay(Math.max(minimum, Math.round(ms * paceScale * reducedScale)), fastModeEnabled());
   }
 
   private enemyMovePacingKey(enemy: Enemy, move: EnemyMove) {
@@ -7198,6 +7202,7 @@ private playBattleIntro(onComplete?: () => void) {
           this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff9d6b, -1, weight >= 0.6);
           this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 10 + Math.round(weight * 10), 155);
           if (currentScreenShakeState().enabled) shakeCamera(this, 0.002 + 0.004 * weight);
+          if (weight >= 0.35) pulseHaptic(this, 'flockHit');
         }
       },
       healFlock: (value, source, overflowToCover = false) => this.healFlock(value, source, overflowToCover),
@@ -7502,6 +7507,7 @@ private playBattleIntro(onComplete?: () => void) {
     birdAudio.play('flock.formation', { state: now });
     if (now === 'surging') {
       this.statSurgesTriggered += 1;
+      pulseHaptic(this, 'surge');
       birdAudio.play('formation', 1.08);
       this.combatFormationShift(now, FLOCK_FX_X + 112, FLOCK_FX_Y - 92, 1);
       banner(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 64, 'Surge!', '#8df4ff', { fontFamily: TOKEN_DISPLAY_FONT });
@@ -7556,6 +7562,11 @@ private playBattleIntro(onComplete?: () => void) {
     enemy.hitThisTurn = true;
     this.statDealt += damage;
     if (enemy.hp <= 0) this.statDefeated += 1;
+    if (damage > 0) {
+      const finishing = enemy.hp <= 0 && this.enemies.every((other) => other.hp <= 0);
+      if (finishing) pulseHaptic(this, 'finishingBlow');
+      else if (enemy.hp <= 0 || hitWeight(damage, enemy.maxHp) >= 0.35) pulseHaptic(this, 'heavyHit');
+    }
     this.logEvent(`${source} hits ${enemy.name} for ${damage}${pierceCover ? ' through Cover' : ''}.`);
     const view = this.enemyView(enemy);
     const meta = suitFxMeta(card?.runtime.suit);
@@ -8356,6 +8367,7 @@ private playBattleIntro(onComplete?: () => void) {
         count: 4 + Math.round(weight * 8), speed: 80, lifespan: 240, scale: 0.3,
       });
       if (currentScreenShakeState().enabled) shakeCamera(this, 0.002 + 0.005 * weight);
+      if (weight >= 0.35) pulseHaptic(this, 'flockHit');
     } else {
       birdAudio.play('block');
       this.queueFlockMotion('brace');
