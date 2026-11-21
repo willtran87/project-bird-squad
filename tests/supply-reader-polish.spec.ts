@@ -20,6 +20,10 @@ for (const remapped of [false, true]) test(`Supply inspection is complete, reada
     w.__birdSquadGame.scene.start('RouteScene', {});
   });
   await page.waitForFunction(() => { const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'); return r.routeEssentialAssetsReady && r.cardHoverDetailModule; });
+  // A fresh run opens on the district arrival card; acknowledge it as a
+  // player would before opening a node, so the first Enter reaches the choice.
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').events.emit('spectacle-skip-arrival'));
+  await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('district-arrival-card'));
   await page.evaluate(() => {
     const w = window as any, r = w.__birdSquadGame.scene.getScene('RouteScene');
     r.openNodeChoices(w.__birdSquadCurrentMap().nodes.find((n: any) => n.type === 'basin'));
