@@ -16586,6 +16586,9 @@ test('reinforced color cues persist and add suit shapes plus labels to combat de
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).colorCues)
     .toEqual({ preference: 'standard', reinforced: false });
 
+  // Wrapping up from Audio now passes Rumble (row 17) before Controls and the
+  // Accessibility rows, so reaching this row takes one more ArrowUp.
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -16717,6 +16720,9 @@ test('screen shake setting persists and Reduced Motion suppresses combat camera 
       child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
+  // Wrapping up from Audio now passes Rumble (row 17) before Controls and the
+  // Accessibility rows, so reaching this row takes one more ArrowUp.
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -16813,6 +16819,9 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
       child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
+  // Wrapping up from Audio now passes Rumble (row 17) before Controls and the
+  // Accessibility rows, so reaching this row takes one more ArrowUp.
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => (
@@ -17293,8 +17302,9 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
   expect(initial.titleFocus).toMatchObject({
     current: 'primaryRun', previous: 'A', next: 'D', confirm: 'Space', ringRendered: true,
   });
+  // Daily Flight joined the title's bottom row as a focus target (engagement).
   expect(initial.titleFocus.order).toEqual([
-    'primaryRun', 'configure', 'howToPlay', 'settings', 'codex', 'profile',
+    'primaryRun', 'configure', 'howToPlay', 'settings', 'codex', 'profile', 'daily',
   ]);
 
   await page.keyboard.press('Tab');
@@ -17376,11 +17386,16 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
       leaderId: route.runState.leaderId,
       difficulty: route.runState.difficulty,
       runMode: route.runState.runMode,
-      confirmCues: routeState.audio.cueRequests.confirm ?? 0,
+      confirmCues: (routeState.audio.cueRequests.confirm ?? 0)
+        + (routeState.audio.events?.requests?.['ui.confirm'] ?? 0),
     };
   });
   expect(result).toMatchObject({ leaderId: 'spark_caller', difficulty: 1, runMode: 'quick' });
-  expect(result.confirmCues - (initial.audio.cueRequests.confirm ?? 0)).toBe(11);
+  // Activating the focused title control (Space on Flight setup, A on Start Run)
+  // now plays the typed ui.confirm event instead of the soft confirm click, so
+  // one cue per action is the sum of both counters.
+  const initialCues = (initial.audio.cueRequests.confirm ?? 0) + (initial.audio.events?.requests?.['ui.confirm'] ?? 0);
+  expect(result.confirmCues - initialCues).toBe(11);
 });
 
 test('title utility destinations are reachable by controller without starting a run', async ({ page }) => {
@@ -17699,9 +17714,10 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
 
   await page.keyboard.press('s');
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
+  // 18 rows since Fast Mode (Presentation) and Rumble (Controls) joined Settings.
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 16;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 18;
   }).toBe(true);
   await page.keyboard.press('PageUp');
   await expect.poll(async () => (await controlsSnapshot()).state.settingsFocus).toMatchObject({ index: 5, label: 'Controls' });
@@ -17795,7 +17811,7 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 16;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 18;
   }).toBe(true);
   await page.keyboard.press('PageUp');
   await page.keyboard.press('Enter');
@@ -22263,6 +22279,9 @@ test('outcome flight codes copy a shared route link that launches the same seed 
   expect(copied.feedback).toContain('LINK COPIED');
 
   await boot(page, `${copiedUrl.pathname}${copiedUrl.search}`);
+  // The title's first text snapshot is a minimal stand-in while the lazy menu
+  // debug module loads; wait for the full snapshot before reading sharedRoute.
+  await page.waitForFunction(() => 'settingsOpen' in JSON.parse(window.render_game_to_text?.() ?? '{}'));
   const launched = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const menuState = JSON.parse(window.render_game_to_text?.() ?? '{}');
