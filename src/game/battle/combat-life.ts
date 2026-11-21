@@ -613,14 +613,17 @@ export class CombatLife {
       color: '#ff9d8d', resolution: 2 }).setOrigin(0.5).setName('combat-boss-name-card-rank');
     if (name.width > 450) name.setScale(450 / name.width);
     const cam = scene.cameras.main, still = this.still, nameScale = name.scaleX;
+    // The camera push is camera movement, so it also follows Screen Shake
+    // (currentScreenShakeState is already off under Reduced Motion).
+    const push = !still && currentScreenShakeState().enabled;
     this.zoomPiece = this.play('boss-entrance', 1400, [band, name, sub], (t) => {
       const alpha = t < 0.15 ? t / 0.15 : t > 0.8 ? (1 - t) / 0.2 : 1;
       [band, name, sub].forEach(o => o.setAlpha(alpha));
       if (!still) {
         const slide = (1 - ease.cubicOut(Math.min(1, t * 5))) * 60;
         band.setX(x + slide); name.setX(x + slide * 0.8).setScale(nameScale); sub.setX(x + slide * 0.6);
-        cam.setZoom(1 + 0.03 * Math.sin(Math.PI * t));
       }
+      if (push) cam.setZoom(1 + 0.03 * Math.sin(Math.PI * t));
     }, () => { cam.setZoom(1); this.zoomPiece = undefined; });
   }
 
