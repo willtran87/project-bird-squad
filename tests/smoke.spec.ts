@@ -17183,7 +17183,11 @@ test('settings remain usable when browser preference storage is unavailable', as
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus.current
   ))).toBe('primaryRun');
-  await page.keyboard.press('c');
+  await page.keyboard.press('c'); // Start Run opens the leader choice
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').setupOpen
+  ))).toBe(true);
+  await page.keyboard.press('c'); // fly with the selected Leader
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').scene
   )), { timeout: 20_000 }).toBe('RouteScene');
@@ -17735,6 +17739,8 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(false);
 
   await boot(page);
+  // The first text snapshot after boot is a placeholder until the lazy menu debug module installs.
+  await expect.poll(async () => Boolean((await controlsSnapshot()).state.controls)).toBe(true);
   const persisted = await controlsSnapshot();
   expect(persisted.state.controls.customized).toBe(true);
   expect(persisted.state.controls.bindings.confirm.key).toBe('P');
@@ -17748,7 +17754,9 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
     await page.keyboard.press('ArrowDown');
   }
   await expect.poll(async () => (await controlsSnapshot()).state.titleFocus.current).toBe('primaryRun');
-  await page.keyboard.press('p');
+  await page.keyboard.press('p'); // Start Run opens the leader choice
+  await expect.poll(async () => (await controlsSnapshot()).state.setupOpen).toBe(true);
+  await page.keyboard.press('p'); // fly with the selected Leader
   await expect.poll(async () => (await controlsSnapshot()).state.scene, { timeout: 20_000 }).toBe('RouteScene');
   await expect.poll(async () => (await controlsSnapshot()).state.routeAssetsReady, { timeout: 20_000 }).toBe(true);
   await page.keyboard.press('c');
