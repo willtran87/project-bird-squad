@@ -20,7 +20,7 @@ import { hashSeed } from '../game/route-gen';
 import { flockHandTarget } from '../game/hand-size';
 import { type OpeningDrawState, prepareOpeningDraw, deterministicChance, deterministicRankedIds } from '../game/deterministic-draw';
 import type { RuntimeRouteMark, RuntimeSupply, EnemyMove, RouteNode } from '../game/types';
-import { floatingText, setFeedbackTextHoldScale, shakeCamera, banner, burst, strike, fadeRect } from '../game/fx';
+import { floatingText, setFeedbackTextHoldScale, shakeCamera, banner, burst, strike } from '../game/fx';
 import { getLeader, defaultLeaderId } from '../game/leaders';
 import { difficultyMods, applyAscensionOpeningIntents, advanceAscensionEnemyIntent, enemyHpMultFor } from '../game/difficulty';
 import { type recordRun, type CardCollectionRecord, loadAccount, leaderUnlockHints, achievements, discoverCards } from '../game/meta';
@@ -51,7 +51,7 @@ import { spendMoltPower } from '../game/molt-power';
 import type { BattleFxPresentationHost, BattleFxAnimationOptions, BattleFxMoteOptions } from '../game/battle/fx-presenter';
 import type { ActiveCardContract, BattleSceneData, BossDossierModule, Card, CardRewardEvent, CombatInputChoiceKind, CombatResultSummary, EncounterObjective, EncounterObjectiveProgress, EndTurnOptions, Enemy, EnemyMotionCue, EnemyMoveDamageSummary, EnemyTurnBeat, EnemyTurnProgress, Flock, FlockState, GameMode, InspectOverlay, NextCombatMods, PlayCardOptions, RenderPayload, RetainSource, RouteDecisionEvent, RunMode, RunState, RunSummary, SignalChoiceEvent, StartPlayerTurnOptions, SupplyFeedback, TextureVisibleBounds, WaymarkFeedback } from '../game/shared/runtime-types';
 import { isRunOutcome, LAZY_LOAD_FAILED, PLAYTEST_MODE } from '../game/shared/session-config';
-import { cardCoverOutcome, cardDamageOutcome, flockStateOf, intentCoverValue, moveDealsDamage } from '../game/combat-rules';
+import { cardCoverOutcome, cardDamageOutcome, flockStateOf, hitWeight, intentCoverValue, moveDealsDamage } from '../game/combat-rules';
 import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
 import { animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
 import { SceneAssetReadinessTracker } from '../game/shared/scene-asset-readiness';
@@ -914,6 +914,7 @@ export class BattleScene extends Phaser.Scene {
     ].slice(0, 4);
 
     this.presentTriggerFeedback(mark.name, summary, this.waymarkAccent(mark));
+    this.events.emit('waymark-fired', mark);
   }
 
   private presentTriggerFeedback(name: string, summary: string, accent: number) {
@@ -7193,9 +7194,10 @@ private playBattleIntro(onComplete?: () => void) {
         if (damage > 0) {
           this.queueFlockMotion('hit', damage);
           this.presentFlockResult(damage, ' damage', '#ff7a6e', source);
-          this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff9d6b, -1, damage >= 8);
-          this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
-          if (currentScreenShakeState().enabled) shakeCamera(this, 0.004);
+          const weight = hitWeight(damage, this.flock.maxHp);
+          this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff9d6b, -1, weight >= 0.6);
+          this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 10 + Math.round(weight * 10), 155);
+          if (currentScreenShakeState().enabled) shakeCamera(this, 0.002 + 0.004 * weight);
         }
       },
       healFlock: (value, source, overflowToCover = false) => this.healFlock(value, source, overflowToCover),
@@ -7556,7 +7558,6 @@ private playBattleIntro(onComplete?: () => void) {
     if (enemy.hp <= 0) this.statDefeated += 1;
     this.logEvent(`${source} hits ${enemy.name} for ${damage}${pierceCover ? ' through Cover' : ''}.`);
     const view = this.enemyView(enemy);
-    const bar = this.enemyHpBar(enemy);
     const meta = suitFxMeta(card?.runtime.suit);
     if (damage > 0) {
       birdAudio.play('hit.impact', { damage, maxHp: enemy.maxHp, lethal: enemy.hp <= 0, coverBroke: hadCover && enemy.block <= 0 });
@@ -7564,22 +7565,18 @@ private playBattleIntro(onComplete?: () => void) {
       birdAudio.play('hitConfirm', damage >= 8 ? 1.1 : 0.9);
       this.queueEnemyMotion(enemy.id, 'hit', damage);
       strike(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, view.x, view.y, meta.color);
-      this.combatPlayerHitConfirm(view.x, view.y - 18, meta.color, damage >= 8);
+      // Sparks and shake scale with the share of the target's maximum, not a fixed 8.
+      const weight = hitWeight(damage, enemy.maxHp);
+      this.combatPlayerHitConfirm(view.x, view.y - 18, meta.color, weight >= 0.6);
       this.presentNumberFeedback(view.x, view.y - 40, meta.hex, {
         target: enemy.id, kind: 'damage', source, amount: damage, suffix: ' damage', reducedMotion: prefersReducedMotion(),
       });
       this.fxMoteBurst(view.x, view.y - 18, meta.color, {
-        count: damage >= 8 ? 8 : 4, speed: damage >= 8 ? 95 : 65,
+        count: 4 + Math.round(weight * 8), speed: 65 + weight * 40,
         lifespan: 240, scale: 0.3,
       });
-      if (damage >= 8 && currentScreenShakeState().enabled) shakeCamera(this, 0.004);
-      if (enemy.hp > 0) {
-        // Drain the lost segment of the enemy HP bar.
-        const left = bar.x - bar.w / 2;
-        const xNew = left + bar.w * Math.max(0, enemy.hp / enemy.maxHp);
-        const xOld = left + bar.w * Math.min(1, (enemy.hp + damage) / enemy.maxHp);
-        fadeRect(this, this.fxLayer, (xNew + xOld) / 2, bar.y, xOld - xNew, bar.h - 6, 0xffd0c9);
-      }
+      if (weight >= 0.35 && currentScreenShakeState().enabled) shakeCamera(this, 0.002 + 0.004 * weight);
+      // The HP bar's drain and ghost trail belong to combat life (battle-life chunk).
     } else {
       birdAudio.play(hadCover || blocked > 0 ? 'coverBlock' : 'block', 0.84);
       this.presentNumberFeedback(view.x, view.y - 40, '#9fb1c4', {
@@ -8345,25 +8342,20 @@ private playBattleIntro(onComplete?: () => void) {
       birdAudio.play('hit.impact', { damage, maxHp: this.flock.maxHp, target: 'flock', coverBroke: blocked > 0 });
       birdAudio.play(damage >= 8 ? 'heavyAttack' : 'attack', damage >= 8 ? 1.18 : 0.92);
       this.queueFlockMotion('hit', damage);
-      const from = this.enemyView(enemy);
+      const from = this.enemyView(enemy), weight = hitWeight(damage, this.flock.maxHp), heavy = weight >= 0.6;
       strike(this, this.fxLayer, from.x, from.y, FLOCK_FX_X, FLOCK_FX_Y, 0xff7a6e);
-      this.combatEnemySwipe(from.x, from.y - 18, FLOCK_FX_X, FLOCK_FX_Y + 18, damage >= 8);
-      this.combatEnemyImpactContact(FLOCK_FX_X + 84, FLOCK_FX_Y + 18, from.x, damage >= 8);
-      if (damage >= 8 || enemy.runtime.type === 'boss' || enemy.runtime.type === 'elite') {
-        this.combatEnemyHeavyContact(FLOCK_FX_X + 78, FLOCK_FX_Y + 20, from.x, damage >= 10 ? 1.08 : 0.96);
+      this.combatEnemySwipe(from.x, from.y - 18, FLOCK_FX_X, FLOCK_FX_Y + 18, heavy);
+      this.combatEnemyImpactContact(FLOCK_FX_X + 84, FLOCK_FX_Y + 18, from.x, heavy);
+      if (heavy || enemy.runtime.type === 'boss' || enemy.runtime.type === 'elite') {
+        this.combatEnemyHeavyContact(FLOCK_FX_X + 78, FLOCK_FX_Y + 20, from.x, 0.96 + weight * 0.12);
       }
       this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#ff7a6e', {
         target: 'flock', kind: 'damage', source: `${enemy.id}:${moveLabel}`, amount: damage, suffix: ' damage', reducedMotion: prefersReducedMotion(),
       });
       this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, {
-        count: damage >= 8 ? 8 : 4, speed: 80, lifespan: 240, scale: 0.3,
+        count: 4 + Math.round(weight * 8), speed: 80, lifespan: 240, scale: 0.3,
       });
-      if (currentScreenShakeState().enabled) shakeCamera(this, 0.005);
-      // Drain the lost segment of the Cohesion bar.
-      const left = FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2;
-      const xNew = left + FLOCK_HP_BAR.w * Math.max(0, this.flock.hp / this.flock.maxHp);
-      const xOld = left + FLOCK_HP_BAR.w * Math.min(1, (this.flock.hp + damage) / this.flock.maxHp);
-      fadeRect(this, this.fxLayer, (xNew + xOld) / 2, FLOCK_HP_BAR.y, xOld - xNew, FLOCK_HP_BAR.h - 6, 0xffd0c9);
+      if (currentScreenShakeState().enabled) shakeCamera(this, 0.002 + 0.005 * weight);
     } else {
       birdAudio.play('block');
       this.queueFlockMotion('brace');

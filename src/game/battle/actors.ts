@@ -84,6 +84,10 @@ export interface BattleActor {
   /** What a replaced action was still showing; it eases out instead of snapping. */
   carry: ActorPose;
   breath?: ActorBreath;
+  /** Breathing clock: advances with `life.tempo`, so a Winded body slows without a phase jump. */
+  breathTime?: number;
+  /** Status life written by the combat-life chunk: droop (px), jitter (px) and breathing tempo. */
+  life?: { droop: number; jitter: number; tempo: number };
   tint?: ActorTint;
   node?: Phaser.GameObjects.Container;
   /** Returns false once the actor's objects have left play. */
@@ -127,6 +131,8 @@ export class BattleActorStage {
   lastHitStopFrames = 0;
   private last: number;
   private frozenUntil = 0;
+  private slowUntil = 0;
+  private slowRate = 1;
   private scene: Host;
 
   constructor(scene: Phaser.Scene) {
@@ -218,6 +224,16 @@ export class BattleActorStage {
   }
 
   get frozen() { return this.scene.time.now < this.frozenUntil; }
+
+  /** Slow the actor clock (a finishing blow) for `ms` of scene time. Game clocks keep running. */
+  slowMo(ms: number, rate = 0.35) {
+    if (this.still) return;
+    this.tick();
+    this.slowUntil = Math.max(this.slowUntil, this.scene.time.now + Phaser.Math.Clamp(ms, 0, 400));
+    this.slowRate = Phaser.Math.Clamp(rate, 0.1, 1);
+  }
+
+  get slowed() { return this.scene.time.now < this.slowUntil; }
 
   private acting(actor: BattleActor, name: string) {
     return actor.motions.some(running => running.motion.name === name && this.time - running.start < running.total);
@@ -313,7 +329,7 @@ export class BattleActorStage {
   tick() {
     const scene = this.scene, now = scene.time.now;
     const from = Math.max(this.last, this.frozenUntil);
-    const dt = scene.time.paused ? 0 : Math.max(0, now - from) * animationPaceTimeScale();
+    const dt = scene.time.paused ? 0 : Math.max(0, now - from) * animationPaceTimeScale() * (now < this.slowUntil ? this.slowRate : 1);
     // The manual test clock runs ahead of the real one; never wait for it.
     this.last = now;
     if (this.frozenUntil > now + 4 * FRAME_MS + 1) this.frozenUntil = now;
@@ -344,12 +360,18 @@ export class BattleActorStage {
           if (Math.abs(carry.x) + Math.abs(carry.y) + Math.abs(carry.angle) < 0.05) Object.assign(carry, none());
           pose.x += carry.x; pose.y += carry.y; pose.scaleX += carry.scaleX; pose.scaleY += carry.scaleY; pose.angle += carry.angle;
         }
-        const breath = actor.breath;
-        if (breath && this.time > breath.delay) {
-          const b = 0.5 - 0.5 * Math.cos(Math.PI * (this.time - breath.delay) / breath.period);
+        const breath = actor.breath, life = actor.life;
+        actor.breathTime = (actor.breathTime ?? this.time) + dt / Math.max(0.5, life?.tempo ?? 1);
+        if (breath && actor.breathTime > breath.delay) {
+          const b = 0.5 - 0.5 * Math.cos(Math.PI * (actor.breathTime - breath.delay) / breath.period);
           pose.y -= breath.anchor * breath.stretch * b;
           pose.scaleX -= breath.squeeze * b;
           pose.scaleY += breath.stretch * b;
+        }
+        if (life) {
+          pose.y += life.droop;
+          pose.angle += life.droop * 0.25 * this.towardFlock(actor);
+          if (life.jitter) pose.x += life.jitter * Math.sin(this.time * 0.061) * Math.sin(this.time * 0.023 + 1.3);
         }
       }
       this.apply(actor);
@@ -416,11 +438,11 @@ export class BattleActorStage {
   debugState() {
     this.tick();
     return {
-      time: this.time, frozen: this.frozen, hitStops: this.hitStops, lastHitStopFrames: this.lastHitStopFrames,
+      time: this.time, frozen: this.frozen, slowed: this.slowed, hitStops: this.hitStops, lastHitStopFrames: this.lastHitStopFrames,
       reducedMotion: this.still, hand: { ...this.hand, order: [...this.hand.order] },
       actors: [...this.actors.values()].map(actor => ({
         id: actor.id, kind: actor.kind, slot: { ...actor.slot }, pose: { ...actor.pose },
-        motions: actor.motions.map(running => running.motion.name),
+        motions: actor.motions.map(running => running.motion.name), life: actor.life && { ...actor.life },
       })),
     };
   }
