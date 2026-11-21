@@ -36,10 +36,12 @@ import { buttonIconForLabel, collectionGoalSummary } from './game/shared/ui-icon
 import { activeMapIndex, activeSeed, buildOutcomeFlightDetailsFor, cardLibrary, currentCombatNodes, currentMap } from './game/shared/run-session';
 import { birdAudio } from './game/shared/bird-audio-director';
 import { setSpectacleReady } from './game/shared/spectacle-ready';
+import { fastModeState } from './game/shared/preferences';
 import { MenuScene } from './scenes/menu-scene';
 import { BootScene } from './scenes/boot-scene';
 import { RouteScene } from './scenes/route-scene';
-import { BattleScene } from './scenes/battle-scene';
+import { BattleSceneLoader, ensureBattleScene } from './scenes/battle-scene-loader';
+import type { BattleScene } from './scenes/battle-scene';
 import { cardsFromSave, cloneCard, createInitialRunState, getMaxUnlockedTier, hasActiveRun, loadActiveRun, loadRunHistory, playtestRating, RUN_HISTORY_KEY, sanitizeActiveRun, sanitizedPlaytestFeedback, sanitizeRunHistory } from './game/shared/run-state';
 import { cardCompactArtAsset, cardLabel, compactCardArtKey, displayName, isAviaryCard, isSnagCard, loadedCardArtKey, renderSnagCardBorder } from './game/shared/card-presentation';
 import { flockStatuses, suitAccentColor, suitFxMeta } from './game/shared/combat-status';
@@ -76,6 +78,7 @@ declare global {
       music?: { pattern: string; active: boolean; step: number; pulses: number };
     };
     __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => boolean;
+    __birdSquadFastMode?: () => ReturnType<typeof fastModeState>;
   }
 }
 
@@ -167,7 +170,8 @@ const config: Phaser.Types.Core.GameConfig = {
     touch: true,
     gamepad: true
   },
-  scene: [BootScene, MenuScene, RouteScene, BattleScene]
+  // BattleScene's ~240 KB lives in its own chunk; the loader holds its slot.
+  scene: [BootScene, MenuScene, RouteScene, BattleSceneLoader]
 };
 
 
@@ -205,6 +209,7 @@ window.__birdSquadEnsureScene = async (sceneKey: string) => {
   if (!game) return false;
   if (sceneKey === 'CodexScene') registerCodexScene(game, await loadCodexSceneModule());
   if (sceneKey === 'ProfileScene') (await loadProfileSceneModule()).registerRuntimeProfileScene(game);
+  if (sceneKey === 'BattleScene') return ensureBattleScene(game);
   return Boolean(game.scene.getScene(sceneKey));
 };
 
@@ -219,6 +224,8 @@ window.__routeAudit = [
 
 window.__birdSquadAudio = () => birdAudio.snapshot();
 
+window.__birdSquadFastMode = () => fastModeState();
+
 window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: number, y: number) => {
   const scene = window.__birdSquadGame?.scene.getScene(sceneKey);
   if (scene) showKwTooltip(scene, keyword, x, y);
@@ -226,7 +233,8 @@ window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: nu
 };
 
 
-export { BattleScene, BATTLEFIELD_ASSETS, DEFAULT_BATTLEFIELD_ASSET, normalizeFlyway, memoryStorageSessionActive, difficultyMods, difficultyLabel, COMBAT_ATMOSPHERE_TEXTURE, isRunOutcome, firstMoltGuideState, OVEREXTENSION_CARD_THRESHOLD, RETAIN_PRIORITY_RULE, flockStatuses, currentMove, currentCombatNodes, TOKEN_DISPLAY_FONT, fitTextExcerpt, activeSeed, runMapIndices, runDistrictOrdinal, activeMapIndex, leaderMastery, defaultLeaderId };
+export type { BattleScene };
+export { BATTLEFIELD_ASSETS, DEFAULT_BATTLEFIELD_ASSET, normalizeFlyway, memoryStorageSessionActive, difficultyMods, difficultyLabel, COMBAT_ATMOSPHERE_TEXTURE, isRunOutcome, firstMoltGuideState, OVEREXTENSION_CARD_THRESHOLD, RETAIN_PRIORITY_RULE, flockStatuses, currentMove, currentCombatNodes, TOKEN_DISPLAY_FONT, fitTextExcerpt, activeSeed, runMapIndices, runDistrictOrdinal, activeMapIndex, leaderMastery, defaultLeaderId };
 
 
 export type { RenderPayload, UnifiedRunHudData, UiAdd };

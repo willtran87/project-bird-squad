@@ -101,6 +101,8 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
     onSetCombatPacePreference: update(setCombatPacePreference),
     onSetAnimationPacePreference: update(value => setAnimationPacePreference(scene, value)),
     onSetTextPacePreference: update(setTextPacePreference),
+    onSetFastModePreference: update(() => undefined),
+    onSetRumblePreference: update(() => undefined),
     onSetScreenReaderPreference: update(setScreenReaderPreference),
     onToggleFullscreen: () => scene.scale.toggleFullscreen(),
   });

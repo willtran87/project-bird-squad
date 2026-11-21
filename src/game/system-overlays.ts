@@ -40,6 +40,8 @@ import { bindActionFocus } from './action-focus';
 import type { UiIconId } from '../art-assets';
 import { overlayAmbience, overlayEntrance } from './spectacle/life/overlay-fx';
 import { birdAudio } from './shared/bird-audio-director';
+import { fastModePreference, rumbleState, setFastModePreference, setRumblePreference } from './shared/preferences';
+import { pulseHaptic } from './haptics';
 
 // Dim and soften: a slate wash mutes the scene's colour as well as its light.
 // A real blur is a full-screen shader pass; like bloom and grain it would have
@@ -58,7 +60,7 @@ type MotionPreference = 'full' | 'system' | 'reduced';
 type CombatPace = 'cinematic' | 'standard' | 'snappy';
 type AnimationPace = 'relaxed' | 'standard' | 'fast';
 type TextPace = 'relaxed' | 'standard' | 'fast';
-type SettingsRowKind = 'toggle' | 'slider' | 'motion' | 'contrast' | 'graphics' | 'pace' | 'animationPace' | 'textPace' | 'controls' | 'screenReader' | 'colorCues' | 'screenShake' | 'flashEffects';
+type SettingsRowKind = 'toggle' | 'slider' | 'motion' | 'contrast' | 'graphics' | 'pace' | 'animationPace' | 'textPace' | 'controls' | 'screenReader' | 'colorCues' | 'screenShake' | 'flashEffects' | 'fastMode' | 'rumble';
 type FieldFrame = {
   cx: number;
   cy: number;
@@ -89,6 +91,9 @@ export interface SettingsOverlayOptions {
   onSetCombatPacePreference: (value: CombatPace) => void;
   onSetAnimationPacePreference: (value: AnimationPace) => void;
   onSetTextPacePreference: (value: TextPace) => void;
+  /** Both re-render the overlay; the preference itself is stored here. */
+  onSetFastModePreference?: (value: 'off' | 'on') => void;
+  onSetRumblePreference?: (value: 'on' | 'off') => void;
   onSetScreenReaderPreference: (value: ScreenReaderPreference) => void;
   onToggleFullscreen: () => void;
 }
@@ -845,6 +850,8 @@ export function renderSettingsMenuOverlay(
   const animationPace = dependencies.animationPacePreference();
   const textPace = dependencies.textPacePreference();
   const screenReader = dependencies.screenReaderState();
+  const fastMode = fastModePreference();
+  const rumble = rumbleState();
   const rows: Array<[string, string, SettingsRowKind]> = [
     ['Audio', dependencies.audio.isMuted() ? 'Muted' : 'On', 'toggle'],
     ['Music', `${Math.round(audioSnapshot.musicVolume * 100)}%`, 'slider'],
@@ -862,10 +869,12 @@ export function renderSettingsMenuOverlay(
     ['Color Cues', colorCueLabel(colorCues.preference), 'colorCues'],
     ['Screen Shake', screenShakeLabel(screenShake), 'screenShake'],
     ['Flashes', flashEffectsLabel(flashEffects), 'flashEffects'],
+    ['Fast Mode', fastMode === 'on' ? 'On' : 'Off', 'fastMode'],
+    ['Rumble', rumble.preference === 'on' ? (rumble.enabled ? 'On' : 'Shake off') : 'Off', 'rumble'],
   ];
   const storageKeys = ['audioMuted', 'musicVolume', 'sfxVolume', 'voiceVolume', 'ambienceVolume',
     'controlBindings', 'motionPreference', 'visualContrast', 'graphicsQuality', 'combatPace',
-    'animationPace', 'textPace', 'screenReader', 'colorCues', 'screenShake', 'flashEffects'];
+    'animationPace', 'textPace', 'screenReader', 'colorCues', 'screenShake', 'flashEffects', 'fastMode', 'rumble'];
   const refreshSaveHint = () => {
     const failed = storageKeys.some(key => storageWriteFailed(`birdsquad.${key}`));
     applyHint.setText(failed ? 'Some settings are session-only. Change them again to retry saving.' : 'Changes apply immediately.')
@@ -893,9 +902,9 @@ export function renderSettingsMenuOverlay(
   const controlsRowIndex = rows.findIndex(([, , kind]) => kind === 'controls');
   const sections = [
     { label: 'Audio', rows: [0, 1, 2, 3, 4] },
-    { label: 'Presentation', rows: [8, 9, 10, 11] },
+    { label: 'Presentation', rows: [8, 9, 10, 11, 16] },
     { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15] },
-    { label: 'Controls', rows: [5] },
+    { label: 'Controls', rows: [5, 17] },
   ];
   const navigationOrder = sections.flatMap((section) => section.rows);
   const explanations = [
@@ -915,6 +924,8 @@ export function renderSettingsMenuOverlay(
     'Reinforced adds patterns and symbols so cues do not rely on color alone.',
     screenShake.reducedByMotion ? 'Reduced Motion keeps shake off. Your chosen preference resumes with Full Motion.' : 'Turn camera shake on or off. Reduced Motion always keeps it off.',
     flashEffects.reducedByMotion ? 'Reduced Motion limits flashes. Your chosen preference resumes with Full Motion.' : 'Reduce bright impact flashes without hiding the action result.',
+    'Speeds enemy turns, card motion and set pieces. Rules and results stay the same. Hold Hustle for a one-off boost.',
+    rumble.blockedByScreenShake ? 'Screen Shake is off, so controller and touch vibration stay off too.' : 'Controller and touch vibration on heavy hits, Surge and finishing blows.',
   ];
   const rowObjects: Phaser.GameObjects.GameObject[][] = rows.map(() => []);
   const sectionButtons: Phaser.GameObjects.Rectangle[] = [];
@@ -1016,6 +1027,20 @@ export function renderSettingsMenuOverlay(
     textPacePreference = value;
     options.onSetTextPacePreference(value);
   };
+  let fastModeValue = fastMode;
+  let rumbleValue = rumble.preference;
+  const setFastMode = (value: 'off' | 'on') => {
+    fastModeValue = value;
+    setFastModePreference(scene, value);
+    options.onSetFastModePreference?.(value);
+  };
+  const setRumble = (value: 'on' | 'off') => {
+    rumbleValue = value;
+    setRumblePreference(value);
+    // A short confirmation pulse so the player feels what they turned on.
+    if (value === 'on') pulseHaptic(scene, 'surge');
+    options.onSetRumblePreference?.(value);
+  };
   const setScreenReader = (value: ScreenReaderPreference) => {
     screenReaderPreference = value;
     options.onSetScreenReaderPreference(value);
@@ -1061,6 +1086,8 @@ export function renderSettingsMenuOverlay(
     else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, direction));
     else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, direction));
     else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, direction));
+    else if (kind === 'fastMode') setFastMode(adjacentValue(['off', 'on'] as const, fastModeValue, direction));
+    else if (kind === 'rumble') setRumble(adjacentValue(['on', 'off'] as const, rumbleValue, direction));
   };
   const activateFocused = () => {
     if (focusIndex === 0) {
@@ -1084,6 +1111,8 @@ export function renderSettingsMenuOverlay(
     else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, 1));
     else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
     else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
+    else if (kind === 'fastMode') setFastMode(adjacentValue(['off', 'on'] as const, fastModeValue, 1));
+    else if (kind === 'rumble') setRumble(adjacentValue(['on', 'off'] as const, rumbleValue, 1));
   };
   const addSettingsObject = addTo;
   rows.forEach(([label, value, kind], index) => {
@@ -1116,6 +1145,8 @@ export function renderSettingsMenuOverlay(
       else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, 1));
       else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
       else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
+      else if (kind === 'fastMode') setFastMode(adjacentValue(['off', 'on'] as const, fastModeValue, 1));
+      else if (kind === 'rumble') setRumble(adjacentValue(['on', 'off'] as const, rumbleValue, 1));
     });
     addUi(addTo, scene.add.text(cx - 238, y, label, {
       fontFamily: UI_FONT,
@@ -1229,6 +1260,8 @@ export function renderSettingsMenuOverlay(
           || (kind === 'colorCues' && colorCues.reinforced)
           || (kind === 'screenShake' && screenShake.enabled)
           || (kind === 'flashEffects' && flashEffects.reduced)
+          || (kind === 'fastMode' && fastMode === 'on')
+          || (kind === 'rumble' && rumble.enabled)
           ? 0x0b1723
           : undefined,
       }, dependencies);

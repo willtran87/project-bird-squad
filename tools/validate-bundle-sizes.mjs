@@ -32,7 +32,9 @@ const budgets = [
   { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
   { label: 'battle outcome scene lazy module', pattern: /^battle-outcome-scene-.*\.js$/, maxKb: 8, hard: true },
   { label: 'Flyway expansion lazy module', pattern: /^flyway-expansion-.*\.js$/, maxKb: 32, hard: true },
-  { label: 'app entry', pattern: /^index-.*\.js$/, maxKb: 700, targetKb: 675, hard: true },
+  { label: 'app entry', pattern: /^index-.*\.js$/, maxKb: 420, targetKb: 416, hard: true }, // BattleScene now lazy (was 675 KB)
+  // BattleScene and the combat-only modules it alone imports; fetched beside the title fonts.
+  { label: 'battle scene lazy module', pattern: /^battle-scene-.*\.js$/, maxKb: 272, hard: true },
   // Versioned route rhythm adds ~1 KiB; the total boot ceiling below is tighter.
   // 31.5: unlock bookkeeping now queues Collection ceremony reveals (tiny, boot-resident append).
   { label: 'game core', pattern: /^game-core-.*\.js$/, maxKb: 31.5, hard: true },
@@ -46,7 +48,7 @@ const budgets = [
   { label: 'district ambience beds lazy module', pattern: /^audio-ambience-.*\.js$/, maxKb: 6, hard: true },
   { label: 'battle FX presenter lazy module', pattern: /^fx-presenter-.*\.js$/, maxKb: 8, hard: true },
   { label: 'encounter intro lazy module', pattern: /^encounter-intro-.*\.js$/, maxKb: 4, hard: true },
-  { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },
+  { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10.25, hard: true }, // import renames once BattleScene left the entry chunk (10.02 KB)
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
   // +retained combatant bodies, slot-owned hit areas and the breathing envelope (was a tween module).
   { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 10.5, hard: true }, // +seats combat life (10.1 KB)
@@ -96,13 +98,13 @@ const budgets = [
 const combinedBootBudget = {
   label: 'combined app boot code',
   patterns: [/^index-.*\.js$/, /^game-core-.*\.js$/, /^interaction-rules-.*\.js$/],
-  // Raised from 700 KB: versioned save migration (~1.8 KB) and the enemy
-  // pattern engine are boot-critical (the title menu reads the checkpoint).
-  // The 700 KB target still warns. The real headroom fix is lazy-loading
-  // BattleScene (~246 KB of the index chunk); that needs the Playwright
-  // harness to stop calling scene.start('BattleScene') synchronously first.
-  maxKb: 708,
-  targetKb: 700,
+  // BattleScene (~267 KB with its combat-only imports) is now a lazy chunk:
+  // a tiny loader holds its Scene Manager slot and boot fetches it beside the
+  // title fonts (src/scenes/battle-scene-loader.ts). Was 702.8 KB; now 449.0 KB.
+  // +1.6 KB: Fast Mode / Rumble preferences (scene pace syncs at boot) and the
+  // context-aware rotate/too-small gate copy. Measured 450.6 KB.
+  maxKb: 452,
+  targetKb: 451,
 };
 
 if (!fs.existsSync(assetsDir)) {

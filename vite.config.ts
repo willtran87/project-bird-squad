@@ -69,6 +69,8 @@ export default defineConfig(({ command }) => ({
         manualChunks(id) {
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.endsWith('/src/main.ts')) return 'index';
+          // Combat is fetched beside the title fonts and swapped into its loader slot.
+          if (moduleId.endsWith('/src/scenes/battle-scene.ts')) return 'battle-scene';
           // The boot scenes, their shared helpers and the eager art manifest were
           // split out of main.ts; keep them in the entry chunk exactly as before.
           if (
