@@ -18230,6 +18230,7 @@ test('title How to Play overlay opens with quiet controls and stable guide actio
   expect(first).toMatchObject({ open: true, settings: false, decorations: 0, topics: 6 });
   expect(first.controls).toEqual([
     { label: 'Close', width: 104, height: 58 },
+    { label: 'Key terms', width: 180, height: 58 },
     { label: expect.stringMatching(/^(Skip|Replay) Guide$/), width: 190, height: 58 },
     { label: 'Practice lessons', width: 230, height: 58 },
   ]);
