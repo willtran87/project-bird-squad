@@ -430,3 +430,20 @@ scene gained the same four names and a `cardId` on its reward art.
 Not covered: keyboard and controller shortcuts that call an action directly
 rather than through the button still play the soft click; buttons built
 outside `quietButton` (the Codex grid, the title rows) are unchanged.
+
+Chunks (all lazy, budgets added): `reward-reveal` 7.2 KB, `scene-loading`
+2.9 KB, `barks` 15.8 KB, `world-glyphs` 6.7 KB, `ui-panel` 2.3 KB.
+`scene-life` stays at 28.2 of 30 KB. Boot code 702.8 to 704.0 of 708 KB: the
+button cue classifier, the `quietButton` hook and the readiness names.
+`debug-state` budget 10 to 10.25 KB for import-rename drift (10.02 KB).
+
+Checks: `tests/presentation-polish.spec.ts` (11 tests) and unit files for
+the button cue, tarot rules, reveal timeline, panel layout and bark rules.
+No existing assertion was changed. The opening barks wait 0.7 s after the
+intro clears: placing a tag at that instant delayed the opening deal and
+failed `card-objects` ("dealt ... only once"). `reward-checkpoint` (boss
+reward resume, four tests) and `route-decision-polish` (Details, two tests)
+fail identically on the base commit `0d58b2ee` without these changes.
+
+Not verified: human play, real GPUs, WebKit and Firefox, physical touch and
+controllers, and whether `ui.confirm` on every commit reads well by ear.
