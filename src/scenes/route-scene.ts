@@ -1082,9 +1082,9 @@ export class RouteScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020711, 0.76)
       .setInteractive({ useHandCursor: false });
     this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 38, 34, 0x07131d, 0.96)
-      .setStrokeStyle(3, UI_FIELD.cyan, 0.88);
+      .setStrokeStyle(3, UI_FIELD.cyan, 0.88).setName('scene-readiness-mark');
     this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 38, 15, UI_FIELD.gold, 0.9)
-      .setStrokeStyle(2, 0x07131d, 0.9);
+      .setStrokeStyle(2, 0x07131d, 0.9).setName('scene-readiness-mark');
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 22, 'Charting the route...', {
       fontFamily: TOKEN_DISPLAY_FONT,
       fontSize: '28px',
@@ -1092,12 +1092,12 @@ export class RouteScene extends Phaser.Scene {
       color: UI_GOLD,
       stroke: '#000000',
       strokeThickness: 4
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setName('scene-readiness-title');
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 62, `Reading ${currentMap().name}, safe roosts, and the next crossing.`, {
       fontFamily: UI_FONT,
       fontSize: '14px',
       color: UI_CYAN
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setName('scene-readiness-detail');
   }
 
   private togglePauseOverlay() {
@@ -3477,10 +3477,10 @@ export class RouteScene extends Phaser.Scene {
   }
 
   private renderRouteRewardCardOption(card: Card, x: number, y: number, cardW: number, cardH: number, accent: number) {
-    this.add.rectangle(x + 6, y + 8, cardW, cardH, 0x020409, 0.72);
+    this.add.rectangle(x + 6, y + 8, cardW, cardH, 0x020409, 0.72).setData('cardId', card.id);
     const key = compactCardArtKey(card);
     if (key && this.textures.exists(key)) {
-      this.add.image(x, y, key).setDisplaySize(cardW, cardH);
+      this.add.image(x, y, key).setDisplaySize(cardW, cardH).setData('cardId', card.id);
       return;
     }
     if (renderSnagCardBorder(this, undefined, card, x, y, cardW, cardH, 1)) {
