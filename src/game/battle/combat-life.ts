@@ -181,7 +181,7 @@ export class CombatLife {
       this.flockNode.add(icon);
       x += 15;
       if (badge.stacks !== undefined) {
-        const stack = scene.add.text(x, 228, `${badge.stacks}`, { fontFamily: UI_FONT, fontSize: '17px',
+        const stack = scene.add.text(x, 228, `${badge.stacks}`, { fontFamily: UI_FONT, fontSize: '18px',
           fontStyle: 'bold', color: '#eef6fb', stroke: '#071019', strokeThickness: 3, resolution: 2 })
           .setOrigin(0, 0.5).setName('combat-flock-status-stack').setData('label', badge.label);
         this.flockNode.add(stack);
@@ -433,10 +433,10 @@ export class CombatLife {
     if (!this.combo?.active) {
       this.combo = scene.add.container(88, 398).setName('combat-combo-counter');
       this.combo.add([
-        scene.add.rectangle(0, 0, 118, 36, 0x071019, 0.94).setName('combat-combo-frame'),
-        scene.add.text(-48, 0, 'CHAIN', { fontFamily: UI_FONT, fontSize: '14px', fontStyle: 'bold', color: '#aabcc8', resolution: 2 })
+        scene.add.rectangle(0, 0, 128, 36, 0x071019, 0.94).setName('combat-combo-frame'),
+        scene.add.text(-54, 0, 'CHAIN', { fontFamily: UI_FONT, fontSize: '18px', fontStyle: 'bold', color: '#aabcc8', resolution: 2 })
           .setOrigin(0, 0.5).setName('combat-combo-label'),
-        scene.add.text(48, 0, '', { fontFamily: UI_FONT, fontSize: '22px', fontStyle: 'bold', color: '#ffffff', resolution: 2 })
+        scene.add.text(54, 0, '', { fontFamily: UI_FONT, fontSize: '22px', fontStyle: 'bold', color: '#ffffff', resolution: 2 })
           .setOrigin(1, 0.5).setName('combat-combo-value'),
       ]);
       this.top.add(this.combo);
@@ -607,9 +607,9 @@ export class CombatLife {
     const scene = this.scene, w = scene.scale.width;
     const x = w / 2, y = 172;
     const band = scene.add.rectangle(x, y, 480, 64, 0x070b12, 0.92).setStrokeStyle(2, 0xff6f6f, 0.8).setName('combat-boss-name-card');
-    const name = scene.add.text(x, y - 8, String(boss.name).toUpperCase(), { fontFamily: UI_FONT, fontSize: '26px',
+    const name = scene.add.text(x, y - 10, String(boss.name).toUpperCase(), { fontFamily: UI_FONT, fontSize: '26px',
       fontStyle: 'bold', color: '#ffe1a3', resolution: 2 }).setOrigin(0.5).setName('combat-boss-name-card-title');
-    const sub = scene.add.text(x, y + 19, 'BOSS', { fontFamily: UI_FONT, fontSize: '15px', fontStyle: 'bold',
+    const sub = scene.add.text(x, y + 18, 'BOSS', { fontFamily: UI_FONT, fontSize: '18px', fontStyle: 'bold',
       color: '#ff9d8d', resolution: 2 }).setOrigin(0.5).setName('combat-boss-name-card-rank');
     if (name.width > 450) name.setScale(450 / name.width);
     const cam = scene.cameras.main, still = this.still, nameScale = name.scaleX;
