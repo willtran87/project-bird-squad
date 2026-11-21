@@ -5151,6 +5151,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
       handAfter: state.hand.length,
       drawAfter: state.drawPile,
       combatCardDraw: state.combatCardDraw,
+      cardObjects: Boolean(scene.cardObjects),
       transfers: scene.fxLayer.list.filter((child: any) => child.name === 'combat-pile-transfer').map((child: any) => child.getData('kind')),
     };
   });
@@ -5172,6 +5173,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
       handAfter: state.hand.length,
       discardAfter: state.discardPile,
       combatDiscardSweep: state.combatDiscardSweep,
+      cardObjects: Boolean(scene.cardObjects),
       transfers: scene.fxLayer.list.filter((child: any) => child.name === 'combat-pile-transfer').map((child: any) => child.getData('kind')),
     };
   });
@@ -5196,6 +5198,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
       drawAfter: state.drawPile,
       discardAfter: state.discardPile,
       combatShuffleVortex: state.combatShuffleVortex,
+      cardObjects: Boolean(scene.cardObjects),
       transfers: scene.fxLayer.list.filter((child: any) => child.name === 'combat-pile-transfer').map((child: any) => child.getData('kind')),
     };
   });
@@ -5608,7 +5611,9 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(cardDrawResult.combatCardDraw.rendered).toBe(false);
   expect(cardDrawResult.combatCardDraw.count).toBe(0);
   expect(cardDrawResult.combatCardDraw.bursts).toBe(0);
-  expect(cardDrawResult.transfers).toEqual(['draw']);
+  // Once the card-object stage is up the drawn card itself flies in; the
+  // stand-in card back remains only as the fallback before it has loaded.
+  expect(cardDrawResult.transfers).toEqual(cardDrawResult.cardObjects ? [] : ['draw']);
   expect(discardSweepResult.handBefore).toBeGreaterThanOrEqual(1);
   expect(discardSweepResult.discarded).toBe(1);
   expect(discardSweepResult.handAfter).toBe(discardSweepResult.handBefore - 1);
@@ -5617,7 +5622,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(discardSweepResult.combatDiscardSweep.rendered).toBe(false);
   expect(discardSweepResult.combatDiscardSweep.count).toBe(0);
   expect(discardSweepResult.combatDiscardSweep.bursts).toBe(0);
-  expect(discardSweepResult.transfers).toEqual(['discard']);
+  expect(discardSweepResult.transfers).toEqual(discardSweepResult.cardObjects ? [] : ['discard']);
   expect(shuffleVortexResult.discardBefore).toBe(2);
   expect(shuffleVortexResult.handAfter).toBe(shuffleVortexResult.handBefore + 1);
   expect(shuffleVortexResult.drawAfter).toBe(1);
@@ -5626,7 +5631,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(shuffleVortexResult.combatShuffleVortex.rendered).toBe(false);
   expect(shuffleVortexResult.combatShuffleVortex.count).toBe(0);
   expect(shuffleVortexResult.combatShuffleVortex.bursts).toBe(0);
-  expect(shuffleVortexResult.transfers).toEqual(['shuffle', 'draw']);
+  expect(shuffleVortexResult.transfers).toEqual(shuffleVortexResult.cardObjects ? ['shuffle'] : ['shuffle', 'draw']);
   expect(ruffledBreakResult.statuses).toContain('Ruffled 2');
   expect(ruffledBreakResult.combatRuffledBreak.loaded).toBe(true);
   expect(ruffledBreakResult.combatRuffledBreak.rendered).toBe(true);

@@ -38,6 +38,8 @@ const cubicIn: Ease = t => t * t * t;
 const cubicOut: Ease = t => 1 - (1 - t) ** 3;
 const sineInOut: Ease = t => 0.5 - 0.5 * Math.cos(Math.PI * t);
 const backOut: Ease = t => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2;
+/** Shared easings, so card motions authored elsewhere match the bodies. */
+export const ACTOR_EASE = { linear, quadOut, cubicIn, cubicOut, sineInOut, backOut };
 
 /** [duration ms, x, y, scaleX delta, scaleY delta, angle°, ease]. Each key
  * eases from the previous key; a motion starts from zero. */
@@ -54,6 +56,10 @@ export interface ActorMotion {
   flash?: number;
   /** Decaying judder in pixels. Follows Screen Shake. */
   shake?: number;
+  /** Start values [x, y, scaleX delta, scaleY delta, angle°]; default zero. */
+  from?: [number, number, number, number, number];
+  /** Hold at `from` for this long before the first key (a dealt card's stagger). */
+  delay?: number;
 }
 
 interface RunningMotion { motion: ActorMotion; start: number; total: number }
@@ -112,7 +118,9 @@ type Host = Phaser.Scene & Record<string, any>;
 export class BattleActorStage {
   readonly actors = new Map<string, BattleActor>();
   /** Hand order, hover and selection drive the fan. */
-  readonly hand: { order: string[]; hovered?: string; selected?: string } = { order: [] };
+  readonly hand: { order: string[]; hovered?: string; selected?: string;
+    /** A card being dragged: its drawn offset from the slot. The slot never moves. */
+    dragged?: { id: string; x: number; y: number; tilt: number } } = { order: [] };
   /** Animation clock in milliseconds. */
   time = 0;
   hitStops = 0;
@@ -196,7 +204,7 @@ export class BattleActorStage {
       });
       actor.carry.flash = 0;
     }
-    actor.motions.push({ motion, start: this.time, total: motion.keys.reduce((sum, key) => sum + key[0], 0) });
+    actor.motions.push({ motion, start: this.time, total: motion.keys.reduce((sum, key) => sum + key[0], motion.delay ?? 0) });
   }
 
   /** Freeze every actor for a few frames on contact. Game clocks keep running. */
@@ -350,9 +358,10 @@ export class BattleActorStage {
 
   /** Adds one motion's contribution. Returns false once it has finished. */
   private sample(running: RunningMotion, pose: ActorPose) {
-    const { motion } = running, elapsed = this.time - running.start;
-    if (elapsed >= running.total && !motion.hold) return false;
-    let x = 0, y = 0, sx = 0, sy = 0, angle = 0, at = 0;
+    const { motion } = running, raw = this.time - running.start;
+    if (raw >= running.total && !motion.hold) return false;
+    const elapsed = Math.max(0, raw - (motion.delay ?? 0));
+    let [x, y, sx, sy, angle] = motion.from ?? [0, 0, 0, 0, 0], at = 0;
     for (const key of motion.keys) {
       const t = Phaser.Math.Clamp((elapsed - at) / Math.max(1, key[0]), 0, 1), e = (key[6] ?? linear)(t);
       x += (key[1] - x) * e; y += (key[2] - y) * e; sx += (key[3] - sx) * e; sy += (key[4] - sy) * e; angle += (key[5] - angle) * e;
@@ -379,15 +388,16 @@ export class BattleActorStage {
   /** The hand fans gently; the hovered card lifts and straightens while its
    * neighbours part, and the selected card stays raised. */
   private layoutHand() {
-    const { order, hovered, selected } = this.hand, middle = (order.length - 1) / 2;
-    const focus = hovered ? order.indexOf(hovered) : -1;
+    const { order, hovered, selected, dragged } = this.hand, middle = (order.length - 1) / 2;
+    const focus = hovered && !dragged ? order.indexOf(hovered) : -1;
     order.forEach((id, index) => {
       const rest = this.actors.get(`card:${id}`)?.rest;
       if (!rest) return;
       const u = index - middle;
       rest.x = 0; rest.y = u * u * FAN_DROP; rest.angle = u * FAN_TILT; rest.scale = 1;
       if (id === selected) { rest.y = -8; rest.angle = 0; }
-      if (index === focus) { rest.y = -14; rest.angle = 0; rest.scale = 1.04; }
+      if (id === dragged?.id) { rest.x = dragged.x; rest.y = dragged.y; rest.angle = dragged.tilt; rest.scale = 0.6; }
+      else if (index === focus) { rest.y = -14; rest.angle = 0; rest.scale = 1.04; }
       else if (focus >= 0) {
         const gap = index - focus;
         rest.x = (Math.sign(gap) * 9) / Math.abs(gap);
@@ -463,4 +473,13 @@ export function attachCardBody(stage: BattleActorStage, id: string, objects: Pha
     }
   }
   return actor;
+}
+
+const DETACHED = { pose: identity(), slot: { x: 0, y: 0 } } as BattleActor;
+/** Hand a card's objects back to ordinary rendering: a card leaving the hand
+ * travels in its own container. Returns the pose it was last drawn with. */
+export function releaseCardBody(stage: BattleActorStage, id: string, objects: Phaser.GameObjects.GameObject[]) {
+  const actor = stage.actors.get(`card:${id}`);
+  for (const object of objects as Array<Phaser.GameObjects.GameObject & Record<string, any>>) if (object[BODY]) object[BODY] = DETACHED;
+  return actor ? { ...actor.pose } : identity();
 }

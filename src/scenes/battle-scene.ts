@@ -237,6 +237,7 @@ export class BattleScene extends Phaser.Scene {
   // Retained combatants and hand cards (game/battle/actors.ts). The stage is
   // created by the lazy renderers; the scene only announces what happened.
   battleActors?: import('../game/battle/actors').BattleActorStage;
+  cardObjects?: import('../game/battle/card-objects').CardObjectStage;
   private enemyPoseGroups = new Map<string, { group: Phaser.GameObjects.Container; enemy: Enemy; scale: number }>();
   private enemyTurnBeatUi?: Phaser.GameObjects.Container;
   private enemyTextureBoundsCache = new Map<string, TextureVisibleBounds>();
@@ -5278,7 +5279,7 @@ private playBattleIntro(onComplete?: () => void) {
       preview.alternateText = inspected.alternateText;
     }
     const render = this.battleHandRendererModule?.renderCombatCardDetail ?? reader!;
-    this.combatCardDetail = render(this.combatReaderContext(), preview);
+    this.combatCardDetail = render(this.combatReaderContext(), preview, card);
   }
 
   private combatReaderContext() {
@@ -6829,6 +6830,7 @@ private playBattleIntro(onComplete?: () => void) {
     const missing = this.effectiveCost(card) - this.energy;
     const summary = reason ?? `Needs ${missing} more Wingbeat${missing === 1 ? '' : 's'}.`;
     const notice = this.fxLayer?.getByName('combat-action-rejection');
+    this.cardObjects?.deny(card.instanceId);
     if (notice?.getData('source') === displayName(card) && notice.getData('summary') === summary) return;
     announceScreenReader(`${displayName(card)}. ${summary}`);
     playUiSound('locked');
@@ -7037,6 +7039,7 @@ private playBattleIntro(onComplete?: () => void) {
       this.discardPile.push(playedCard);
       this.animateDiscard(1, this.handCardLeft(handIndexBeforePlay, handSizeBeforePlay) + CARD_W / 2, HAND_Y, 0.82);
     }
+    this.cardObjects?.settle(playedCard, outcome.exhaustSelf ? 'exhaust' : outcome.returnSelfToDraw ? 'draw' : 'discard');
     this.observeCardEffect('plays', 1);
     this.combatFxModule?.presentCardPayoff(this, playedCard, this.cardContributions.find(row => row.cardId === playedCard.id), this.cardContributionStart);
     this.cardContributionStart = undefined;
@@ -8943,6 +8946,8 @@ private playBattleIntro(onComplete?: () => void) {
   private animateDraw(count: number, _afterShuffle = false) {
     if (!this.fxLayer?.active || count <= 0) return;
     birdAudio.play('draw', Math.min(1.25, 0.72 + count * 0.08));
+    // The drawn cards themselves fly in once the card-object stage is up.
+    if (this.cardObjects?.deal(this.hand.slice(-count).map(card => card.instanceId))) return;
     // Three representative transfers, not an unbounded stagger over a hand
     // that is already usable. Counts and actual card order remain authoritative.
     const shown = Math.min(3, count, this.hand.length);
@@ -8954,6 +8959,7 @@ private playBattleIntro(onComplete?: () => void) {
   private animateDiscard(count: number, fromX = GAME_WIDTH - 330, fromY = HAND_Y - 20, _scale = 1) {
     if (!this.fxLayer?.active || count <= 0) return;
     birdAudio.play('discard', Math.min(1.25, 0.68 + count * 0.08));
+    if (this.cardObjects) return; // the cards themselves travel to the pile
     for (let i = 0; i < Math.min(3, count); i += 1) {
       this.animatePileCard({ x: fromX - i * 12, y: fromY }, this.discardPilePos(), 'discard', i * 20);
     }
@@ -8967,7 +8973,7 @@ private playBattleIntro(onComplete?: () => void) {
 
   private animateReturnCard(instanceId: string) {
     const index = this.hand.findIndex(card => card.instanceId === instanceId);
-    if (index >= 0) this.animatePileCard(this.discardPilePos(), { x: this.handSlotCenterX(index), y: HAND_Y }, 'return');
+    if (index >= 0 && !this.cardObjects?.deal([instanceId], this.discardPilePos())) this.animatePileCard(this.discardPilePos(), { x: this.handSlotCenterX(index), y: HAND_Y }, 'return');
   }
 
 

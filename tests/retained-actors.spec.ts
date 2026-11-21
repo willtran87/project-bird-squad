@@ -31,6 +31,9 @@ async function openBattle(page: Page, storage: Record<string, string> = {}) {
     return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active && !s.combatAnimationPending
       && b.battleActors && b.battleHandRendererModule && b.handCardRects.size === b.hand.length && !b.battleRenderQueued;
   });
+  // The opening hand is now dealt in from the draw pile once the intro clears
+  // (card-objects.spec.ts); let it land so every check here starts from rest.
+  await page.evaluate(() => (window as any).advanceTime(900));
   return errors;
 }
 

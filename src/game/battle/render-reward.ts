@@ -5,6 +5,7 @@ import { renderCardColorCue } from '../card-color-cues';
 import { UI_TYPE } from '../theme';
 import { renderFocusedBuildRead, renderRewardInspectButton, renderRewardSkipCommand, renderWaymarkRewardChoice as renderWaymark } from '../reward-card-inspection';
 import { boundedRewardText, renderRewardCardFace, rewardDecisionPreviewLabel } from './reward-card-face';
+import { addRarityFrame, rarityOfCard } from './card-objects';
 
 export type RewardCeremonyKind = 'card' | 'upgrade' | 'waymark';
 export type RewardNeedRank = 'low' | 'steady' | 'strong';
@@ -310,6 +311,8 @@ function renderCard(
   target.add(glow.objects);
   target.add(scene.add.rectangle(x + 8, y + 10, cardWidth, cardHeight, 0x020409, 0.42));
   target.add(hit);
+  // The same rarity frame as the hand: a reward's rarity reads before its rules.
+  target.add(addRarityFrame(scene, x, y, cardWidth, cardHeight, rarityOfCard(card.id), { name: 'reward-card-rarity', phase: Math.round(x / 280) }));
   if (card.focused) {
     target.add(scene.add.rectangle(x, y, cardWidth + 14, cardHeight + 8, 0x000000, 0)
       .setStrokeStyle(3, card.armed ? 0xd8a840 : 0x8df4ff, 1)

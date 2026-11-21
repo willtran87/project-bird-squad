@@ -339,6 +339,9 @@ How each kind is retained:
 | Flock body | `flock` | `combat-leader-art` container | same | `combat-leader-hit`, a slot rectangle in `root` |
 | Hand card | `card:<instance id>` | the card's flat objects in `handLayer` | `attachCardBody` multiplies the pose into the parent matrix while each object is drawn | the card's own rectangle (`handCardRects`), never moved |
 
+A hand card that leaves the hand for a pile is released from its actor and
+travels as an ordinary container; see Cards as objects below.
+
 - Combatant bodies are parked by `parkBattleActors(root)` just before the
   immediate layer is cleared and re-seated in draw order by
   `renderBattleForeground`. A body is refilled only when its art signature
@@ -379,6 +382,66 @@ status panels, contact shadows, the target reticle and guide, the selection
 preview, hand pager and all overlays and ceremonies. The hand's compact
 fallback renderer (used when the lazy renderer fails) is neither retained nor
 animated.
+
+### Cards as objects
+
+`src/game/battle/card-objects.ts` (lazy chunk `battle-card-objects`, with the
+pure rules in `card-object-rules.ts`) owns what a card does when it is not
+sitting in its slot. One `CardObjectStage` per scene, reached through
+`cardObjects(scene)` or `scene.cardObjects`; it is created by the first hand
+render, so the scene always calls it as `this.cardObjects?.…` and keeps the old
+card-back transfers as the fallback. It decides nothing: every play goes
+through `onCardClicked` / `onEnemyClicked`, and no logical slot is written.
+
+| Moment | What moves | Where | Driven by |
+| --- | --- | --- | --- |
+| Play | `combat-card-cast-ghost`, a small illustrated card, thrown from the hand card's drawn position to its target | `fxLayer` (as before) | one scene tween that ends with the existing resolve delay |
+| After landing | `combat-card-departing` (`played`), the same small card, to the discard pile, the draw pile, or burned | the stage's own layer `combat-card-objects` (depth 31) | scene tweens |
+| Draw, and the opening hand once the intro clears | the hand card itself, from the draw pile to its slot, staggered | `handLayer`, as a `deal` actor motion | the actor clock |
+| Discard, end of turn | the hand card's own objects, re-parented into one `combat-card-departing` body | `combat-card-objects` | scene tweens |
+| Cleared for the combat | the same body, burned in place (`combat-card-burn-*`) | `combat-card-objects` | scene tweens |
+| Drag | the hand card, through `stage.hand.dragged` | `handLayer` | the actor clock |
+| Refusal | the hand card, a `deny` react motion | `handLayer` | the actor clock |
+
+- **Landing targets:** an enemy for `enemy`, the middle of the living enemies
+  for `allEnemies`, the flock for `self`, stage centre for `none` and `choice`.
+  The arc's control point keeps the card's top edge below the top bar.
+- **Timing is unchanged.** The ghost is still destroyed at the resolve delay;
+  the trip to a pile happens in a layer the player-card FX window does not
+  retire, and nothing waits for it.
+- **Pile counters** show `stage.shownPileCount(pile)` while cards are in the
+  air: a dealt card stays counted until it leaves the draw pile, a discard is
+  counted when it arrives. `render_game_to_text` still reports the real piles.
+- **Drag to play** arms on the press that selected a playable card
+  (`armDrag`, called by the hand renderer after `onCardClick`). After 14 px of
+  travel the card follows the pointer. Release over a valid target calls the
+  same handler a second click would; release anywhere else returns the card and
+  clears the selection that press made. A synthetic `pointerdown` without a
+  held pointer never arms a drag. Under Reduced Motion the card stays in its
+  slot and only the target brackets (`combat-drag-target`) show.
+- **Rarity frames** are canvas textures drawn once per rarity and size
+  (`addRarityFrame`); rare and legendary add a `TileSprite` sheen whose texture
+  slides while its bounds stay fixed. Hand, reward and pile-inspect faces use
+  it. No sheen under Reduced Motion or Lean graphics.
+- **Number highlights** are small text overlays on the rules label
+  (`combat-card-number-tint`); the label's text is never rewritten. Tones:
+  `buff` and `reduced` compare `cardDamageOutcome` / `cardCoverOutcome` with
+  and without current status (passive flock bonuses are excluded), `preen`
+  marks numbers that differ from the unupgraded card. They refresh on every
+  selection refresh without rebuilding the face.
+- **Inspector:** `mountInspectFace` draws the hand face at 1.5× inside the
+  reader (`combat-card-detail-face`, children renamed `inspect-…`), with
+  rarity and flavor under it. Opening and closing the reader stay immediate;
+  only the card animates, and a closing card finishes its trip home in the
+  stage layer as `combat-card-detail-return`.
+- **Diagnostics:** `stage.debugState()` (counts, bodies in the air, shown pile
+  counts, drag state) and `stage.counts`.
+
+Hooks for other battle presentation: `stage.layer` is a free layer between the
+hand and the overlays; `ActorMotion` now takes `from` (start values) and
+`delay`; `ACTOR_EASE` exports the stage easings; `releaseCardBody` hands a
+card's objects back to ordinary rendering; `addRarityFrame` works on any
+rectangle; `paintFlightCard` draws the small illustrated card.
 
 ## Flyway expansion boundary
 
