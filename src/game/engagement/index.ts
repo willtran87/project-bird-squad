@@ -52,11 +52,23 @@ interface TitleScene extends Phaser.Scene {
   settingsOverlay?: unknown;
   helpOverlay?: unknown;
   titleRunLaunchPending: boolean;
+  menuHasSavedRun: boolean;
   menuFocus: MenuFocus;
   menuFocusTargets: Map<MenuFocus, Phaser.GameObjects.Rectangle>;
   menuExtraFocus: MenuFocus[];
   updateMenuFocusRing(): void;
   updateMenuTextState(): void;
+}
+
+/**
+ * Reveals celebrate what a flight earned, so the title holds them while that
+ * flight can still be continued, or while a save recovery dialog is asking for
+ * a decision: there the title's job is getting the player back in, and the
+ * first press must reach Continue or the dialog. They wait in the queue for the
+ * title after the flight ends, or show on the Collection if that comes first.
+ */
+function titleHoldsReveals(menu: TitleScene) {
+  return menu.menuHasSavedRun || Boolean(document.getElementById('save-recovery'));
 }
 
 /** Add Daily Flight and Flight Recap to the title's quiet bottom row, then
@@ -109,7 +121,7 @@ export function installMenuEngagement(raw: Phaser.Scene) {
   (window as unknown as Record<string, unknown>).__birdSquadEngagement = () => ({
     date, seed: dailySeed(date), dailyLeader: leader.id, dailyBest: dailyBestFor(syncDaily(), date) ?? null,
     caption, recapAvailable: Boolean(latest), recapNew, focusOrder: [...menu.menuExtraFocus],
-    ceremonyQueue: readCeremonyQueue(),
+    ceremonyQueue: readCeremonyQueue(), ceremonyHeld: titleHoldsReveals(menu),
   });
-  presentCeremony(menu);
+  if (!titleHoldsReveals(menu)) presentCeremony(menu);
 }
