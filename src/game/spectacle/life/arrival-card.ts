@@ -23,6 +23,8 @@ import { clamp01, eachFrame, easeOut, motion, paced, sceneNow } from './kit';
  */
 
 const STORAGE_KEY = 'birdsquad.arrivalCards';
+const PRACTICE_LESSON_KEY = 'birdsquad.practiceLesson';
+const PRACTICE_LESSON_SCENE = 'GuidedPracticeScene';
 const DEPTH = 29000;
 const THREAD_Y = 494;
 const HOLD_MS = 2600, THREAD_HOLD_MS = 3400, ENTER_MS = 460, EXIT_MS = 360, SKIP_EXIT_MS = 170;
@@ -98,6 +100,10 @@ export function dressArrivalCard(route: Phaser.Scene) {
     const first = skipAt === undefined;
     skip(event);
     if (!first || controlActionForCode(event.code) !== 'confirm') return;
+    // A press aimed at a page control above the canvas (a recovery dialog's
+    // button, the Strategy launcher) belongs to that control, not the route.
+    const target = event.target;
+    if (target instanceof Element && target !== document.body && target !== document.documentElement && target !== scene.game.canvas) return;
     event.stopPropagation();
     event.preventDefault();
   };
@@ -119,6 +125,12 @@ export function dressArrivalCard(route: Phaser.Scene) {
   };
   eachFrame(scene, () => {
     if (done || !scene.routeEssentialAssetsReady) return;
+    // A guided practice lesson is a drill on a stand-in route, not a flight
+    // arriving anywhere; its own panel owns the screen and the confirm key.
+    if (scene.registry.get(PRACTICE_LESSON_KEY) || scene.scene.isActive(PRACTICE_LESSON_SCENE)) {
+      if (start === undefined) done = true; else finish();
+      return;
+    }
     const now = sceneNow(scene);
     if (start === undefined) {
       if (!claim(scene.runState?.startedAtMs ?? 0, index)) { done = true; return; }
