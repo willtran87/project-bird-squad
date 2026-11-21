@@ -9,6 +9,7 @@ import { ROUTE_COMMIT_STREAK_TEXTURE, TITLE_RUN_LAUNCH_FLOURISH_TEXTURE } from '
 import { DEFAULT_ROUTE_MAP_BACKDROP_ASSET, titleMenuPreloadAssets } from '../art-assets';
 import { uiFontsReady } from '../game/theme';
 import { getSpectacleReady } from '../game/shared/spectacle-ready';
+import { preloadBattleScene } from './battle-scene-loader';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -27,6 +28,8 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     document.getElementById('boot-shell')?.remove();
+    // Fetch combat beside the fonts; the title never waits for it.
+    preloadBattleScene(this.game);
     void uiFontsReady(getSpectacleReady()).then(() => this.scene.start('MenuScene'));
   }
 }
