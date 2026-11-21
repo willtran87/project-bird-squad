@@ -315,6 +315,71 @@ forces them on, `?fx=off` off). WebKit masks its renderer string, so the
 software check does not catch it. Never put a non-solid page background behind
 the canvas: WebKit recomposites it every frame.
 
+## Retained battle actors
+
+`BattleScene.renderAll()` still rebuilds its `root` container on every state
+change. Three kinds of object no longer take part in that rebuild: enemy
+bodies, the flock body and hand cards. They are **actors**, owned by one
+`BattleActorStage` per scene (`src/game/battle/actors.ts`, lazy chunk
+`battle-actors`, reached through `battleActors(scene)` or `scene.battleActors`).
+
+Every actor has two halves, and code must not mix them:
+
+- **Logical slot**: where layout put it (`actor.slot`). Hit areas, forecasts,
+  the targeting arc, `getBounds()` and every layout test read this. Animation
+  never writes it.
+- **Visual pose**: `actor.pose`, an offset, scale, tilt and flash relative to
+  the slot. Only drawing reads it.
+
+How each kind is retained:
+
+| Actor | Id | Retained object | Pose applied by | Hit area |
+| --- | --- | --- | --- | --- |
+| Enemy body | `enemy:<enemy id>` | `combat-enemy-art` container | the stage sets the container's position, scale and angle | `combat-enemy-hit`, a slot rectangle in `root` |
+| Flock body | `flock` | `combat-leader-art` container | same | `combat-leader-hit`, a slot rectangle in `root` |
+| Hand card | `card:<instance id>` | the card's flat objects in `handLayer` | `attachCardBody` multiplies the pose into the parent matrix while each object is drawn | the card's own rectangle (`handCardRects`), never moved |
+
+- Combatant bodies are parked by `parkBattleActors(root)` just before the
+  immediate layer is cleared and re-seated in draw order by
+  `renderBattleForeground`. A body is refilled only when its art signature
+  changes and destroyed when it is not drawn in a pass.
+- `renderBattleHand` reconciles: an unchanged face keeps its objects, a card
+  whose slot moved is shifted and slides, a changed face is redrawn, a card
+  that left the hand is destroyed. Card objects keep logical transforms at all
+  times, so their bounds are the layout contract.
+- Enemy portraits report visual bounds (they are inside the animated
+  container); that keeps the breathing-envelope and HUD-clearance checks honest.
+- `combat-leader-pose` inside the flock body still belongs to
+  `living-performances.ts`; the stage animates the container around it.
+
+The actor clock (`stage.time`) follows `scene.time.now`, so the manual
+`advanceTime` clock drives it (`advanceGameTime` emits `clock-advanced` per
+manual frame). It scales with Animation Pace, holds every pose at identity
+under Reduced Motion, and `hitStop(frames)` freezes it for 2–4 frames without
+touching scene timers or tweens. Stagger judder follows Screen Shake and the
+hit flash follows Flash Effects.
+
+To animate an actor:
+
+- `stage.play(id, motion)`: a transient keyframed `ActorMotion`. `action`
+  motions replace each other and blend out; `react` motions layer on top.
+- `actor.rest`: a persistent target the pose eases toward (the hand fan and
+  hover lift are written in `layoutHand`).
+- `stage.ensure(id, kind, x, y)` / `bindNode(...)`: move the slot; the drawn
+  hand card slides from where it was; a combatant body takes the slot at once.
+- The scene announces events and the stage chooses the motion:
+  `queueEnemyMotion(id, 'windup' | 'attack' | 'hit', detail)` and
+  `queueFlockMotion(cue, detail)` emit `living-enemy-cue` / `living-flock-cue`;
+  `living-cast` starts the flock dive. `detail` is the damage of a hit.
+- `stage.debugState()` reports every actor's slot, pose and running motions;
+  `stage.visualPoint(id)` is where a body is drawn now.
+
+Still immediate-mode: the top bar and HUD, enemy vitals, intent, rank and
+status panels, contact shadows, the target reticle and guide, the selection
+preview, hand pager and all overlays and ceremonies. The hand's compact
+fallback renderer (used when the lazy renderer fails) is neither retained nor
+animated.
+
 ## Flyway expansion boundary
 
 - `flyway-rules.ts`: typed versioned state, normalization, authored calls,

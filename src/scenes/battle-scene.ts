@@ -53,7 +53,7 @@ import type { ActiveCardContract, BattleSceneData, BossDossierModule, Card, Card
 import { isRunOutcome, LAZY_LOAD_FAILED, PLAYTEST_MODE } from '../game/shared/session-config';
 import { cardCoverOutcome, cardDamageOutcome, flockStateOf, intentCoverValue, moveDealsDamage } from '../game/combat-rules';
 import { ALL_ROUTE_MARK_IDS, BASE_COHESION, BASE_MOLT_POWER, BASE_RESONANCE_CAP, BASE_SUPPLY_SLOTS, CARD_REVIEW_ROW_H, CARD_REVIEW_VISIBLE_ROWS, DEFAULT_REWARD_SKIP_SCRAP, DISTRICT_CONTRACT_DEFINITIONS, districtContractProgressValue, type DistrictContractState, HIGH_TIER_ROUTE_MARK_IDS, KEYSTONE_AT, MARKET_ROUTE_MARK_IDS, NESTS_COVER_CARRY_CAP, nextRunMapIndex, OVEREXTENSION_CARD_THRESHOLD, POST_COMBAT_RECOVERY, runDistrictOrdinal, WAYMARK_ACTIVE_CAP, WAYMARK_REWARD_CHOICE_COUNT } from '../game/shared/gameplay-constants';
-import { animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, stableMotionSeed, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
+import { animationPacePreference, combatPacePreference, currentScreenShakeState, prefersReducedMotion, setAnimationPacePreference, setCombatPacePreference, setMotionPreference, setTextPacePreference, syncSceneAnimationPace, textPaceScale, textPacingState } from '../game/shared/preferences';
 import { SceneAssetReadinessTracker } from '../game/shared/scene-asset-readiness';
 import { CARD_H, CARD_W, COMBAT_REDUCED_MOTION_MIN_DELAY_MS, COMBAT_REDUCED_MOTION_TIMING_SCALE, COMBAT_SNAPPY_MIN_DELAY_MS, COMBAT_SNAPPY_TIMING_SCALE, COMBAT_STANDARD_REPEAT_TIMING_SCALE, ENEMY_ATTACK_RECOVER_MS, ENEMY_ATTACK_WINDUP_MS, ENEMY_HP_BAR, ENEMY_TURN_PREAMBLE_MS, FLOCK_ART_X, FLOCK_ART_Y, FLOCK_FX_X, FLOCK_FX_Y, FLOCK_HP_BAR, FLOW_HUD_PIP_GAP, FLOW_HUD_PIP_OFFSET, FLOW_HUD_X_OFFSET, FLOW_HUD_Y_OFFSET, GAME_HEIGHT, GAME_WIDTH, HAND_Y, HUD_MENU_PANEL, PLAYER_ATTACK_RESOLVE_DELAY_MS, PLAYER_CARD_FEEDBACK_SETTLE_MS, PLAYER_CARD_RESOLVE_DELAY_MS, PLAYER_TURN_HANDOFF_DELAY_MS } from '../game/shared/layout-constants';
 import { COMBAT_ACTION_TRAIL_TEXTURE, COMBAT_ATMOSPHERE_TEXTURE, COMBAT_CARD_BACK_TEXTURE, COMBAT_CAST_FOCUS_BURST_TEXTURE, COMBAT_ENCOUNTER_INTRO_TEXTURE, COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE, COMBAT_ENEMY_WINDUP_PLAQUE_TEXTURE, COMBAT_FX_PARTICLE_TEXTURE, COMBAT_FX_TEXTURE, COMBAT_TARGET_LOCK_PULSE_TEXTURE, COMBAT_TARGET_RETICLE_TEXTURE, COMBAT_WINGBEAT_SPEND_TEXTURE, SUIT_FX_ANIM } from '../game/shared/fx-textures';
@@ -234,13 +234,12 @@ export class BattleScene extends Phaser.Scene {
   }>();
   // Quills keystone: the first attack each turn hits harder (consumed on use).
   private firstAttackThisTurn = true;
-  // renderAll() rebuilds the board, so one-shot enemy motion is queued here and
-  // consumed by the next render instead of trying to animate destroyed objects.
-  private enemyMotionCues = new Map<string, EnemyMotionCue>();
+  // Retained combatants and hand cards (game/battle/actors.ts). The stage is
+  // created by the lazy renderers; the scene only announces what happened.
+  battleActors?: import('../game/battle/actors').BattleActorStage;
   private enemyPoseGroups = new Map<string, { group: Phaser.GameObjects.Container; enemy: Enemy; scale: number }>();
   private enemyTurnBeatUi?: Phaser.GameObjects.Container;
   private enemyTextureBoundsCache = new Map<string, TextureVisibleBounds>();
-  private flockMotionCue?: 'cast' | 'brace' | 'heal' | 'hit';
   private combatAnimationPending = false;
   private playerCardFxBaseline?: Set<Phaser.GameObjects.GameObject>;
   private playerCardFxLastRetired = 0;
@@ -572,7 +571,6 @@ export class BattleScene extends Phaser.Scene {
     this.flock.hp = Math.min(this.flock.maxHp, Math.max(1, runState.currentHp));
     if (!this.rewardResume) this.applyNextCombatMods(runState.nextCombat);
     this.firstAttackThisTurn = true;
-    this.enemyMotionCues = new Map();
     this.enemyPoseGroups = new Map();
     this.handCardRects = new Map();
     this.handCardArtLayers = new Map();
@@ -2050,6 +2048,8 @@ private playBattleIntro(onComplete?: () => void) {
       // Readable decisions stay above transient effects, including boss breaks.
       // Battlefield art remains grounded; effects surround it without covering Tells.
       this.root.setDepth(40);
+      // Retained combatant bodies step out before the immediate layer is cleared.
+      this.battleForegroundRendererModule?.parkBattleActors(this.root);
       killTweensForTree(this, this.root);
       this.enemyPoseGroups.clear();
       this.enemyTurnBeatUi = undefined;
@@ -3502,129 +3502,14 @@ private playBattleIntro(onComplete?: () => void) {
     return { x, y: y + 68 * scale + 39, w: Math.max(190, (enemy.runtime.type === 'boss' ? 250 : ENEMY_HP_BAR.w) * scale), h: ENEMY_HP_BAR.h };
   }
 
-  private queueEnemyMotion(enemyId: string, cue: EnemyMotionCue) {
-    this.events.emit('living-enemy-cue', enemyId, cue);
-    if (prefersReducedMotion()) return;
-    this.enemyMotionCues.set(enemyId, cue);
+  /** Body language is played by the retained actor stage. `detail` is the
+   * damage of a hit, or the hold of an attack, in the cue's own unit. */
+  private queueEnemyMotion(enemyId: string, cue: EnemyMotionCue, detail?: number) {
+    this.events.emit('living-enemy-cue', enemyId, cue, detail);
   }
 
-  playQueuedEnemyMotion(enemyId: string) {
-    const pose = this.enemyPoseGroups.get(enemyId);
-    if (pose?.group.active) this.applyEnemyMotionCue(pose.group, pose.enemy, pose.scale);
-  }
-
-  private queueFlockMotion(cue: 'cast' | 'brace' | 'heal' | 'hit') {
-    this.events.emit('living-flock-cue', cue);
-    if (prefersReducedMotion()) return;
-    this.flockMotionCue = cue;
-  }
-
-  private addEnemyBreathing(group: Phaser.GameObjects.Container, enemy: Enemy, scale: number) {
-    if (prefersReducedMotion()) return;
-    this.battleFxPresenterModule?.addEnemyBreathing(this, group, stableMotionSeed(enemy.id), scale,
-      key => this.enemyTextureVisibleBounds(key));
-  }
-
-  private applyEnemyMotionCue(group: Phaser.GameObjects.Container, enemy: Enemy, scale: number) {
-    const cue = this.enemyMotionCues.get(enemy.id);
-    if (!cue || prefersReducedMotion()) return;
-    this.enemyMotionCues.delete(enemy.id);
-    // Breathing and the previous pose must not compete with the committed motion.
-    this.tweens.killTweensOf(group);
-    group.setAlpha(1);
-    if (cue === 'windup') {
-      this.tweens.add({
-        targets: group,
-        x: 26 * scale,
-        y: -14 * scale,
-        scaleX: 0.948,
-        scaleY: 1.07,
-        duration: Math.min(1050, this.combatEnemyTurnBeatDurationMs * 0.7),
-        ease: 'Sine.easeOut',
-      });
-      this.tweens.add({
-        targets: group,
-        alpha: 0.82,
-        duration: Math.max(40, this.combatEnemyTurnBeatDurationMs / 4),
-        yoyo: true,
-        repeat: 1,
-        ease: 'Sine.easeInOut',
-      });
-      return;
-    }
-    const recoil = cue === 'hit';
-    const xShift = (recoil ? 12 : -82) * scale;
-    const duration = recoil ? 90 : Math.max(80, this.combatEnemyTurnBeatDurationMs);
-    this.tweens.add({
-      targets: group,
-      x: xShift,
-      y: recoil ? 0 : 18 * scale,
-      scaleX: recoil ? 0.985 : 1.072,
-      scaleY: recoil ? 1.012 : 0.942,
-      duration,
-      hold: recoil ? 0 : this.combatFxModule!.enemyMoveTimings(this, enemy, currentMove(enemy)).anticipation,
-      yoyo: true,
-      ease: recoil ? 'Quad.easeOut' : 'Cubic.easeInOut',
-      onComplete: () => {
-        if (!group.active) return;
-        group.x = 0;
-        group.y = 0;
-        group.setScale(1);
-      },
-    });
-    if (recoil) {
-      this.tweens.add({
-        targets: group,
-        alpha: 0.68,
-        duration: 45,
-        yoyo: true,
-        ease: 'Linear',
-        onComplete: () => {
-          if (group.active) group.setAlpha(1);
-        },
-      });
-    }
-  }
-
-  private applyFlockMotionCue(group: Phaser.GameObjects.Container) {
-    const cue = this.flockMotionCue;
-    if ((this as any).livingPerformances?.ready) { this.flockMotionCue = undefined; return; }
-    if (!cue || prefersReducedMotion()) return;
-    this.flockMotionCue = undefined;
-    const motion = {
-      cast: { x: 12, y: -10, scaleX: 1.018, scaleY: 0.99, duration: 120 },
-      brace: { x: -4, y: 6, scaleX: 1.028, scaleY: 0.978, duration: 110 },
-      heal: { x: 0, y: -8, scaleX: 1.012, scaleY: 1.018, duration: 140 },
-      hit: { x: -12, y: 8, scaleX: 0.982, scaleY: 1.018, duration: 90 },
-    }[cue];
-    this.tweens.add({
-      targets: group,
-      x: motion.x,
-      y: motion.y,
-      scaleX: motion.scaleX,
-      scaleY: motion.scaleY,
-      duration: motion.duration,
-      yoyo: true,
-      ease: 'Quad.easeOut',
-      onComplete: () => {
-        if (!group.active) return;
-        group.x = 0;
-        group.y = 0;
-        group.setScale(1);
-      },
-    });
-    if (cue === 'hit') {
-      this.tweens.add({
-        targets: group,
-        alpha: 0.7,
-        duration: 45,
-        yoyo: true,
-        ease: 'Linear',
-        onComplete: () => {
-          if (group.active) group.setAlpha(1);
-        },
-      });
-    }
+  private queueFlockMotion(cue: 'cast' | 'brace' | 'heal' | 'hit', detail?: number) {
+    this.events.emit('living-flock-cue', cue, detail);
   }
 
   private enemyTextureVisibleBounds(key: string): TextureVisibleBounds {
@@ -3699,11 +3584,7 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private renderBattleForeground() {
-    const livingEnemies = this.enemies.filter((enemy) => {
-      if (enemy.hp > 0) return true;
-      this.enemyMotionCues.delete(enemy.id);
-      return false;
-    });
+    const livingEnemies = this.enemies.filter((enemy) => enemy.hp > 0);
     const enemies = livingEnemies.map((enemy) => {
       const { x, y, scale } = this.enemyView(enemy);
       const elite = enemy.runtime.type === 'elite';
@@ -3846,26 +3727,7 @@ private playBattleIntro(onComplete?: () => void) {
         const enemy = this.enemies.find((candidate) => candidate.id === enemyId);
         if (enemy) this.enemyPoseGroups.set(enemyId, { group, enemy, scale });
       },
-      presentEnemyMotion: (enemyId, breathGroup, poseGroup, scale) => {
-        const enemy = this.enemies.find((candidate) => candidate.id === enemyId);
-        if (!enemy) return;
-        this.addEnemyBreathing(breathGroup, enemy, scale);
-        this.applyEnemyMotionCue(poseGroup, enemy, scale);
-      },
-      presentLeaderMotion: (breathGroup, poseGroup) => {
-        this.applyFlockMotionCue(poseGroup);
-        if (prefersReducedMotion()) return;
-        this.tweens.add({
-          targets: breathGroup,
-          y: FLOCK_ART_Y - 4,
-          scaleX: 0.994,
-          scaleY: 1.012,
-          duration: 1700,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut',
-        });
-      }
+      textureTop: (key) => this.enemyTextureVisibleBounds(key).top,
     });
   }
 
@@ -4843,20 +4705,22 @@ private playBattleIntro(onComplete?: () => void) {
     this.hideCardPreview(); // a redraw destroys the hovered rect; drop its stale preview
     hideKwTooltip();
     killTweensForTree(this, this.handLayer);
-    this.handLayer.removeAll(true);
+    // The lazy renderer retains card bodies and retires only what left the hand.
+    const renderer = this.battleHandRendererModule;
+    if (!renderer) this.handLayer.removeAll(true);
     this.handCardRects.clear();
     this.handCardArtLayers.clear();
     this.handCardFrames.clear();
     this.handCardSelectionPulses.clear();
     this.handCardFlowIndicators.clear();
-    if (this.hand.length === 0) return;
-    if (!this.battleHandRendererModule) {
+    if (!renderer) {
+      if (this.hand.length === 0) return;
       this.renderHandFallback();
       this.renderHandPages();
       return;
     }
     try {
-      const result = this.battleHandRendererModule.renderBattleHand(this.battleHandRenderContext());
+      const result = renderer.renderBattleHand(this.battleHandRenderContext());
       this.handCardRects = result.rects;
       this.handCardArtLayers = result.artLayers;
       this.handCardFrames = result.frames;
@@ -4864,9 +4728,10 @@ private playBattleIntro(onComplete?: () => void) {
       this.handCardFlowIndicators = result.flowIndicators;
     } catch (error) {
       console.warn('Battle hand renderer failed; using compact fallback.', error);
+      this.handLayer.removeAll(true);
       this.renderHandFallback();
     }
-    this.renderHandPages();
+    if (this.hand.length) this.renderHandPages();
   }
 
   private renderHandPages() {
@@ -7323,7 +7188,7 @@ private playBattleIntro(onComplete?: () => void) {
         if (damage > 0) this.flock.flow = 0;
         this.logEvent(`${source} hurts the flock for ${damage}.`);
         if (damage > 0) {
-          this.queueFlockMotion('hit');
+          this.queueFlockMotion('hit', damage);
           this.presentFlockResult(damage, ' damage', '#ff7a6e', source);
           this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff9d6b, -1, damage >= 8);
           this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
@@ -7694,7 +7559,7 @@ private playBattleIntro(onComplete?: () => void) {
       birdAudio.play('hit.impact', { damage, maxHp: enemy.maxHp, lethal: enemy.hp <= 0, coverBroke: hadCover && enemy.block <= 0 });
       birdAudio.play(damage >= 8 ? 'heavyAttack' : 'attack', damage >= 8 ? 1.2 : 0.9);
       birdAudio.play('hitConfirm', damage >= 8 ? 1.1 : 0.9);
-      this.queueEnemyMotion(enemy.id, 'hit');
+      this.queueEnemyMotion(enemy.id, 'hit', damage);
       strike(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, view.x, view.y, meta.color);
       this.combatPlayerHitConfirm(view.x, view.y - 18, meta.color, damage >= 8);
       this.presentNumberFeedback(view.x, view.y - 40, meta.hex, {
@@ -8308,7 +8173,7 @@ private playBattleIntro(onComplete?: () => void) {
     if (damage > 0 && this.flock.hp <= 0) this.killedByMove = 'Fouled';
     this.flock.flow = 0;
     this.logEvent(`Fouled pressure costs ${damage} Cohesion.`);
-    this.queueFlockMotion('hit');
+    this.queueFlockMotion('hit', damage);
     this.presentFlockResult(-damage, ' Fouled', '#8bd2a0', 'fouled');
     this.fouledPressureFx(damage, true);
     this.checkOutcome();
@@ -8476,7 +8341,7 @@ private playBattleIntro(onComplete?: () => void) {
     if (damage > 0) {
       birdAudio.play('hit.impact', { damage, maxHp: this.flock.maxHp, target: 'flock', coverBroke: blocked > 0 });
       birdAudio.play(damage >= 8 ? 'heavyAttack' : 'attack', damage >= 8 ? 1.18 : 0.92);
-      this.queueFlockMotion('hit');
+      this.queueFlockMotion('hit', damage);
       const from = this.enemyView(enemy);
       strike(this, this.fxLayer, from.x, from.y, FLOCK_FX_X, FLOCK_FX_Y, 0xff7a6e);
       this.combatEnemySwipe(from.x, from.y - 18, FLOCK_FX_X, FLOCK_FX_Y + 18, damage >= 8);

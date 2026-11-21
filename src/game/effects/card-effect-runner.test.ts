@@ -361,13 +361,10 @@ describe('resolveCardEffect: conditions and malformed text', () => {
     expect(h.named('logFizzle')).toEqual([['logFizzle', 'card_1', 'draw 2']]);
   });
 
-  it('silently ignores a well-formed but unknown verb (no fizzle is logged)', () => {
-    // Current behaviour: typos such as "gainCovr(3)" resolve to nothing and are
-    // NOT reported through logFizzle. The data test below guards authored data.
+  it('logs a fizzle for a well-formed but unknown verb', () => {
     const h = harness();
     h.run('gainCovr(3)');
-    expect(h.named('logFizzle')).toEqual([]);
-    expect(h.calls.filter((call) => call[0] !== 'moltBonus')).toEqual([]);
+    expect(h.named('logFizzle')).toEqual([['logFizzle', 'card_1', 'gainCovr(3)']]);
   });
 });
 

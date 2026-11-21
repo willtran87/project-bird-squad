@@ -21,7 +21,8 @@ const budgets = [
   { label: 'canal markets lazy module', pattern: /^canal-markets-.*\.js$/, maxKb: 10, hard: true },
   { label: 'signal spires lazy module', pattern: /^signal-spires-.*\.js$/, maxKb: 12, hard: true },
   { label: 'opening district lazy module', pattern: /^opening-district-.*\.js$/, maxKb: 9, hard: true },
-  { label: 'enemy breathing lazy module', pattern: /^enemy-breathing-.*\.js$/, maxKb: 2, hard: true },
+  // Retained actor stage: animation clock, hit-stop, body motion and hand fan. Replaces the breathing tween module.
+  { label: 'battle actors lazy module', pattern: /^battle-actors-.*\.js$/, maxKb: 10, hard: true },
   { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // +7 bytes of import renames from the scene-life chunk
   { label: 'route transition FX lazy module', pattern: /^route-transition-fx-.*\.js$/, maxKb: 7, hard: true },
   { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
@@ -42,11 +43,12 @@ const budgets = [
   { label: 'encounter intro lazy module', pattern: /^encounter-intro-.*\.js$/, maxKb: 4, hard: true },
   { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
-  { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 8, hard: true },
+  // +retained combatant bodies, slot-owned hit areas and the breathing envelope (was a tween module).
+  { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 10.5, hard: true },
   // Separate cost/outcome/protection fields and critical warnings; remains lazy.
   { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 12.5, hard: true }, // +CONFIRM TO PLAY is a real control
   // Full-portrait card faces, state halos and hover lift live here.
-  { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 12, hard: true },
+  { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 13.5, hard: true }, // +hand reconciliation: cards are retained, not rebuilt
   // Living-stage lighting, weather, bloom and motion; never part of boot.
   // Title/route/chrome life: route legend and flock, arrival card, wing wipes,
   // overlay and list entrances, living backdrops, button depth. Loaded after
@@ -142,8 +144,9 @@ const combinedBootChunks = chunks.filter((chunk) => combinedBootBudget.patterns.
 const rewardPresentation = chunks.filter(chunk => /^(render-hand|render-reward|reward-card-face|hand-rule-summary)-.*\.js$/.test(chunk.name));
 const rewardPresentationKb = rewardPresentation.reduce((sum, chunk) => sum + chunk.kb, 0);
 console.log(`Combined hand/reward presentation: ${rewardPresentationKb.toFixed(1)} KB minified`);
-// 28 KiB since full rules moved onto hand and reward faces (no "+N more").
-if (rewardPresentation.length !== 4 || rewardPresentationKb > 28) failures.push('Combined hand/reward presentation exceeds its 28 KB allowance or is incomplete.');
+// 28 KiB since full rules moved onto hand and reward faces (no "+N more");
+// 29.5 KiB with retained hand-card reconciliation.
+if (rewardPresentation.length !== 4 || rewardPresentationKb > 29.5) failures.push('Combined hand/reward presentation exceeds its 29.5 KB allowance or is incomplete.');
 // Vite may emit a tiny index launcher plus the explicitly owned app chunk.
 // Require every boot family and count every matching byte against the same cap.
 if (combinedBootBudget.patterns.some(pattern => !combinedBootChunks.some(chunk => pattern.test(chunk.name)))) {
