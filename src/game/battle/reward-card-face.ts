@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { RewardCardView, RewardDecisionPreview } from './render-reward';
+import { addTarotMark } from '../world-glyphs';
 import { actionFirstHandRules, compactHandRules, readableHandRules, wrapHandRules } from './hand-rule-summary';
 
 export function boundedRewardText(text: Phaser.GameObjects.Text, maxLines: number) {
@@ -57,6 +58,9 @@ export function renderRewardCardFace(context: { scene: Phaser.Scene; target: Pha
   };
   slot.setData('rewardArtRefresh', (failedKeys: string[]) => paint(Boolean(card.artKey && (failedKeys.includes(card.artKey) || context.failedArtKeys?.has(card.artKey)))));
   paint();
+  // The tarot numeral and suit sigil, crisp over the art's own small cartouche.
+  const tarot = addTarotMark(scene, card.id, slot.x, 258, 20, artW - 2);
+  if (tarot) target.add(tarot.setName(`${prefix}-tarot-mark`));
   const textLeft = x - 132 + 6 + artW + 10, textWidth = 160;
   label(textLeft, 248, card.name, typography.primary, textWidth, 2, fallback ? 'reward-fallback-choice-name' : 'reward-card-name', goldColor);
   label(textLeft, 306, `${card.cost} Wingbeat${card.cost === 1 ? '' : 's'}`, typography.primary, textWidth, 1,

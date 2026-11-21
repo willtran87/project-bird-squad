@@ -1,6 +1,7 @@
 import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 import { quietButton } from './quiet-ui';
+import { addTarotMark } from './world-glyphs';
 import { fitTextExcerpt } from './text-excerpt';
 import { consumeSaveRecoveryGamepad } from './save-recovery-dialog';
 import { lazyModule } from './lazy-module';
@@ -5440,9 +5441,13 @@ export class CodexScene extends Phaser.Scene {
     // Redraw the panel border crisply over the covers.
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accentColor, 1));
     // Artwork, reading navigation and collection actions occupy separate bands.
-    this.root.add(this.add.text(left + 24, 64, this.cardDossierLabel(card), {
+    const dossierLabel = this.add.text(left + 24, 64, this.cardDossierLabel(card), {
       fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: accentText,
-    }).setResolution(2).setOrigin(0, 0.5).setName('codex-card-detail-dossier'));
+    }).setResolution(2).setOrigin(0, 0.5).setName('codex-card-detail-dossier');
+    this.root.add(dossierLabel);
+    // Tarot identity beside the dossier kicker: suit sigil and numeral.
+    const tarot = addTarotMark(this, card.id, 0, 64, 30, 160);
+    if (tarot) this.root.add(tarot.setX(dossierLabel.x + dossierLabel.width + 12 + tarot.displayWidth / 2).setName('codex-card-detail-tarot-mark'));
     this.root.add(this.add.rectangle(tx - 14, (viewTop + viewBottom) / 2, 1, viewH, accentColor, 0.35));
     this.root.add(this.add.text(tx, 64, 'CARD REFERENCE', {
       fontFamily: UI_FONT, fontSize: '19px', fontStyle: UI_BOLD, color: UI_MUTED,

@@ -7,7 +7,6 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
   playUiSound,
-  renderFieldPanel,
   ROUTE_SET_PIECE_PROFILES,
   routeNodeTypeLabel,
   suitAccentColor,
@@ -25,6 +24,8 @@ import { renderRouteRewardBuildRead, renderRouteRewardEffectShowcase, renderRout
 import { bindChoiceHint, choiceInputHint } from './choice-input-hints';
 import { decisionBrief } from './decision-brief';
 import { boundedRewardText } from './battle/reward-card-face';
+import { addTarotMark } from './world-glyphs';
+import { panel } from './ui-panel';
 
 export {
   cardPickerDecisionDelta,
@@ -53,10 +54,8 @@ export function renderRouteRewardOverlay(scene: any) {
   scene.renderRouteEventBackdrop(node, 0.86);
   const profile = ROUTE_SET_PIECE_PROFILES[pending.nodeType as keyof typeof ROUTE_SET_PIECE_PROFILES];
   const confirmName = profile?.residentName?.split(' ')[0] ?? routeNodeTypeLabel(pending.nodeType);
-  const frame = renderFieldPanel(scene, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 940, 558, {
-    accent,
-    fill: 0x07101a
-  });
+  // The shared overlay panel: frame, rails and corner brackets from one place.
+  const { frame } = panel(scene, { name: 'route-reward-panel', x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 + 8, width: 940, height: 558, accent, fill: 0x07101a });
   // A single readable heading replaces the tiny eyebrow and repeated input prose.
   decisionText(scene, frame.left + 36, frame.top + 28,
     hasCardChoices ? 'Choose a Reward' : hasSupplyChoices ? 'Choose a Supply' : isDecline ? `Leave ${routeNodeTypeLabel(pending.nodeType)}` : pending.nodeType === 'cache' ? 'Open This Drawer' : 'Review This Choice',
@@ -117,6 +116,7 @@ export function renderRouteRewardOverlay(scene: any) {
     const armed = scene.routeRewardArmedCardId === card.id;
     const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
     scene.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
+    addTarotMark(scene, card.id, x, y - cardH / 2 + 13, 20, cardW - 6)?.setName('route-reward-tarot-mark');
     if (index === scene.routeRewardChoiceIndex) {
       scene.add.rectangle(x, y + 28, 224, cardH + 60, 0x000000, 0)
         .setStrokeStyle(4, armed ? UI_FIELD.gold : UI_FIELD.cyan, 1)
