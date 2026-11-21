@@ -1684,7 +1684,9 @@ export class RouteScene extends Phaser.Scene {
       // Top clears the banner row (ends at y 179) for a four-lane column; left
       // leaves a gutter for the node legend.
       graph: { left: 104, right: 1158, top: 177, bottom: 647 },
-      confirm: { cx: 1138, cy: 662, w: 260, h: 42 },
+      // The commit target's left edge (cx - 150) stays 8px clear of the
+      // penultimate column's bottom lane (x <= 965, hit radius 38) at four lanes.
+      confirm: { cx: 1162, cy: 662, w: 260, h: 42 },
       footer: { x: 62, y: 612, w: 848, h: 56, cx: 486, cy: 640 }
     };
   }
