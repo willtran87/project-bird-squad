@@ -66,7 +66,9 @@ for (const remapped of [false, true]) test(`large hands remain readable and page
         && r.right + 4 <= roost.left && (i === 0 || rects[i - 1].right + 10 <= r.left)),
       // Titles keep the primary floor; rules may step down to the secondary
       // floor (dense faces lower still) so every effect stays on the card.
-      typeReadable: names.every((n: any) => parseFloat(n.style.fontSize) * scale
+      // 0.05 px absorbs sub-pixel canvas sizing (WebKit's canvas is a hair
+      // narrower at 1000x560, so 18 game px measures 13.99 CSS px).
+      typeReadable: names.every((n: any) => parseFloat(n.style.fontSize) * scale + 0.05
         >= (n.name === 'combat-card-title' ? 16 : /-1[5-7]$|overflow/.test(n.getData('faceTier') ?? '') ? 11.5 : 14)),
       targets: controls.every(c => c.width * scale >= 44 && c.height * scale >= 44),
       disabled: controls.filter(c => !c.getData('enabled')).every(c => !c.input?.enabled),

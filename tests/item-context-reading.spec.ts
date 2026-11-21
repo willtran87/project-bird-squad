@@ -38,7 +38,19 @@ test('Waymark comparison aligns contextual definitions without changing the run'
       if (panel.getData('reading').headings.every((heading: string) => heading.endsWith('TERM · COVER'))) break;
       panel.getData('turnRulesPage')(1);
     }
-    return panel.getData('reading');
+    // Wider fonts (Linux) can carry a definition's last line onto the next
+    // page; the reading is complete when its pages are read in order.
+    const first = panel.getData('reading');
+    const bodies = [...first.bodies];
+    let turned = 0;
+    for (let i = 1; i < first.total; i++) {
+      panel.getData('turnRulesPage')(1); turned += 1;
+      const next = panel.getData('reading');
+      if (!next.headings.every((heading: string) => heading.endsWith('TERM · COVER'))) break;
+      next.bodies.forEach((body: string, column: number) => { if (body !== 'Section complete.') bodies[column] += ` ${body}`; });
+    }
+    if (turned) panel.getData('turnRulesPage')(-turned); // back to the first Cover page
+    return { ...first, bodies };
   });
   expect(reading.headings).toEqual([
     'Chalk Wingmark · TERM · COVER',
