@@ -71,7 +71,8 @@ function lines(scene: Host, deck: BarkDeck, moment: BarkMoment, at: number): Lin
   const key = `${moment.trigger}:${'enemyId' in moment ? moment.enemyId : ''}:${at}`;
   let out: Array<Line | undefined> = [];
   switch (moment.trigger) {
-    case 'start': out = [enemyLine(living[0]?.id, 'start'), leaderLine('start', at + 900)]; break;
+    // The opening waits for the hand to be dealt, so it never competes with the deal.
+    case 'start': out = [enemyLine(living[0]?.id, 'start', at + 700), leaderLine('start', at + 1600)]; break;
     case 'bigHit': out = [moment.target === 'flock' ? leaderLine('bigHit') : enemyLine(moment.enemyId, 'bigHit')]; break;
     case 'lowCohesion': out = [deck.coin(key) && living.length ? enemyLine(living[0].id, 'lowCohesion') : leaderLine('lowCohesion')]; break;
     case 'defeated': out = [deck.coin(key) ? enemyLine(moment.enemyId, 'defeated') : leaderLine('defeated')]; break;
