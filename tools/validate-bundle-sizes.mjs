@@ -46,7 +46,7 @@ const budgets = [
   { label: 'district ambience beds lazy module', pattern: /^audio-ambience-.*\.js$/, maxKb: 6, hard: true },
   { label: 'battle FX presenter lazy module', pattern: /^fx-presenter-.*\.js$/, maxKb: 8, hard: true },
   { label: 'encounter intro lazy module', pattern: /^encounter-intro-.*\.js$/, maxKb: 4, hard: true },
-  { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },
+  { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10.25, hard: true }, // import-rename drift from new boot exports (10.02 KB)
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
   // +retained combatant bodies, slot-owned hit areas and the breathing envelope (was a tween module).
   { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 10.5, hard: true }, // +seats combat life (10.1 KB)
@@ -59,6 +59,14 @@ const budgets = [
   // overlay and list entrances, living backdrops, button depth. Loaded after
   // the stage; never part of boot.
   { label: 'scene life lazy module', pattern: /^scene-life-.*.js$/, maxKb: 30, hard: true },
+  // Presentation polish (all lazy): card reward reveal (7.2 KB), delayed loading card (2.9 KB),
+  // combat barks with their line content (15.8 KB), suit sigils, tarot marks and route signs (6.7 KB),
+  // and the shared overlay panel (2.3 KB).
+  { label: 'card reward reveal lazy module', pattern: /^reward-reveal-.*\.js$/, maxKb: 8, hard: true },
+  { label: 'scene loading card lazy module', pattern: /^scene-loading-.*\.js$/, maxKb: 3.5, hard: true },
+  { label: 'combat barks lazy module', pattern: /^barks-.*\.js$/, maxKb: 17, hard: true },
+  { label: 'world glyphs and tarot marks lazy module', pattern: /^world-glyphs-.*\.js$/, maxKb: 7.5, hard: true },
+  { label: 'shared overlay panel lazy module', pattern: /^ui-panel-.*\.js$/, maxKb: 3, hard: true },
   // Daily Flight, run recap/photo card and Collection ceremony scenes; the title
   // requests this after its first frame. Narrative copy rides with the arrival card.
   { label: 'engagement scenes lazy module', pattern: /^engagement-.*\.js$/, maxKb: 30, hard: true },
