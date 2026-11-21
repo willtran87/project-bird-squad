@@ -331,6 +331,10 @@ Tests changed because the behaviour changed:
 - `pile-motion-continuity` and three `smoke` expectations: draws, discards and
   returns are the real cards, so only the shuffle still creates a
   `combat-pile-transfer` card back.
+- `retained-actors`: its setup now advances the clock past the opening deal, so
+  each check still starts from cards at rest.
+
+No readability, overlap or touch-target assertion was changed.
 
 Not verified: human play, a physical touch device (touch was driven through
 CDP touch events), real-GPU rendering, WebKit and Firefox, and how the sheen

@@ -23,7 +23,7 @@ const budgets = [
   { label: 'opening district lazy module', pattern: /^opening-district-.*\.js$/, maxKb: 9, hard: true },
   // Retained actor stage: animation clock, hit-stop, body motion and hand fan. Replaces the breathing tween module.
   { label: 'battle actors lazy module', pattern: /^battle-actors-.*\.js$/, maxKb: 10, hard: true },
-  { label: 'cards-as-objects lazy module', pattern: /^battle-card-objects-.*\.js$/, maxKb: 21.5, hard: true }, // flight, deal, discard, drag, rarity frames, number highlights, inspect face (20.3 KB)
+  { label: 'cards-as-objects lazy module', pattern: /^battle-card-objects-.*\.js$/, maxKb: 21.5, hard: true }, // flight, deal, discard, drag, rarity frames, number highlights, inspect face (20.2 KB)
   { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // +7 bytes of import renames from the scene-life chunk
   { label: 'route transition FX lazy module', pattern: /^route-transition-fx-.*\.js$/, maxKb: 7, hard: true },
   { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
@@ -49,7 +49,7 @@ const budgets = [
   // Separate cost/outcome/protection fields and critical warnings; remains lazy.
   { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 12.5, hard: true }, // +CONFIRM TO PLAY is a real control
   // Full-portrait card faces, state halos and hover lift live here.
-  { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 15.25, hard: true }, // +hand reconciliation; +departures, rarity frame, number highlights and the inspect face hook (14.9 KB)
+  { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 15.25, hard: true }, // +hand reconciliation; +departures, rarity frame, number highlights and the inspect face hook (14.8 KB)
   // Living-stage lighting, weather, bloom and motion; never part of boot.
   // Title/route/chrome life: route legend and flock, arrival card, wing wipes,
   // overlay and list entrances, living backdrops, button depth. Loaded after
