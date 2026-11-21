@@ -184,7 +184,7 @@ test('reward choices show every rule on the face with a larger portrait', async 
       return { id: card.id, text: effect.text, readable: effect.getData('readableRules'),
         sentences: card.text.split(/(?<=[.!])\s+(?=[A-Z+])/).length, lines: effect.text.split('\n').length,
         clipped: /\.\.\.$|…$|Inspect/.test(effect.text), font: parseFloat(effect.style.fontSize),
-        art: { w: slot.width, h: slot.height }, clear: trade.getBounds().bottom <= take.getBounds().top + 1 };
+        art: { w: slot.width, h: slot.height }, clear: !trade || trade.getBounds().bottom <= take.getBounds().top + 1 };
     });
   });
   for (const face of faces) {

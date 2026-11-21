@@ -82,23 +82,26 @@ export function renderRewardCardFace(context: { scene: Phaser.Scene; target: Pha
       wrapHandRules(text, value => object.context.measureText(value).width, 236) },
   }).setName(`${prefix}-effect`).setData('cardId', card.id);
   const readable = rewardFaceRules(card.summary);
-  const fitted = fitRewardRules(rules, readable, [floor - rowH * advice, floor - rowH, floor].map(bottom => bottom - rulesTop - 6));
+  // Last resort before type drops below 18px: every advice row yields.
+  const fitted = fitRewardRules(rules, readable, [floor - rowH * advice, floor - rowH, floor, REWARD_FACE_BOTTOM].map(bottom => bottom - rulesTop - 6));
   rules.setData('fullText', card.summary).setData('readableRules', readable).setData('faceTier', fitted.tier)
     .setData('truncated', false).setData('omittedEffects', 0);
   const panelH = Math.ceil(rules.height) + 6;
   target.add(scene.add.rectangle(x, rulesTop + panelH / 2, 248, panelH, 0x050c14, 1).setName('reward-card-effect-panel'));
   target.add(rules);
   let y = rulesTop + panelH + 4;
-  label(x - 116, y, preenContext ? 'Same deck size · Preen' : rewardDecisionPreviewLabel(card.decisionPreview), typography.secondary, 232, 1,
+  // Rows below the rules appear only while they still fit on the face.
+  const fits = () => y + rowH <= REWARD_FACE_BOTTOM + 4;
+  if (fits()) label(x - 116, y, preenContext ? 'Same deck size · Preen' : rewardDecisionPreviewLabel(card.decisionPreview), typography.secondary, 232, 1,
     fallback ? 'reward-fallback-decision-context'
       : preenContext ? 'reward-card-preen-context' : 'reward-decision-delta', status ? goldColor : '#a9c6d5');
   y += rowH;
-  if (card.quickRead) {
+  if (card.quickRead && fits()) {
     const pairingLines = Math.max(0, Math.min(2, Math.floor((REWARD_FACE_BOTTOM - rowH - y) / rowH)));
     const pairing = label(x - 116, y, card.quickRead.pairing, typography.secondary, 232, Math.max(1, pairingLines), 'reward-owned-pairing');
     pairing.setVisible(pairingLines > 0);
     y += pairingLines * rowH;
-    label(x - 116, y, card.quickRead.tradeoff, typography.secondary, 232, 1, 'reward-main-tradeoff', '#ffcfaa');
+    if (fits()) label(x - 116, y, card.quickRead.tradeoff, typography.secondary, 232, 1, 'reward-main-tradeoff', '#ffcfaa');
   }
 }
 

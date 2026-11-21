@@ -2099,7 +2099,7 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
-  expect(result.guideVisual.text).toMatch(/^Select .+; target .+\. \d+ Wingbeats?\.$/);
+  expect(result.guideVisual.text).toMatch(/^Select .+; target .+\. \d+ Wingbeats?( \(energy\))?\.$/);
   expect(result.guideVisual.fontSize).toBe(21);
   expect(result.guideVisual.panelSize).toEqual([600, 58]);
   expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);
@@ -5258,10 +5258,12 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
     scene.combatWingbeatDrainBursts = 0;
     scene.energy = 3;
     const enemy = scene.enemies.find((candidate: any) => candidate.hp > 0);
+    scene.nextTurnEnergyBonus = 0;
     scene.resolveEnemyEffect(enemy, 'loseWingbeat(flock, 2)');
     const state = window.__birdSquadState!();
     return {
       energy: state.energy,
+      nextTurnEnergyBonus: scene.nextTurnEnergyBonus,
       combatWingbeatDrain: state.combatWingbeatDrain,
     };
   });
@@ -5648,7 +5650,9 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(wingbeatSurgeResult.combatWingbeatSurge.rendered).toBe(true);
   expect(wingbeatSurgeResult.combatWingbeatSurge.count).toBeGreaterThanOrEqual(1);
   expect(wingbeatSurgeResult.combatWingbeatSurge.bursts).toBeGreaterThanOrEqual(1);
-  expect(wingbeatDrainResult.energy).toBe(1);
+  // The enemy tax lands on the next player turn, not the current Wingbeats.
+  expect(wingbeatDrainResult.energy).toBe(3);
+  expect(wingbeatDrainResult.nextTurnEnergyBonus).toBe(-2);
   expect(wingbeatDrainResult.combatWingbeatDrain.loaded).toBe(true);
   expect(wingbeatDrainResult.combatWingbeatDrain.rendered).toBe(true);
   expect(wingbeatDrainResult.combatWingbeatDrain.count).toBeGreaterThanOrEqual(1);
@@ -12657,7 +12661,8 @@ test('reward readability separates effects badges and build advice at every supp
     expect(geometry.effects).toHaveLength(3);
     geometry.effects.forEach((effect: any, index: number) => {
       expect(effect.font).toBeGreaterThanOrEqual(18);
-      expect(effect.lines).toBeLessThanOrEqual(4);
+      // Every rule is on the face; the longest offers wrap to six lines at 18px.
+      expect(effect.lines).toBeLessThanOrEqual(6);
       expect(effect.left).toBeGreaterThanOrEqual(geometry.panels[index].left + 4);
       expect(effect.right).toBeLessThanOrEqual(geometry.panels[index].right - 4);
       expect(effect.bottom).toBeLessThanOrEqual(geometry.panels[index].bottom);
@@ -12712,10 +12717,9 @@ test('reward readability separates effects badges and build advice at every supp
     battle.renderAll();
     return result;
   });
-  expect(truncation.visible).toBe(truncation.primary);
+  // Every rule stays on the face: long rules are never cut to a summary or an ellipsis.
   expect(truncation.visible.endsWith('...')).toBe(false);
-  expect(truncation.lines).toBeLessThanOrEqual(2);
-  expect(truncation.full.length).toBeGreaterThan(truncation.visible.length);
+  expect(truncation.visible).toContain('intentionally long conditional explanation');
   await clickNamedGameObject(page, 'BattleScene', 'reward-skip-hit');
   await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('BattleScene').root.list.some((o: any) => o.name === 'reward-skip-tradeoff'));
   await page.screenshot({ path: '.artifacts/test-results/reward-readability/skip-1000x560.png' });
@@ -12729,6 +12733,9 @@ test('reward deck impact matches live draw targets for every Leader and Preen wi
     const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     const candidates = new Map<string, any>();
     for (let i = 0; i < 96; i++) battle.createRewardChoices().forEach((card: any) => candidates.set(card.id, card));
+    // Map 1 drafts lean on the district suit and common rarity, so few distinct
+    // Plumes are offered there; the starter deck's Plumes fill the set.
+    battle.allDeckCards().forEach((card: any) => { if (!candidates.has(card.id)) candidates.set(card.id, card); });
     const plumes = [...candidates.values()].filter((card) => card.runtime.suit === 'plumes').slice(0, 5);
     if (plumes.length < 5) throw new Error('Missing five distinct Plumes for keystone boundary');
     battle.hand = []; battle.discardPile = []; battle.clearedPile = [];
@@ -13446,10 +13453,11 @@ test('enemy post-Roost punishers react to card spam and empty hands', async ({ p
     scene.roostHeld = 1;
     scene.flock.frail = 0;
     scene.energy = 3;
+    scene.nextTurnEnergyBonus = 0;
     scene.resolveEnemyEffect(enemy, 'if playedCardsAtLeast(4) then applyFrail(1)');
     scene.resolveEnemyEffect(enemy, 'if zeroCostCardsAtLeast(2) then loseWingbeat(1)');
     scene.resolveEnemyEffect(enemy, 'if handEmptyAtRoost then applyWinded(flock, 1)');
-    const restrained = { frail: scene.flock.frail, energy: scene.energy, weak: scene.flock.weak };
+    const restrained = { frail: scene.flock.frail, energy: scene.energy, nextTurn: scene.nextTurnEnergyBonus, weak: scene.flock.weak };
 
     scene.roostCards = 4;
     scene.roostFree = 2;
@@ -13457,16 +13465,18 @@ test('enemy post-Roost punishers react to card spam and empty hands', async ({ p
     scene.flock.frail = 0;
     scene.flock.weak = 0;
     scene.energy = 3;
+    scene.nextTurnEnergyBonus = 0;
     scene.resolveEnemyEffect(enemy, 'if playedCardsAtLeast(4) then applyFrail(1)');
     scene.resolveEnemyEffect(enemy, 'if zeroCostCardsAtLeast(2) then loseWingbeat(1)');
     scene.resolveEnemyEffect(enemy, 'if handEmptyAtRoost then applyWinded(flock, 1)');
-    const spammed = { frail: scene.flock.frail, energy: scene.energy, weak: scene.flock.weak };
+    const spammed = { frail: scene.flock.frail, energy: scene.energy, nextTurn: scene.nextTurnEnergyBonus, weak: scene.flock.weak };
 
     return { restrained, spammed };
   });
 
-  expect(r.restrained).toEqual({ frail: 0, energy: 3, weak: 0 });
-  expect(r.spammed).toEqual({ frail: 1, energy: 2, weak: 1 });
+  // Wingbeat taxes land on the next player turn.
+  expect(r.restrained).toEqual({ frail: 0, energy: 3, nextTurn: 0, weak: 0 });
+  expect(r.spammed).toEqual({ frail: 1, energy: 3, nextTurn: -1, weak: 1 });
 });
 
 test('free draw effects require setup instead of refunding every zero-cost play', async ({ page }) => {

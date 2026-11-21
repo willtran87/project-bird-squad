@@ -475,14 +475,42 @@ export function renderBattleSelectionPreview(
   }
   // The right end of the decision lane clears enemy statuses, Roost and both
   // ordinary/paged hands. The left gutter belongs to paging and inspection.
-  const commandX = preview.fields ? 1050 : gameWidth / 2 + 190;
-  const commandY = preview.fields ? 400 : titleY;
-  const commandFrame = scene.add.rectangle(commandX, commandY, 188, 24, 0x102534, 0.98)
+  // With fields, the confirm takes the first spot whose full touch area keeps
+  // 8 units clear of every enemy panel and Roost: above Roost, then between
+  // the status lane and the hand right of the forecast, then the old decision
+  // lane. Enemy panels move with the cluster.
+  const pad = (MIN_SUPPORTED_TOUCH_TARGET - 24) / 2;
+  const blockers = root.list.filter(o => ['combat-enemy-vitals', 'combat-enemy-status-panel', 'combat-boss-phase-badge',
+    'combat-objective-target', 'combat-elite-badge', 'combat-enemy-intent-badge', 'combat-roost-hit'].includes(o.name))
+    .map(o => (o as unknown as Phaser.GameObjects.Components.GetBounds).getBounds());
+  // Last: the left of the forecast row, below the outer enemies' statuses,
+  // for crowded boss clusters whose own status sits lower.
+  const sideSpots: Array<[number, number, number]> = [[1196, 387, 164], [1027, 408, 150], [1050, 400, 188], [683, 407, 188]];
+  // Without fields the confirm first tries its place inside the forecast row.
+  const spots = preview.fields ? sideSpots : [[gameWidth / 2 + 190, titleY, 188] as [number, number, number], ...sideSpots];
+  const clearSpot = spots.find(([sx, sy, sw]) => {
+    const side = sw < 188 ? 2 : 6;
+    const hit = new Phaser.Geom.Rectangle(sx - sw / 2 - side - 8, sy - 12 - pad - 8, sw + side * 2 + 16, 24 + pad * 2 + 16);
+    return blockers.every(b => !Phaser.Geom.Rectangle.Overlaps(hit, b));
+  }) ?? spots[0];
+  const [commandX, spotY, commandW] = clearSpot;
+  // In the forecast row with fields, the frame takes the notice row and its
+  // touch area reaches up over the static fields, still clear of the hand.
+  const inRow = commandX < gameWidth / 2 + 190;
+  const commandY = inRow && preview.fields ? y + 13 : spotY;
+  if (inRow) {
+    // The card → target title yields the row's right half to the confirm.
+    const title = container.getByName('combat-selection-card-target') as Phaser.GameObjects.Text | null;
+    if (title) fitTextExcerpt(title.setFixedSize(220, 0).setWordWrapWidth(220, true), `${preview.card} → ${preview.target}`, 1);
+  }
+  const commandFrame = scene.add.rectangle(commandX, commandY, commandW, 24, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
-    .setName('combat-selection-command-frame');
+    .setName('combat-selection-command-frame')
+    .setData('placement', { spot: spots.indexOf(clearSpot), blockers: blockers.map(b => [b.left, b.top, b.right, b.bottom].map(Math.round)) });
   container.add(commandFrame);
   const commandLabel = scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
     ...textStyle,
+    fontSize: commandW < 160 ? '16px' : commandW < 188 ? '17px' : textStyle.fontSize,
     fontStyle: boldFontStyle,
     color: '#dffbff',
   }).setOrigin(0.5).setName('combat-selection-command');
@@ -491,10 +519,11 @@ export function renderBattleSelectionPreview(
   if (confirm) {
     // A real control: a 44px hit area without growing the drawn frame into
     // the enemy and Roost lanes around it.
-    const pad = (MIN_SUPPORTED_TOUCH_TARGET - 24) / 2;
     const paint = (on: boolean) => commandFrame.setFillStyle(on ? 0x1b4a5e : 0x102534, 0.98)
       .setStrokeStyle(on ? 2 : 1, on ? 0xffe7a8 : context.gold, on ? 1 : 0.72);
-    commandFrame.setInteractive(new Phaser.Geom.Rectangle(-6, -pad, 200, 24 + pad * 2), Phaser.Geom.Rectangle.Contains)
+    const side = commandW < 188 ? 2 : 6;
+    const hitTop = spotY - 12 - pad - (commandY - 12);
+    commandFrame.setInteractive(new Phaser.Geom.Rectangle(-side, hitTop, commandW + side * 2, 24 + pad * 2), Phaser.Geom.Rectangle.Contains)
       .setData({ controlKind: 'primary', enabled: true, labelObject: commandLabel,
         accessibleLabel: `Confirm to play ${preview.card} (${controlBindingLabel('confirm')})` })
       .on('pointerover', () => paint(true)).on('pointerout', () => paint(false))
@@ -517,9 +546,11 @@ export function renderBattleSelectionPreview(
       ? 'Then ? · Full rules: check cost and choices'
       : reason ? `Forecast ~ ${(reason.match(/draw|Waymark|Leader/i)?.[0] ?? 'conditional').toLowerCase()} effects · Full rules`
       : notice;
-    container.add(scene.add.text(gameWidth / 2, y + 13, critical ? notice : estimate, {
+    const noticeText = scene.add.text(inRow ? gameWidth / 2 - 175 : gameWidth / 2, y + 13, '', {
       ...textStyle, color: critical ? '#ffe08a' : '#a6c7d6',
-    }).setOrigin(0.5).setName('combat-selection-notice').setData('critical', critical));
+      ...(inRow ? { fixedWidth: 230, wordWrap: { width: 230, useAdvancedWrap: true }, align: 'center' } : {}),
+    }).setOrigin(0.5).setName('combat-selection-notice').setData('critical', critical);
+    container.add(fitTextExcerpt(noticeText, critical ? notice : estimate, 1));
   } else {
     const summary = scene.add.text(gameWidth / 2, y + 13, '', {
       ...textStyle, fontStyle: boldFontStyle,
