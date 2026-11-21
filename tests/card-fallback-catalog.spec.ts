@@ -42,8 +42,12 @@ test('fallback catalog retains bounded identity, rules and controls without cere
         if (effect && /\.\.\.$|…$|Inspect/.test(o.text))
           failures.push(`${card.id}/rules-truncated`);
       }
+      // The advice row yields to every rule on the face (reward-card-face
+      // fit ladder); it is omitted only when the rules leave it no room.
       const context = b.root.getByName('reward-fallback-decision-context');
-      if (context.getBounds().bottom > 546 || context.getBounds().right > 454) failures.push(`${card.id}/context`);
+      const rulesPanelBottom = b.root.getByName('reward-card-effect-panel').getBounds().bottom;
+      if (context ? context.getBounds().bottom > 546 || context.getBounds().right > 454 : rulesPanelBottom + 4 + 23 <= 549)
+        failures.push(`${card.id}/context`);
       const ring = b.root.getByName('reward-input-focus-ring').getBounds();
       const read = b.root.getByName('reward-card-inspect-hit').getBounds();
       const take = b.root.getByName('reward-card-take-hit').getBounds();

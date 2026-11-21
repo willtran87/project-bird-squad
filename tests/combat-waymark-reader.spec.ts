@@ -120,13 +120,20 @@ for (const remapped of [false, true]) test(`combat Waymark reading is complete a
   await page.mouse.move(wheelPoint.x, wheelPoint.y); await page.mouse.wheel(0, 110); await settleCanvas(page);
   expect((await reading()).reading.page).toBe(3); expect(await stable()).toBe(unchanged);
   await expect(page.locator('#game-status')).toContainText('Found Waymarks');
-  const counts = await page.evaluate(() => {
+  // Quiet-button bevels are adopted at the next PRE_RENDER, so both counts are
+  // taken after a rendered frame; 20 synchronous repaints must not accumulate.
+  const count = () => page.evaluate(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    const count = () => [b.children.length, b.root.length, b.input.listenerCount('pointerdown'), b.input.keyboard.listenerCount('keydown'), b.input.gamepad.listenerCount('down')];
-    const before = count(); const old = b.root.getByName('route-waymark-reader-body');
-    for (let i = 0; i < 20; i++) b.renderAll();
-    return { before, after: count(), retired: !old.scene };
+    return [b.children.length, b.root.length, b.input.listenerCount('pointerdown'), b.input.keyboard.listenerCount('keydown'), b.input.gamepad.listenerCount('down')];
   });
+  const countsBefore = await count();
+  const retired = await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'), old = b.root.getByName('route-waymark-reader-body');
+    for (let i = 0; i < 20; i++) b.renderAll();
+    return !old.scene;
+  });
+  await settleCanvas(page);
+  const counts = { before: countsBefore, after: await count(), retired };
   expect(counts.after).toEqual(counts.before); expect(counts.retired).toBe(true);
   await press(remapped ? 'b' : 'Escape');
   expect(await page.evaluate(() => {

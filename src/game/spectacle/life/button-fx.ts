@@ -10,7 +10,7 @@ import { currentPose, motion, renderPose, wallNow } from './kit';
  */
 
 type Hit = Phaser.GameObjects.Rectangle;
-interface Dressed { hit: Hit; bevel: Phaser.GameObjects.Graphics; signature: string; pressedUntil: number }
+interface Dressed { hit: Hit; bevel: Phaser.GameObjects.Graphics; signature: string; pressedUntil: number; press?: () => void }
 
 const PRESS_MS = 120;
 const GLOW: Record<string, number> = { primary: 0xffd98a, destructive: 0xff8f84 };
@@ -69,13 +69,15 @@ function adopt(scene: Phaser.Scene, hit: Hit, live: Dressed[]) {
   const sink = () => (entry.pressedUntil > wallNow() ? 2 : 0);
   // The bevel follows whatever entrance its button is making.
   renderPose(bevel, () => currentPose(hit) ?? {});
-  hit.on('pointerdown', () => {
+  // No pointerdown listener on the hit: its listeners stay the button's own
+  // actions. The scene's frame sync detects the press (see dressButtons).
+  entry.press = () => {
     if (!hit.input?.enabled || hit.getData('enabled') === false || motion() === 'lean') return;
     entry.pressedUntil = wallNow() + PRESS_MS;
     for (const object of [hit, label]) {
       if (object?.active) renderPose(object, () => (sink() ? { dy: sink() } : undefined), 'press');
     }
-  });
+  };
   hit.once('destroy', () => {
     bevel.destroy();
     const index = live.indexOf(entry);
@@ -90,9 +92,21 @@ export function dressButtons(scene: Phaser.Scene) {
   const state = { pending: [] as Hit[], live: [] as Dressed[] };
   dressed.set(scene, state);
   const queue = (hit: Hit) => state.pending.push(hit);
+  let lastDown = scene.input?.activePointer?.downTime ?? 0;
   const sync = () => {
     // Adopt at render time: by then the caller has parented the new button.
     if (state.pending.length) state.pending.splice(0).forEach(hit => adopt(scene, hit, state.live));
+    // A new press sinks the topmost dressed button under the pointer, even
+    // when its action stopped propagation or rebuilt the button.
+    const pointer = scene.input?.activePointer;
+    if (pointer && pointer.downTime !== lastDown) {
+      lastDown = pointer.downTime;
+      if (pointer.downTime > 0 && state.live.length) {
+        const over = scene.input.hitTestPointer(pointer);
+        scene.input.sortGameObjects(over, pointer);
+        state.live.find(entry => entry.hit === over[0])?.press?.();
+      }
+    }
     const now = wallNow();
     for (const entry of state.live) {
       const { hit, bevel } = entry;

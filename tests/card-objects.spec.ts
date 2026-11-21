@@ -10,7 +10,7 @@ test.afterEach(async ({ page }) => {
   await page.goto('about:blank');
 });
 
-async function openBattle(page: Page, storage: Record<string, string> = {}, arrange = true) {
+async function openBattle(page: Page, storage: Record<string, string> = {}, arrange = true, freezeWhenReady = false) {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -26,12 +26,15 @@ async function openBattle(page: Page, storage: Record<string, string> = {}, arra
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
   });
-  await page.waitForFunction(() => {
-    const s = JSON.parse((window as any).render_game_to_text?.() ?? '{}');
-    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+  await page.waitForFunction(freeze => {
+    const w = window as any, s = JSON.parse(w.render_game_to_text?.() ?? '{}');
+    const b = w.__birdSquadGame.scene.getScene('BattleScene');
     return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active && !s.combatAnimationPending
-      && b.battleActors && b.cardObjects && b.battleHandRendererModule && b.handCardRects.size === b.hand.length && !b.battleRenderQueued;
-  });
+      && b.battleActors && b.cardObjects && b.battleHandRendererModule && b.handCardRects.size === b.hand.length && !b.battleRenderQueued
+      // Stop wall-clock frames in the same frame the state is observed, so
+      // the caller steps the scene clock alone with advanceTime.
+      && (!freeze || (w.__birdSquadGame.loop.sleep(), true));
+  }, freezeWhenReady);
   if (!arrange) return errors;
   // A known hand: an enemy-target attack first, then a Cover card, on a sturdy enemy.
   await page.evaluate(() => {
@@ -183,7 +186,9 @@ test('drawn cards fly in from the draw pile in a stagger and the counter ticks d
 });
 
 test('the opening hand is dealt from the draw pile once the encounter intro has cleared, and only once', async ({ page }) => {
-  const errors = await openBattle(page, {}, false);
+  // The deal is staggered on the scene clock; freeze real frames once the intro
+  // clears so a slow, shared machine cannot advance it before the first read.
+  const errors = await openBattle(page, {}, false, true);
   const result = await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene'), stage = b.cardObjects;
     const cards = () => b.battleActors.debugState().actors.filter((actor: any) => actor.kind === 'card');
@@ -196,7 +201,9 @@ test('the opening hand is dealt from the draw pile once the encounter intro has 
     w.advanceTime(900);
     const settled = cards().every((actor: any) => actor.motions.length === 0 && Math.abs(actor.pose.x) < 1 && Math.abs(actor.pose.scaleX - 1) < 0.01);
     b.handRenderKey = ''; b.renderAll(); w.advanceTime(200);
-    return { start, settled, boundsAfter: bounds(), dealsAfter: stage.counts.deals, again: cards().some((actor: any) => actor.motions.includes('deal')) };
+    const out = { start, settled, boundsAfter: bounds(), dealsAfter: stage.counts.deals, again: cards().some((actor: any) => actor.motions.includes('deal')) };
+    w.__birdSquadGame.loop.wake();
+    return out;
   });
   expect(result.start.intro).toBe(false);
   expect(result.start.hand).toBeGreaterThan(1);
