@@ -59,7 +59,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 21 | Intent icon badges | Done | Attack, defend, buff, debuff and unknown icons in the free left margin of each Tell badge; hidden rather than squeezed when the text fills the badge |
 | 22 | Character frame animation | Not started | Needs art. Bodies are now retained, so frames can be swapped on a live object |
 | 23 | One panel material | Partial | Every authored panel is rounded from one place. One shared panel helper (`ui-panel.ts`: scrim, frame, header, body, footer actions) now draws the route reward overlay and the loading card; other overlays not migrated |
-| 24 | Button bevel, glow, press depth | Done | `life/button-fx.ts` dresses every `quietButton`: lip, top light, hover and focus glow, and a press that sinks at draw time. Hit areas and labels untouched |
+| 24 | Button bevel, glow, press depth | Done | `life/button-fx.ts` dresses every `quietButton`: lip, top light, hover and focus glow, and a press that sinks at draw time. Hit areas and labels untouched; the press is read from the pointer at frame sync, so a hit's `pointerdown` listeners stay its own actions |
 | 25 | HUD rebuild | Not started | |
 | 26 | Letterbox atmosphere | Reverted | Doubled WebKit frame time; see Performance |
 | 27 | Overlay blur and slide | Partial | Pause, settings, how to play and confirm rise and gather in over a slate scrim; rain no longer draws over them. No blur: see Performance |
