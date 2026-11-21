@@ -192,9 +192,12 @@ raised deliberately: hand renderer 10 to 12 KiB, hand plus reward allowance
   `bottom` 638 to 647, `left` 88 to 104) so a four-lane column clears the
   header; the Flyway bar moved from the lower left of the graph to the header
   row; the "Here"/"Selected" label sits 8px closer to its medallion.
-- The district arrival card is a picture, not a modal. It owns no input: any
-  key or click dismisses it and also reaches the route beneath. Making it
-  modal would put an extra dismissal in front of every route flow.
+- The district arrival card is not a modal and takes no pointer input. The
+  first confirm press aimed at the game only dismisses it, so it cannot accept
+  a contract or commit a node the player cannot see; any other key or click
+  dismisses it and also reaches the route beneath. Confirms on page controls
+  (dialogs, the Strategy book) are never held back, and the card does not
+  show during guided practice lessons.
 - Pause and confirm scrims changed from `0x020409` at 0.9 to slate `0x0a121c`
   at 0.84.
 
