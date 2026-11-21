@@ -86,6 +86,8 @@ interpreters instead of hardcoding most card or route outcomes directly.
 stateDiagram-v2
   [*] --> BootScene
   BootScene --> MenuScene
+  BootScene --> BattleSceneLoader: fetch battle chunk beside fonts
+  BattleSceneLoader --> BattleScene: swap into the same slot
   MenuScene --> ProfileScene: profile / leader view
   ProfileScene --> MenuScene
   MenuScene --> CodexScene: codex
@@ -265,6 +267,27 @@ contract are part of the shipped runtime.
   cross-check and do not need individual card art manifest entries.
 - `CodexScene` lazy-loads extended codex data. Do not eagerly import that data
   into boot paths unless bundle budgets are intentionally revisited.
+- `BattleScene` is its own lazy chunk (`battle-scene`, ~267 KB with the
+  combat-only modules it alone imports). The boot config registers
+  `BattleSceneLoader` (`src/scenes/battle-scene-loader.ts`) under the
+  `BattleScene` key; `BootScene` fetches the real chunk beside the UI fonts and
+  swaps it into the same Scene Manager slot, so `scene.start('BattleScene')`
+  from anywhere (including tests calling the manager directly) reaches the real
+  scene. A start that wins the race keeps its data, shows a short loading card
+  (`mode: 'battleLoading'`) and hands off; a failed fetch offers a retry
+  (`mode: 'battleLoadFailed'`). Tests that need the real instance synchronously
+  call `await __birdSquadEnsureScene('BattleScene')` first. Import
+  `BattleScene` as a type only outside `battle-scene.ts`.
+- Presentation pace: Animation Pace and Fast Mode multiply scene tweens,
+  sprite animation, retained actors and set pieces through
+  `animationPaceTimeScale()`; Fast Mode also shortens `combatTimingDelay` and
+  holds Hustle through enemy turns after each beat's readable minimum. None of
+  it touches rules or `advanceTime`, which still steps real game milliseconds.
+  Pure rules: `src/game/pace-rules.ts`.
+- Rumble: `src/game/haptics.ts` (browser glue, Rumble setting, Screen
+  Shake gate) over `src/game/haptic-dispatch.ts` (pure, unit-tested). Heavy
+  hits, Surge and finishing blows pulse Gamepad `vibrationActuator` and, on
+  touch-first devices, `navigator.vibrate`; every path is a safe no-op.
 - Optional route presentation is split by interaction: Flock Stats lives in
   `src/game/flock-stats-overlay.ts`; card hover, Deck Review detail, and market
   dossiers live in `src/game/card-hover-detail.ts`; the pinned Deck Review

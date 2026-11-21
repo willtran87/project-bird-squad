@@ -73,7 +73,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 35 | Reward reveal | Not started | |
 | 36 | Victory and defeat moments | Done | Gold light sweep and falling feathers over the reward screen; dark vignette and grey feathers over the defeat report. The outcome state is immediate; the beat is layered and holds no input |
 | 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
-| 38 | Device-pixel-ratio rendering | Not started | Touches every screen's coordinates; belongs in its own change |
+| 38 | Device-pixel-ratio rendering | Not started | Investigated November 20: Phaser 4.1 has no renderer resolution; see Platform and performance |
 | 39 | Retained-mode battle rendering | Partial | Enemy bodies, the flock body and hand cards are retained actors with a logical slot and a visual pose. HUD, vitals, intent badges, shadows, reticles and overlays are still immediate-mode. See the runtime architecture doc |
 | 40 | More particle systems | Done | Contact dressing in `spectacle/impact.ts` |
 | 41 | Respect quality and motion tiers | Done | `tests/spectacle-stage.spec.ts` |
@@ -131,12 +131,12 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 19–23 | Transitions, easing, stagger, numbers, bar trails | Done | Transitions and staggered list entrances are draw-time poses. Numbers roll (list 1, item 29); Cohesion and enemy bars drain with a lighter ghost that catches up after 420 ms while the real fill stays exact |
 | 24 | Pressed, hover and focus states | Done | See list 1, item 24 |
 | 25–26 | Continuity transitions; motion-reduced cross-fades | Not started | |
-| 27–33 | Feedback and micro-interactions | Not started | Includes drag-to-play and haptics, which are new features |
+| 27–33 | Feedback and micro-interactions | Partial | Drag-to-play done (card objects); controller and touch rumble done (Platform and performance) |
 | 34 | Loading state | Partial | Boot screen in the game's palette and title treatment |
 | 35–41 | Screens and flow | Not started | |
 | 42–44 | Onboarding and iconography | Not started | |
 | 45 | Device-pixel-ratio rendering | Not started | Same as list 1, item 38 |
-| 46 | Steady frame rate | Partial | WebKit regression found and removed; grain and filters gated |
+| 46 | Steady frame rate | Partial | WebKit regression found and removed; grain and filters gated; per-frame probe added (Platform and performance) |
 | 47–49 | Preloading, breakpoints, photo mode | Not started | |
 | 50 | Page around the game | Partial | Description, theme colour and social preview tags |
 
@@ -410,3 +410,75 @@ No readability, overlap or touch-target assertion was changed.
 Not verified: human play, a physical touch device (touch was driven through
 CDP touch events), real-GPU rendering, WebKit and Firefox, and how the sheen
 and burn read at speed. No new sound was auditioned because none was added.
+
+## Platform and performance (November 20)
+
+**Lazy BattleScene.** BattleScene and the combat-only modules it alone
+imports are now the `battle-scene` chunk (267.0 KB). A tiny
+`BattleSceneLoader` holds the `BattleScene` key; boot fetches the chunk beside
+the fonts and swaps it into the same Scene Manager slot, so existing
+`scene.start('BattleScene')` calls (route, title, about 90 test files) work
+unchanged. Combined boot code 702.8 KB to 449.0 KB (450.6 KB with the Fast
+Mode and Rumble preferences and gate copy below); the budget is now 452 KB
+(target 451), the entry chunk 420 KB. `debug-state` 10 to 10.25 KB for
+import-rename drift.
+
+**Fast Mode** (Settings, Presentation): presentation clocks x1.6 (tweens,
+sprite animation, retained actors, combat life, spectacle `paced`), combat
+pauses x0.6 with a 40 ms floor, and Hustle held through enemy turns after
+each beat's readable minimum. Rules, text holds and `advanceTime` are
+unchanged. Holding Hustle (Space / A / R2) still works on its own.
+
+**Rumble** (Settings, Controls, default on): Gamepad `vibrationActuator`
+dual-rumble and, on touch-first devices, short `navigator.vibrate` pulses on
+heavy hits (35% of maximum Cohesion or a defeat), heavy hits on the flock,
+Surge and finishing blows. Screen Shake off (or Reduced Motion) keeps it
+silent. Unsupported browsers are no-ops.
+
+**Frame time**, Playwright Chromium 1280x720, SwiftShader WebGL, idle scene,
+120 rAF frames after 10 warm-up frames (`tests/platform-performance.spec.ts`).
+The machine was shared with other agents' builds, so runs varied by about
+15 ms between repeats.
+
+| Scene | Mean frame | p95 | `SceneManager.update` | `SceneManager.render` (CPU submit) | Text re-measures / frame | Graphics clears / frame |
+| --- | --- | --- | --- | --- | --- | --- |
+| Route | 47–64 ms | 67–83 ms | 0.2 ms | 5.7–6.7 ms | 0 | 0 |
+| Combat | 46–60 ms | 67–83 ms | 0.4 ms | 3.1–3.5 ms | 0 | 2 |
+
+Per frame both scenes issue about 85–90 draw calls with 82–87 shader-program
+switches (images, shapes and text alternate in display order) and no texture
+uploads. Hiding everything drops the frame to the 16.7 ms vsync; hiding
+groups (three alternating repeats, median) points at the additive
+`spectacle-glow` sprites (7–10 ms), weather and ambient layers in combat
+(about 12 ms each) and particles (4–6 ms), which are fill-bound on
+SwiftShader. CPU-side game work is under 8 ms, there are no per-frame text
+re-measurements and only two small per-frame Graphics redraws, so there was no
+CPU offender to fix. The remaining cost is software fill and draw-call count
+in decorative layers that the spectacle tests assert on; thinning them under
+software GL is a design call left open. The probe pins zero text
+re-measurement on idle frames as a regression guard. Compared with the noted
+33 to 67 ms route regression, the route measures 47–64 ms.
+
+**High-DPI**: not done. Phaser 4.1 has no renderer resolution option: the
+backing store is always the 1280x720 game size and FIT scales it with CSS.
+Crisp DPR 2 needs either a 2x game size with camera zoom (changes
+`pointer.x`, `scale.gameSize` and camera zoom resets in about 40 places,
+several owned by other changes) or patching Phaser's WebGL drawing contexts
+(viewport, scissor, snapshot capture). Text already bakes at 3–4x.
+
+**Devices**: landscape tablets (1180x820) keep every reachable title and
+combat touch target at least 44 CSS px; the canvas now sets
+`touch-action: none` so card drags and sliders do not pan or zoom the page.
+Phone portrait shows "Rotate to Landscape" with a turning device glyph (still
+under Reduced Motion). Phone landscape (844x390) stays gated with its own copy:
+at that size the 1280x720 layout puts 58 px targets at 31 CSS px and body
+text under 9 px, so it is told the 1000x560 minimum instead of being asked to
+rotate. Found and not fixed: on the entry route the selected node's hit area
+and TAKE ROUTE overlap by 0.13 game px at every size.
+
+Tests changed: `settings-readability` walks 18 rows (was 16); smoke
+`grouped Settings` sections gain row 16 (Presentation) and 17 (Controls);
+smoke settings target count 25 to 27 and row count 16 to 18. These follow the
+two new rows; no readability, overlap, touch-target or separation threshold
+changed.
+
