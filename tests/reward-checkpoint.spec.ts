@@ -21,6 +21,12 @@ test('reward save sanitation rejects malformed stages and filters unknown conten
 
 async function title(page: Page) {
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+  // Unlocks earned during the flight are revealed on the title first; Escape skips them.
+  await page.waitForTimeout(300);
+  if (await page.evaluate(() => (window as any).__birdSquadGame.scene.isActive('CeremonyScene'))) {
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.isActive('CeremonyScene'));
+  }
 }
 async function ready(page: Page) {
   await page.waitForFunction(() => {
