@@ -166,6 +166,8 @@ test('Canal content stays lazy on title and offers recovery after a failed downl
   await page.goto('./');await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);
   expect(requests.some(u=>/canal-markets-/.test(u))).toBe(false);
   await page.route('**/canal-markets-*.js',r=>r.abort());
+  await page.keyboard.press('Enter');// Start Run opens the leader choice for a new player
+  await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
   await page.keyboard.press('Enter');await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
   await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.scene.restart({runState:{...r.runState,mapIndex:1}});});
   await page.waitForFunction(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');return r.runState.mapIndex===1&&r.routeEssentialAssetsReady&&r.openFlyway;});

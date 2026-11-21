@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { dismissArrivalCard } from './helpers/route-arrival';
 
 async function boot(page: Page) {
   await page.goto('./?flight=backlog-closure&length=quick');
@@ -131,7 +132,7 @@ test('reduced-motion district flourish retires without needing a redraw', async 
 test('failed map renderer leaves the fallback deck control usable', async ({ page }) => {
   await page.route('**/route-map-renderer-*.js', route => route.abort());
   await boot(page); await page.keyboard.press('Enter');
-  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+  await dismissArrivalCard(page);
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('RouteScene').shouldChooseDistrictContract());
   await clickObject(page, 'RouteScene', 'run-hud-loading-Deck');

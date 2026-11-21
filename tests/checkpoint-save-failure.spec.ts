@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { dismissArrivalCard } from './helpers/route-arrival';
 import { screenReaderSummary } from '../src/game/screen-reader-summary';
 
 for (const scene of ['RouteScene', 'BattleScene']) test(`${scene} retains the live flight when Main Menu cannot save, then retries safely`, async ({ page }, info) => {
@@ -11,6 +12,7 @@ for (const scene of ['RouteScene', 'BattleScene']) test(`${scene} retains the li
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.isActive('RouteScene')
     && (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+  await dismissArrivalCard(page);
   if (scene === 'BattleScene') {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => {

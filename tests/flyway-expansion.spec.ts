@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { skipTitleReveals } from './helpers/title-reveals';
 
 async function boot(page: Page) {
   await page.goto('/');
@@ -197,7 +198,8 @@ test('ending archive preserves illustrated birds and awarded story seals after r
   await page.waitForFunction(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');return !!s.bossDossierModule;});
   await page.keyboard.press('j');await expect(page.getByRole('heading',{name:'The city answers'})).toBeVisible();await expect(page.getByRole('heading',{name:'The birds who carried the signal'})).toBeVisible();
   await page.screenshot({path:testInfo.outputPath('ending-journal.png')});
-  await page.reload();await page.waitForFunction(()=>(window as any).__birdSquadGame?.scene.isActive('MenuScene'));await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
+  // The finished flight's unlocks are revealed on the title first; skip them.
+  await page.reload();await page.waitForFunction(()=>(window as any).__birdSquadGame?.scene.isActive('MenuScene'));await skipTitleReveals(page);await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
   await expect(page.getByRole('heading',{name:'The birds who carried the signal'})).toBeVisible();await expect(page.getByText('Close Company · woven circle journal seal')).toBeVisible();
 });
 

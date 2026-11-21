@@ -58,6 +58,8 @@ test('warm route and battle transitions keep textures and menu listeners bounded
   test.setTimeout(180000);
   await page.goto('./');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+  await page.keyboard.press('Enter'); // Start Run opens the leader choice for a new player
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen);
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
   const runState = await page.evaluate(() => JSON.parse(JSON.stringify((window as any).__birdSquadGame.scene.getScene('RouteScene').runState)));

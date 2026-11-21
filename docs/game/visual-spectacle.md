@@ -274,6 +274,15 @@ Decisions that are not obvious from the code:
   which it closed. The key that dismisses a reveal therefore never reaches
   the screen underneath. The Flyway DOM launcher treats a scene whose
   keyboard is off as busy and hides.
+- **The title never puts a reveal in front of Continue.** While a flight
+  checkpoint can be continued, or the finished-flight save recovery dialog is
+  up, the title holds the queue: the first press there must reach Continue or
+  the dialog. The reveals wait for the title after the flight ends, or show on
+  the Collection if the player opens it first.
+- **The arrival card holds back only a confirm aimed at the route.** A confirm
+  press whose target is a page control above the canvas (a recovery dialog's
+  button, the Strategy launcher) belongs to that control. Guided practice
+  lessons show no arrival card: they are drills, not a flight arriving.
 - **Queue, not diff.** Reveals come from events, not from comparing the
   account with a "seen" list, so restoring a backup or seeding storage never
   produces a ceremony for things the player already had.

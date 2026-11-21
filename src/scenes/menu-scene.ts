@@ -78,7 +78,8 @@ export class MenuScene extends Phaser.Scene {
   private menuFocusRing?: Phaser.GameObjects.Rectangle;
   private primaryRunAction?: () => void;
   private secondaryRunAction?: () => void;
-  private menuHasSavedRun = false;
+  /** A flight checkpoint can be continued from this title visit. */
+  menuHasSavedRun = false;
   /** Focus stops added by the lazy engagement chunk (Daily Flight, Flight Recap). */
   menuExtraFocus: MenuFocus[] = [];
 
