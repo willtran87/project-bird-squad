@@ -4,6 +4,12 @@ import type { Flock, FlockState } from './shared/runtime-types';
 
 const SCATTER_HP_RATIO = 0.34;
 
+/** How hard a hit lands, 0-1, by its share of the target's maximum: nothing
+ * at 4% or less, full at 30%. A 20% hit (weight ~0.6) is heavy. */
+export function hitWeight(damage: number, maxHp: number) {
+  return damage > 0 ? Math.min(1, Math.max(0, (damage / Math.max(1, maxHp) - 0.04) / 0.26)) : 0;
+}
+
 export function flockStateOf(flock: Flock): FlockState {
   if (flock.flow >= flock.flowMax) return 'surging';
   if (flock.hp < flock.maxHp * SCATTER_HP_RATIO) return 'scattered';

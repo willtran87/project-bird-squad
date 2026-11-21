@@ -23,6 +23,9 @@ const budgets = [
   { label: 'opening district lazy module', pattern: /^opening-district-.*\.js$/, maxKb: 9, hard: true },
   // Retained actor stage: animation clock, hit-stop, body motion and hand fan. Replaces the breathing tween module.
   { label: 'battle actors lazy module', pattern: /^battle-actors-.*\.js$/, maxKb: 10, hard: true },
+  // Combat life: status/intent icon badges, ghost health, counter rolls, combo chain, body status effects,
+  // set pieces (Surge, Molt, boss entrance/phase, finishing blow, victory, defeat), Leader flourishes, Waymark lines (25.6 KB).
+  { label: 'combat life lazy module', pattern: /^battle-life-.*\.js$/, maxKb: 26.5, hard: true },
   { label: 'cards-as-objects lazy module', pattern: /^battle-card-objects-.*\.js$/, maxKb: 21.5, hard: true }, // flight, deal, discard, drag, rarity frames, number highlights, inspect face (20.2 KB)
   { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10.25, hard: true }, // +7 bytes of import renames from the scene-life chunk
   { label: 'route transition FX lazy module', pattern: /^route-transition-fx-.*\.js$/, maxKb: 7, hard: true },
@@ -46,9 +49,9 @@ const budgets = [
   { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
   // +retained combatant bodies, slot-owned hit areas and the breathing envelope (was a tween module).
-  { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 10.5, hard: true },
+  { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 10.5, hard: true }, // +seats combat life (10.1 KB)
   // Separate cost/outcome/protection fields and critical warnings; remains lazy.
-  { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 12.5, hard: true }, // +CONFIRM TO PLAY is a real control
+  { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 13.5, hard: true }, // +CONFIRM TO PLAY is a real control; +confirm placement clear of enemy panels (13.3 KB, a320a5f9)
   // Full-portrait card faces, state halos and hover lift live here.
   { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 15.25, hard: true }, // +hand reconciliation; +departures, rarity frame, number highlights and the inspect face hook (14.8 KB)
   // Living-stage lighting, weather, bloom and motion; never part of boot.

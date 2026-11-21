@@ -44,9 +44,9 @@ instead of queuing them.
 | `hit.impact` | `{ damage, maxHp, lethal?, coverBroke?, target? }` | Impact scaled by `damage / maxHp`, from a light tick to a heavy thud. `lethal` adds a falling tail; `coverBroke` adds the Cover break |
 | `cover.absorb` | `{ amount? }` | Cover takes the hit: padded and dull |
 | `cover.break` | `{ amount? }` | Cover gives way: a crack and falling shards |
-| `count.tick` | `{ step, of? }` | One tick of a counting number; pitch rises an octave across `of` ticks |
+| `count.tick` | `{ step, of? }` | One tick of a counting number; pitch rises an octave across `of` ticks. Sent by combat life's HUD counter rolls (Cover, Wingbeats, Scrap, Flow), at most 8 per roll |
 | `stinger.play` | `{ id }` | `victory`, `defeat`, `reward`, `molt` or `bossPhase` |
-| `turn.start` | `{}` | Silent. Restarts the card pitch ladder |
+| `turn.start` | `{}` | Silent. Restarts the card pitch ladder. Sent by combat life when the turn number rises in battle |
 | `battle.enter` | `{ tier, district? }` | Sets the music tier (`street`, `elite`, `boss`) and district. A boss also plays the entrance |
 | `district.enter` | `{ district }` | Silent. Crossfades the ambience bed to district 0–3 |
 | `flock.formation` | `{ state }` | Silent. `surging` adds music stems, `scattered` thins them out |
@@ -121,13 +121,11 @@ leader signatures.
 - `ui.confirm` has no call site. All 146 `playUiSound('confirm')` calls, which
   cover menu navigation as well as real confirmations, now play the soft
   click. A committing button should call `birdAudio.play('ui.confirm')`.
-- `count.tick` has no call site because no number counts up on screen yet.
 - `material.tap` with `metal` is only reached through `marketPurchase`. Scrap
   gains elsewhere do not call it.
 - `overlay.set` is sent for the pause overlay only. Settings, the deck browser,
   the Codex and other canvas overlays should send their own id. Open
   `<dialog>` elements are not detected.
-- `turn.start` is not sent; the ladder relies on the legacy turn cues.
 
 ## Where the code lives
 
