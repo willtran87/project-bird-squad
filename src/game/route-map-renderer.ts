@@ -3,6 +3,7 @@ export { renderDistrictFraming } from './district-framing';
 export { renderDistrictAdvanceFlourish, routeCommitStreakFx, renderRouteBossBeaconRing } from './route-transition-fx';
 export { renderUnifiedRunHud, renderRouteGuidance, renderRouteMapFrame, renderRouteDistrictBanner } from './run-hud';
 import { UI_TYPE } from './theme';
+import { addRouteGlyph } from './world-glyphs';
 import { drawFlightTrail, edgeCurveKey, renderRouteLifeOver, renderRouteLifeUnder } from './spectacle/life/route-life';
 
 export interface RouteMapNodeView {
@@ -148,6 +149,12 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
   context.renderNodeIcon(node, visualAlpha)
     .setName('route-node-icon')
     .setData({ routeNodeId: node.id, routeNodeState: visualState });
+  // A crisp world sign on the medallion's upper right says the node type at a
+  // glance, even where the painted medallion is too small to read.
+  const reach = node.radius * 0.74, size = node.boss ? 28 : 24;
+  addRouteGlyph(scene, node.type, node.x + reach, node.y - reach, size)
+    ?.setAlpha(node.completed ? 0.5 : node.selectable || node.current || node.selected ? 1 : 0.86)
+    .setName('route-node-glyph').setData({ routeNodeId: node.id });
 
   if (node.completed) {
     const x = node.x + node.radius * 0.65, y = node.y + node.radius * 0.65;

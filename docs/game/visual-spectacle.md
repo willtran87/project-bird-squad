@@ -58,19 +58,19 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 20 | Surge as a set piece | Done | Fires on the transition into Surging only: cyan screen-edge glow, the flock rises, a short SURGE title above the flock and the Leader's flourish. 1.1 s, skippable by any input |
 | 21 | Intent icon badges | Done | Attack, defend, buff, debuff and unknown icons in the free left margin of each Tell badge; hidden rather than squeezed when the text fills the badge |
 | 22 | Character frame animation | Not started | Needs art. Bodies are now retained, so frames can be swapped on a live object |
-| 23 | One panel material | Partial | Every authored panel is rounded from one place; no texture or layered depth |
+| 23 | One panel material | Partial | Every authored panel is rounded from one place. One shared panel helper (`ui-panel.ts`: scrim, frame, header, body, footer actions) now draws the route reward overlay and the loading card; other overlays not migrated |
 | 24 | Button bevel, glow, press depth | Done | `life/button-fx.ts` dresses every `quietButton`: lip, top light, hover and focus glow, and a press that sinks at draw time. Hit areas and labels untouched |
 | 25 | HUD rebuild | Not started | |
 | 26 | Letterbox atmosphere | Reverted | Doubled WebKit frame time; see Performance |
 | 27 | Overlay blur and slide | Partial | Pause, settings, how to play and confirm rise and gather in over a slate scrim; rain no longer draws over them. No blur: see Performance |
-| 28 | Wider icon use | Not started | |
+| 28 | Wider icon use | Partial | Procedural route node signs and suit sigils (`world-glyphs.ts`); see Presentation polish |
 | 29 | Animated numbers | Done | Cover, Wingbeats, Scrap and Flow roll to their new value with `count.tick` per step (≤ 420 ms). The real HUD text is exact at once and hidden while an overlay rolls over it. Damage numbers pop by the share of the target's maximum |
 | 30 | Outgoing transitions | Done | Wing wipe between menu, route and battle; a slower gold wipe into a new district. The scene change itself stays instant (`life/transitions.ts`) |
 | 31 | Animated title | Done | Rain, glowing puddles and neon, bloom. No wordmark shimmer |
 | 32 | District arrival card | Done | Full-screen title over the district painting, once per district per run, skippable. Not modal: see Rules changed |
 | 33 | Boss entrance | Done | Once per boss per fight, after the encounter intro: a name card and a 3% camera push, 1.4 s, skippable. No push under Reduced Motion |
 | 34 | Route map life | Done | Flock marker that flies the chosen edge, pulsing reachable nodes, flown edges drawn as flight trails, node legend. No fog of war |
-| 35 | Reward reveal | Not started | |
+| 35 | Reward reveal | Done | Combat and route card rewards are dealt face down and turn over in order with a rarity glint; any input skips. Draw-time only; see Presentation polish |
 | 36 | Victory and defeat moments | Done | Gold light sweep and falling feathers over the reward screen; dark vignette and grey feathers over the defeat report. The outcome state is immediate; the beat is layered and holds no input |
 | 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
 | 38 | Device-pixel-ratio rendering | Not started | Investigated November 20: Phaser 4.1 has no renderer resolution; see Platform and performance |
@@ -98,16 +98,16 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 14 | Recorded bird calls | Partial | Still no recordings. Synthesised stylised calls per suit and per Flock Leader stand in. Not auditioned |
 | 15 | Duck music on big moments | Done | Heavy hits, finishing blows, stingers, boss entrances. Stems add on Surge, thin on Scatter, intensify for elites and bosses. Not auditioned |
 | 16 | District ambient beds | Done | Continuous rain, canal, static-and-wires and high-wind beds; crossfade on district change; lower under the pause overlay only. Not auditioned |
-| 17 | Material interface sounds | Partial | Paper, metal, wood, water, soft click and cancel are live. `count.tick` now ticks rolling HUD counters; `ui.confirm` has no call site yet. Not auditioned |
+| 17 | Material interface sounds | Partial | Paper, metal, wood, water, soft click and cancel are live. `count.tick` ticks rolling HUD counters; committing shared buttons now play `ui.confirm` (see Presentation polish). Not auditioned |
 | 18 | One vocabulary (HP versus Cohesion) | Not started | 20 source strings and 3 test files involved |
 | 19 | One lighting direction | Not started | |
 | 20 | One frame material | Not started | |
-| 21 | Tarot made visible in play | Not started | |
+| 21 | Tarot made visible in play | Partial | Suit sigil and roman numeral on reward faces (combat and route) and in the Codex dossier. Hand faces untouched |
 | 22 | Suit colour everywhere | Partial | Strikes and card halos |
 | 23 | District identity kit | Partial | Per-district light, weather, ambient life and arrival card |
 | 24 | Leader visual signature | Done | Each Leader has a flourish in their Codex accent on Surge entry and on their signature trigger: Fledgling spiral, Spark-Caller arcs, Talon slashes, Tidewarden ripples, Roostkeeper ward |
 | 25 | Consistent button wording | Not started | |
-| 26 | Icons from the world | Not started | |
+| 26 | Icons from the world | Partial | Route map and legend: claw marks, crew shield, crown, lantern, wrench, stall awning, mast, crate. Not yet on other screens |
 | 27 | Particle systems over single images | Done | |
 | 28 | Feathers as signature debris | Done | |
 | 29 | Effects light the scene | Done | Floor pool and air glow on contact |
@@ -125,14 +125,14 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 8–9 | Type scale and hierarchy | Not started | |
 | 10 | Tabular figures | Done | Frozen into the UI faces by `tools/build-ui-fonts.py` |
 | 11–12 | Line length; replace ASCII conventions | Not started | |
-| 13–16 | Layered panels, elevation, accents, overlay blur | Not started | Needs one shared panel component across ~550 call sites |
+| 13–16 | Layered panels, elevation, accents, overlay blur | Partial | The shared panel component exists (`src/game/ui-panel.ts`) and draws two overlays; migration of the rest is opportunistic. No blur |
 | 17 | Film grain | Done | Hardware GL only; see Performance |
 | 18 | Contrast in context | Not started | |
 | 19–23 | Transitions, easing, stagger, numbers, bar trails | Done | Transitions and staggered list entrances are draw-time poses. Numbers roll (list 1, item 29); Cohesion and enemy bars drain with a lighter ghost that catches up after 420 ms while the real fill stays exact |
 | 24 | Pressed, hover and focus states | Done | See list 1, item 24 |
 | 25–26 | Continuity transitions; motion-reduced cross-fades | Not started | |
 | 27–33 | Feedback and micro-interactions | Partial | Drag-to-play done (card objects); controller and touch rumble done (Platform and performance) |
-| 34 | Loading state | Partial | Boot screen in the game's palette and title treatment |
+| 34 | Loading state | Done | Boot screen in the game's palette; route and battle readiness screens stay dark for 250 ms, then show a panel with the flock crossing and a progress bar |
 | 35–41 | Screens and flow | Not started | |
 | 42–44 | Onboarding and iconography | Not started | |
 | 45 | Device-pixel-ratio rendering | Not started | Same as list 1, item 38 |
@@ -482,3 +482,39 @@ smoke settings target count 25 to 27 and row count 16 to 18. These follow the
 two new rows; no readability, overlap, touch-target or separation threshold
 changed.
 
+## Presentation polish — November 20, 2026
+
+Seven presentation items, all layered over existing layouts. None of it lives
+in `battle-scene.ts` beyond naming four readiness-screen objects; the route
+scene gained the same four names and a `cardId` on its reward art.
+
+| Item | Status | What exists |
+| --- | --- | --- |
+| Reward reveal | Done | `spectacle/life/reward-reveal.ts` (own chunk). Combat and route card rewards are dealt face down from below the screen, turn over left to right (a horizontal-scale flip about each card's centre) and a band of light in the card's rarity colour crosses each face. About 1.2 s at standard Animation Pace; Reduced Motion fades the faces up in order; Lean graphics shows them at once. Any pointer, key or controller button skips to the settled screen. Input is read at the window and never consumed, so the first click on a card still only arms it. Preen picks and Waymark rewards are not revealed. Every pose is applied at draw time: bounds, alpha, scale and hit areas are final from the first frame |
+| Tarot presentation | Done | `tarot-rules.ts` (pure) and `world-glyphs.ts`. A cartouche with the suit sigil (plume, basin, quill nib, woven nest; a compass rose for majors and the Aviary arcana) and the roman numeral sits over the top of the art on combat and route reward faces and beside the Codex dossier kicker. Majors carry their number (0 for First Flight), minors their rank, courts XI–XIV (Fledgling, Outrider, Matron, Elder). Snags carry none. Hand faces are untouched (another change owns them) |
+| World icons | Done | Procedural signs drawn once per size into 2x canvas textures: claw marks (fight), crew shield (rival), crown (boss), lantern (roost), wrench (nest workshop), stall awning (market), mast (signal), crate (cache). A sign sits on each node medallion's upper right (24px, 28px for the boss) and replaces the painted miniatures in the legend (28px). At 1000×560 they are 19–22 CSS px. Node hit areas are unchanged |
+| Shared panel | Partial | `ui-panel.ts`: scrim, frame (shadow, accent rail, corner brackets), eyebrow/title/subtitle header, body rectangle and footer actions built from `quietButton`, with a pure `panelLayout`. Used by the route reward overlay (replacing `renderFieldPanel` there) and the loading card. Other overlays were not migrated |
+| Loading screens | Done | `spectacle/life/loading.ts` (own chunk). While a route or battle readiness screen is up, its medallion and copy stay hidden for 250 ms of wall time; after that a panel shows the screen's own title and line, five birds crossing in a V and a progress bar driven by the readiness groups still pending. Fast loads never show it. Scene start for a lazily loaded BattleScene is not covered: that loader belongs to the platform change |
+| Bark lines | Done | `data/game/barks.json` and `src/game/barks/` (own chunk, requested when a fight opens). Five Leaders and nine enemy families (corvid, pigeon, raptor, gull, canal, night, vermin, a generic crew and bosses), three to four lines per trigger: opening, heavy hit (20% of maximum Cohesion or enemy health), Cohesion under 30%, a defeat (the enemy's last word or the Leader's quip, by seeded coin) and a boss phase turn. Lines are drawn from per-speaker decks shuffled by the flight seed; a pool is exhausted before any line repeats and a pass never opens on the line the last one closed. Tags hold 1.5 s scaled by Text Pace and are off under Fast. A tag is placed above, beside or below its speaker only where it touches no visible text, panel, control, HUD element or small icon; with no clear spot the line is dropped. Hidden under the inspect reader, drawers, pause and settings |
+| UI confirm sound | Done | `quietButton` classifies its current label (`button-cue.ts`): commit words (confirm, select, buy, claim, start, take, fly, skip, save…) or a primary action without a navigation word play `ui.confirm`; back, close, cancel, read, inspect, filters and tabs keep the soft click. Done in the shared helper, so it covers every `quietButton` and `decisionButton` (about 100 call sites) without touching them |
+
+Not covered: keyboard and controller shortcuts that call an action directly
+rather than through the button still play the soft click; buttons built
+outside `quietButton` (the Codex grid, the title rows) are unchanged.
+
+Chunks (all lazy, budgets added): `reward-reveal` 7.2 KB, `scene-loading`
+2.9 KB, `barks` 15.8 KB, `world-glyphs` 6.7 KB, `ui-panel` 2.3 KB.
+`scene-life` stays at 28.2 of 30 KB. Boot code 702.8 to 704.0 of 708 KB: the
+button cue classifier, the `quietButton` hook and the readiness names.
+`debug-state` budget 10 to 10.25 KB for import-rename drift (10.02 KB).
+
+Checks: `tests/presentation-polish.spec.ts` (11 tests) and unit files for
+the button cue, tarot rules, reveal timeline, panel layout and bark rules.
+No existing assertion was changed. The opening barks wait 0.7 s after the
+intro clears: placing a tag at that instant delayed the opening deal and
+failed `card-objects` ("dealt ... only once"). `reward-checkpoint` (boss
+reward resume, four tests) and `route-decision-polish` (Details, two tests)
+fail identically on the base commit `0d58b2ee` without these changes.
+
+Not verified: human play, real GPUs, WebKit and Firefox, physical touch and
+controllers, and whether `ui.confirm` on every commit reads well by ear.

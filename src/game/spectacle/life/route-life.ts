@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { RouteMapNodeView, RouteMapRendererContext } from '../../route-map-renderer';
 import { UI_TYPE } from '../../theme';
+import { addRouteGlyph } from '../../world-glyphs';
 import { birdTexture, eachFrame, easeOut, motion, sceneNow } from './kit';
 
 /**
@@ -104,7 +105,8 @@ function renderLegend(context: RouteMapRendererContext) {
     .setStrokeStyle(1, 0x49606d, 0.7).setName('route-legend');
   rows.forEach(([type, label], index) => {
     const y = top + rowHeight * (index + 0.5);
-    context.renderNodeIcon({ type, x: left + 20, y, iconSize: 30 } as RouteMapNodeView, 1)
+    // The legend uses the crisp world signs: the painted medallions blur at this size.
+    (addRouteGlyph(scene, type, left + 20, y, 28) ?? context.renderNodeIcon({ type, x: left + 20, y, iconSize: 30 } as RouteMapNodeView, 1))
       .setName('route-legend-icon').setData('routeNodeType', type);
     scene.add.text(left + 40, y, label, {
       fontFamily: context.fontFamily, fontSize: `${UI_TYPE.secondary}px`, color: '#cfdde6', resolution: 2,

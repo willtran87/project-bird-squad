@@ -21,9 +21,20 @@ const LISTS: Record<string, readonly StaggerSpec[]> = {
   ],
   RouteScene: [
     { name: 'route-choice-option-frame' }, { name: 'district-contract-option', axis: 'x' },
-    { name: 'route-reward-card-hit', axis: 'x', drawnLast: true }, { name: 'market-card-offer-frame', axis: 'x' },
+    // Route card rewards are dealt and turned over by the reward reveal instead.
+    { name: 'market-card-offer-frame', axis: 'x' },
   ],
 };
+
+// The reward reveal and the loading card are their own chunks (measured
+// separately), requested as soon as the layer installs.
+let reveal: typeof import('./reward-reveal') | undefined;
+let loading: typeof import('./loading') | undefined;
+const extras = () => Promise.all([
+  import('./reward-reveal').then(module => { reveal = module; }),
+  import('./loading').then(module => { loading = module; }),
+]).catch(() => undefined);
+let extrasReady: Promise<unknown> | undefined;
 
 /** Dress one scene. Returns true when an exit transition is playing into it. */
 export function dressLife(scene: Phaser.Scene, arriving: boolean) {
@@ -44,6 +55,12 @@ export function dressLife(scene: Phaser.Scene, arriving: boolean) {
   }
   if (key === 'MenuScene' || key === 'RouteScene') dressBackdropLife(scene);
   if (key === 'RouteScene') dressArrivalCard(scene);
+  if (key === 'RouteScene' || key === 'BattleScene') {
+    const dress = () => { if (!scene.sys.settings.active) return; reveal?.dressRewardReveal(scene); loading?.dressLoading(scene); };
+    if (reveal && loading) dress(); else void (extrasReady ??= extras()).then(dress);
+  }
+  // Combat barks and their copy are their own chunk, asked for when a fight opens.
+  if (key === 'BattleScene') void import('../../barks/barks').then(module => { if (scene.sys.isActive()) module.dressBarks(scene); }).catch(() => undefined);
   return arriving ? dressTransition(scene) : false;
 }
 
@@ -56,13 +73,16 @@ export function gradeBattlePainting(scene: Phaser.Scene, painting: Phaser.GameOb
 
 export function installLife(game: Phaser.Game) {
   installTransitions(game);
+  extrasReady ??= extras();
   // One read-only window onto the layer for tests and debugging.
+  (window as unknown as Record<string, unknown>).__birdSquadBarks = (sceneKey: string) =>
+    import('../../barks/barks').then(module => module.barkState(game.scene.getScene(sceneKey)));
   (window as unknown as Record<string, unknown>).__birdSquadLife = (sceneKey: string) => {
     const scene = game.scene.getScene(sceneKey);
     const district = (scene as unknown as { runState?: { mapIndex?: number } }).runState?.mapIndex ?? 0;
     return {
       route: routeLifeState(scene), backdrop: backdropLifeState(scene), arrivalCard: arrivalCardState(scene),
-      overlay: overlayEntranceState(scene), transition: lastTransition(),
+      overlay: overlayEntranceState(scene), transition: lastTransition(), rewardReveal: reveal?.rewardRevealState(scene), loading: loading?.loadingState(scene),
       light: runLight(runProgress(scene, district)),
     };
   };

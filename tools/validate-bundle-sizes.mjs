@@ -61,6 +61,14 @@ const budgets = [
   // overlay and list entrances, living backdrops, button depth. Loaded after
   // the stage; never part of boot.
   { label: 'scene life lazy module', pattern: /^scene-life-.*.js$/, maxKb: 30, hard: true },
+  // Presentation polish (all lazy): card reward reveal (7.2 KB), delayed loading card (2.9 KB),
+  // combat barks with their line content (15.8 KB), suit sigils, tarot marks and route signs (6.7 KB),
+  // and the shared overlay panel (2.3 KB).
+  { label: 'card reward reveal lazy module', pattern: /^reward-reveal-.*\.js$/, maxKb: 8, hard: true },
+  { label: 'scene loading card lazy module', pattern: /^scene-loading-.*\.js$/, maxKb: 3.5, hard: true },
+  { label: 'combat barks lazy module', pattern: /^barks-.*\.js$/, maxKb: 17, hard: true },
+  { label: 'world glyphs and tarot marks lazy module', pattern: /^world-glyphs-.*\.js$/, maxKb: 7.5, hard: true },
+  { label: 'shared overlay panel lazy module', pattern: /^ui-panel-.*\.js$/, maxKb: 3, hard: true },
   // Daily Flight, run recap/photo card and Collection ceremony scenes; the title
   // requests this after its first frame. Narrative copy rides with the arrival card.
   { label: 'engagement scenes lazy module', pattern: /^engagement-.*\.js$/, maxKb: 30, hard: true },

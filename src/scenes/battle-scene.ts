@@ -1883,9 +1883,9 @@ export class BattleScene extends Phaser.Scene {
     }
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020711, 0.72));
     this.root.add(this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 38, 34, 0x07131d, 0.96)
-      .setStrokeStyle(3, UI_FIELD.danger, 0.88));
+      .setStrokeStyle(3, UI_FIELD.danger, 0.88).setName('scene-readiness-mark'));
     this.root.add(this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 38, 15, UI_FIELD.gold, 0.9)
-      .setStrokeStyle(2, 0x07131d, 0.9));
+      .setStrokeStyle(2, 0x07131d, 0.9).setName('scene-readiness-mark'));
     this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 22, 'Flock taking position...', {
       fontFamily: TOKEN_DISPLAY_FONT,
       fontSize: '28px',
@@ -1893,12 +1893,12 @@ export class BattleScene extends Phaser.Scene {
       color: UI_GOLD,
       stroke: '#000000',
       strokeThickness: 4
-    }).setOrigin(0.5));
+    }).setOrigin(0.5).setName('scene-readiness-title'));
     this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 62, 'Reading the threat and setting the first beat.', {
       fontFamily: UI_FONT,
       fontSize: '14px',
       color: UI_CYAN
-    }).setOrigin(0.5));
+    }).setOrigin(0.5).setName('scene-readiness-detail'));
   }
 
   private ensureFxTextures() {

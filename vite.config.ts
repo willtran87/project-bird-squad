@@ -81,7 +81,15 @@ export default defineConfig(({ command }) => ({
           ) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
           // Title, route and chrome life: loaded after the stage, never part of boot.
+          // Card reward reveal and the delayed loading card: measurable on their own beside scene life.
+          if (/\/src\/game\/spectacle\/life\/(reward-reveal|reveal-timeline)\.ts$/.test(moduleId)) return 'reward-reveal';
+          if (moduleId.endsWith('/src/game/spectacle/life/loading.ts')) return 'scene-loading';
           if (moduleId.includes('/src/game/spectacle/life/')) return 'scene-life';
+          // Procedural suit sigils, tarot marks and route node signs; shared by reward faces, the route and the Codex.
+          if (moduleId.endsWith('/src/game/world-glyphs.ts') || moduleId.endsWith('/src/game/tarot-rules.ts')) return 'world-glyphs';
+          if (moduleId.endsWith('/src/game/ui-panel.ts')) return 'ui-panel';
+          // Combat barks: rules, runtime and the line content, loaded when a fight opens.
+          if (moduleId.includes('/src/game/barks/') || moduleId.endsWith('/data/game/barks.json')) return 'barks';
           if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';
           // Audio stays lazy: pure rules, the event voices and the district beds
           // are each measurable beside the legacy cue and music chunks.

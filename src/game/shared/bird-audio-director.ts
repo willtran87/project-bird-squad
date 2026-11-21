@@ -6,6 +6,7 @@ import type { DistrictAmbience } from '../audio-ambience';
 import type { BirdAudioEvent, BirdAudioEventMap, EncounterTier, FormationState } from '../audio-events';
 import type { AdaptiveMusicModule, AudioMood, AudioSfxModule } from './runtime-types';
 import { clamp } from './ui-helpers';
+import { committing } from '../button-cue';
 
 export type AudioCue = SynthAudioCue | 'card';
 
@@ -96,6 +97,11 @@ class BirdAudioDirector {
       else if (event === 'district.enter' || event === 'overlay.set') this.syncBed();
       if (event !== 'battle.enter' && /^(flock|district|overlay)/.test(event)) return;
     } else this.cueRequests[cue as AudioCue] = (this.cueRequests[cue as AudioCue] ?? 0) + 1;
+    if (cue === 'confirm' && committing()) {
+      event = 'ui.confirm';
+      data = {};
+      this.eventRequests[event] = (this.eventRequests[event] ?? 0) + 1;
+    }
     if (this.muted) return;
     const ctx = this.ensureContext();
     if (!ctx) return;

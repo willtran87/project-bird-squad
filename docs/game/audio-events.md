@@ -33,7 +33,7 @@ instead of queuing them.
 | Event | Detail | What it does |
 | --- | --- | --- |
 | `ui.click` | `{ intensity? }` | Soft click for any shared button |
-| `ui.confirm` | `{ intensity? }` | Click plus a rising two-note answer, for a committed choice |
+| `ui.confirm` | `{ intensity? }` | Click plus a rising two-note answer, for a committed choice. Played by every shared button (`quietButton`) whose label commits (confirm, select, buy, claim, start, take...) or that is a primary action without a navigation word; the button's soft `confirm` click is upgraded inside `asCommit` (`src/game/button-cue.ts`), so the legacy `confirm` count still rises by one. Keyboard and controller shortcuts that call the action directly keep the soft click |
 | `ui.cancel` | `{ intensity? }` | Falling two-note step back |
 | `card.draw` | `{ count? }` | Paper sliding off the deck |
 | `card.play` | `{ suit?, molt?, intensity? }` | Paper slap, the suit's material, the suit's bird call. Pitch climbs with each consecutive play |

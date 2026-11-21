@@ -48,6 +48,8 @@ export const wallNow = () => performance.now();
 
 export interface Pose {
   dx?: number; dy?: number; alpha?: number; scale?: number;
+  /** Horizontal scale only, for a card turning over. */
+  sx?: number;
   /** Multiply tint per corner: top-left, top-right, bottom-left, bottom-right. */
   tint?: readonly [number, number, number, number];
 }
@@ -68,7 +70,7 @@ function samplePose(channels: Channels): Pose | undefined {
     pose = pose ? {
       dx: (pose.dx ?? 0) + (next.dx ?? 0), dy: (pose.dy ?? 0) + (next.dy ?? 0),
       alpha: (pose.alpha ?? 1) * (next.alpha ?? 1), scale: (pose.scale ?? 1) * (next.scale ?? 1),
-      tint: next.tint ?? pose.tint,
+      sx: (pose.sx ?? 1) * (next.sx ?? 1), tint: next.tint ?? pose.tint,
     } : next;
   }
   return pose;
@@ -104,8 +106,8 @@ export function renderPose(object: Phaser.GameObjects.GameObject, sampler: Sampl
       target.y = y + (pose.dy ?? 0);
       const fade = pose.alpha !== undefined && typeof alpha === 'number';
       if (fade) target.alpha = alpha! * pose.alpha!;
-      const grow = pose.scale !== undefined && typeof scaleX === 'number' && typeof scaleY === 'number';
-      if (grow) { target.scaleX = scaleX! * pose.scale!; target.scaleY = scaleY! * pose.scale!; }
+      const grow = (pose.scale !== undefined || pose.sx !== undefined) && typeof scaleX === 'number' && typeof scaleY === 'number';
+      if (grow) { target.scaleX = scaleX! * (pose.scale ?? 1) * (pose.sx ?? 1); target.scaleY = scaleY! * (pose.scale ?? 1); }
       if (tints) [target.tintTopLeft, target.tintTopRight, target.tintBottomLeft, target.tintBottomRight] = pose.tint!;
       try {
         return base.apply(this, args);
