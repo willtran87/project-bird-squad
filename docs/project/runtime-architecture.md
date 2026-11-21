@@ -378,7 +378,7 @@ To animate an actor:
   `stage.visualPoint(id)` is where a body is drawn now.
 
 Still immediate-mode: the top bar and HUD, enemy vitals, intent, rank and
-status panels, contact shadows, the target reticle and guide, the selection
+status panels (their icons and ghost bars are retained by combat life, below), contact shadows, the target reticle and guide, the selection
 preview, hand pager and all overlays and ceremonies. The hand's compact
 fallback renderer (used when the lazy renderer fails) is neither retained nor
 animated.
@@ -442,6 +442,49 @@ hand and the overlays; `ActorMotion` now takes `from` (start values) and
 `delay`; `ACTOR_EASE` exports the stage easings; `releaseCardBody` hands a
 card's objects back to ordinary rendering; `addRarityFrame` works on any
 rectangle; `paintFlightCard` draws the small illustrated card.
+
+### Combat life
+
+`src/game/battle/combat-life.ts` (lazy chunk `battle-life`, pure rules in
+`combat-life-rules.ts`) makes combatants, status, numbers and big moments
+feel alive. One `CombatLife` per scene, reached through `combatLife(scene)` or
+`scene.combatLife`; the foreground renderer creates it. It never writes game
+state and holds no input.
+
+- **Retained, seated in `root`:** `combat-life-flock` right after the flock
+  body (status badge row, Cover shield plates) and one `combat-life-enemy` per
+  enemy above every label (intent icon, status icons, HP drain and ghost, Cover
+  shimmer). `parkBattleActors` parks them with the bodies before the redraw.
+  Icons sit in the free margin beside the text they repeat and hide rather
+  than squeeze it; the text is unchanged.
+- **Ghost bars:** the real `combat-enemy-health-fill` and Cohesion fill stay
+  exact. A bright drain segment eases out in ~70 ms and a lighter ghost holds
+  420 ms, then catches up (`stepGhost`). The Cohesion pair is inserted under
+  `hud-value-Cohesion` on `battle-hud-rendered`.
+- **Counter rolls:** on `battle-hud-rendered`, a changed Cover, Wingbeats,
+  Scrap or Flow value starts a roll. The real `hud-value-*` text already holds
+  the new value and is set to alpha 0; a `combat-count-roll` overlay counts to
+  it with `count.tick` per step and is removed when done (≤ 420 ms, never
+  under Reduced Motion).
+- **Transitions it watches** (on the scene clock): Flow reaching max (Surge),
+  `flock.molt`, Cover rising, a new boss, boss phase 1→2, an enemy reaching 0
+  (finishing blow: `stage.slowMo` plus `hitStop`), the turn number
+  (`turn.start`), a Leader signature, `cardsPlayedThisTurn` (combo chain) and
+  `mode` leaving `battle` (victory or defeat beat). `waymark-fired` (emitted by
+  `showWaymarkFeedback`) draws a line from the Waymarks chip.
+- **Top layer** `combat-life-top` (depth 76) holds set pieces, flourishes,
+  lines, rolls and the combo chip; hidden while an inspect, Waymark, supply or
+  pause overlay is open. Any pointer or key press skips every running set
+  piece. Each is under 1.5 s.
+- **Body status:** `actor.life` (`droop`, `jitter`, `tempo`) is applied by the
+  actor stage after breathing; Winded slows and droops, Ruffled jitters (Screen
+  Shake on). The targeted enemy's ambient tint pulses brighter; Molt tints the
+  flock violet.
+- **Preferences:** Reduced Motion keeps badges and titles but no motion,
+  rolls, push or particles; Lean graphics drops particles; Flash Effects
+  scales glows; Animation Pace scales the life clock.
+- **Diagnostics:** `combatLife.debugState()` (running pieces, counts seen,
+  combo, zoom, rolls, badges, ghost bars).
 
 ## Flyway expansion boundary
 

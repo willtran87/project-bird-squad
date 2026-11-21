@@ -51,12 +51,12 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 13 | Hit-stop | Done | Contact freezes the actor clock for 2–4 frames (enemy, flock and hand bodies). Game logic, FX tweens and particles keep running |
 | 14 | Camera punch and flash | Done | Follows Screen Shake and Flash Effects |
 | 15 | Enemy death | Done | Defeat stagger plus feathers. Spawn verified; full playout not observed under the test harness |
-| 16 | Status icons | Not started | |
-| 17 | Contact shadows and rim light | Partial | Shadows already existed; no rim light |
+| 16 | Status icons | Done | Procedural icon badges (`battle/combat-life.ts`): Cover, Winded, Ruffled, Fouled, Open Sky, Open Sky Guard, Molt and Resonance with stack numbers in a row by the flock; Cover and Winded icons beside each enemy's status text when they fit. The text stays as it was for `render_game_to_text`, tooltips and tests. Retained per enemy, so a redraw does not flicker |
+| 17 | Contact shadows and rim light | Partial | The targeted enemy's ambient tint brightens and pulses (rim light). No scale lift: the breathing envelope is fitted to the HUD and label clearance, and a lift would cross it |
 | 18 | Normalise character scale | Not started | |
 | 19 | Targeting arc | Done | |
-| 20 | Surge as a set piece | Not started | A flash was tried on `combatFlowSurge`; it fires on every Flow gain, so it was removed |
-| 21 | Intent icon badges | Not started | |
+| 20 | Surge as a set piece | Done | Fires on the transition into Surging only: cyan screen-edge glow, the flock rises, a short SURGE title above the flock and the Leader's flourish. 1.1 s, skippable by any input |
+| 21 | Intent icon badges | Done | Attack, defend, buff, debuff and unknown icons in the free left margin of each Tell badge; hidden rather than squeezed when the text fills the badge |
 | 22 | Character frame animation | Not started | Needs art. Bodies are now retained, so frames can be swapped on a live object |
 | 23 | One panel material | Partial | Every authored panel is rounded from one place; no texture or layered depth |
 | 24 | Button bevel, glow, press depth | Done | `life/button-fx.ts` dresses every `quietButton`: lip, top light, hover and focus glow, and a press that sinks at draw time. Hit areas and labels untouched |
@@ -64,14 +64,14 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 26 | Letterbox atmosphere | Reverted | Doubled WebKit frame time; see Performance |
 | 27 | Overlay blur and slide | Partial | Pause, settings, how to play and confirm rise and gather in over a slate scrim; rain no longer draws over them. No blur: see Performance |
 | 28 | Wider icon use | Not started | |
-| 29 | Animated numbers | Partial | Tabular figures only (list 3, item 10) |
+| 29 | Animated numbers | Done | Cover, Wingbeats, Scrap and Flow roll to their new value with `count.tick` per step (≤ 420 ms). The real HUD text is exact at once and hidden while an overlay rolls over it. Damage numbers pop by the share of the target's maximum |
 | 30 | Outgoing transitions | Done | Wing wipe between menu, route and battle; a slower gold wipe into a new district. The scene change itself stays instant (`life/transitions.ts`) |
 | 31 | Animated title | Done | Rain, glowing puddles and neon, bloom. No wordmark shimmer |
 | 32 | District arrival card | Done | Full-screen title over the district painting, once per district per run, skippable. Not modal: see Rules changed |
-| 33 | Boss entrance | Not started | Boss fights gain sheet lightning instead (list 2, item 32) |
+| 33 | Boss entrance | Done | Once per boss per fight, after the encounter intro: a name card and a 3% camera push, 1.4 s, skippable. No push under Reduced Motion |
 | 34 | Route map life | Done | Flock marker that flies the chosen edge, pulsing reachable nodes, flown edges drawn as flight trails, node legend. No fog of war |
 | 35 | Reward reveal | Not started | |
-| 36 | Victory and defeat moments | Partial | Gold edge flash on victory; grey grade on defeat, never observed |
+| 36 | Victory and defeat moments | Done | Gold light sweep and falling feathers over the reward screen; dark vignette and grey feathers over the defeat report. The outcome state is immediate; the beat is layered and holds no input |
 | 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
 | 38 | Device-pixel-ratio rendering | Not started | Touches every screen's coordinates; belongs in its own change |
 | 39 | Retained-mode battle rendering | Partial | Enemy bodies, the flock body and hand cards are retained actors with a logical slot and a visual pose. HUD, vitals, intent badges, shadows, reticles and overlays are still immediate-mode. See the runtime architecture doc |
@@ -84,28 +84,28 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | --- | --- | --- | --- |
 | 1 | Three beats per hit | Done | Crouch, dive or lunge, then a frozen contact frame and a recoil |
 | 2 | Enemies react physically | Done | Wind-up, lunge toward the flock, recoil scaled by damage, stagger on a heavy hit |
-| 3 | Feedback scales with damage | Partial | Body motion and hit-stop scale with the share of maximum Cohesion removed (heavy from 20%). Sparks and camera shake still use the fixed 8 |
-| 4 | Finishing blows | Partial | Punch, gold flash and defeat stagger; no slow motion |
+| 3 | Feedback scales with damage | Done | Body motion, hit-stop, sparks, motes, camera shake and damage-number pop all scale with the share of maximum Cohesion removed (`hitWeight`, heavy from 20%). Audio cue choice is unchanged |
+| 4 | Finishing blows | Done | The killing hit slows the actor clock to 30% for 320 ms on top of a 4-frame hit-stop, with a larger ring and shard burst. Game timers are untouched |
 | 5 | Cover feels like armour | Done | Sparks on block; heavier sparks on shatter |
 | 6 | Each suit strikes differently | Done | Plumes slash, Basins ripple, Quills volley, Nests thud |
 | 7 | Card flies into the action | Done | The played-card cue is now the card, thrown on an arc from its slot to its target inside the existing resolve delay, then on to the discard pile. Reduced Motion and Lean keep the still cue |
 | 8 | Telegraph enemy attacks on stage | Done | Danger line grows during the wind-up |
-| 9 | Surge as a state | Not started | |
-| 10 | Combo feedback | Partial | Audio only: pitch climbs on consecutive card plays within a turn. Not auditioned |
-| 11 | Status effects have a body | Not started | |
+| 9 | Surge as a state | Partial | Entry set piece only (list 1, item 20); no persistent Surge look |
+| 10 | Combo feedback | Done | A CHAIN ×N chip from the second card of a turn; it grows and shifts hue with the chain and clears on Roost. Audio pitch ladder unchanged |
+| 11 | Status effects have a body | Done | Cover: shield plates in front of the flock and a shimmer on a covered enemy; Winded: slower, drooping breath; Ruffled: jitter (Screen Shake on); Molt: feathers drift off and the flock shifts violet. No particles under Lean graphics, no motion under Reduced Motion |
 | 12 | Animate characters | Partial | Whole-body motion on retained actors: breathing, dive, brace, lunge, recoil, stagger. No frame animation |
 | 13 | Layered hit sounds | Done | Impacts now scale by damage share of max HP; Cover absorb and Cover break differ. Not auditioned; see [audio events](audio-events.md) |
 | 14 | Recorded bird calls | Partial | Still no recordings. Synthesised stylised calls per suit and per Flock Leader stand in. Not auditioned |
 | 15 | Duck music on big moments | Done | Heavy hits, finishing blows, stingers, boss entrances. Stems add on Surge, thin on Scatter, intensify for elites and bosses. Not auditioned |
 | 16 | District ambient beds | Done | Continuous rain, canal, static-and-wires and high-wind beds; crossfade on district change; lower under the pause overlay only. Not auditioned |
-| 17 | Material interface sounds | Partial | Paper, metal, wood, water, soft click and cancel are live. `ui.confirm` and `count.tick` have no call site yet. Not auditioned |
+| 17 | Material interface sounds | Partial | Paper, metal, wood, water, soft click and cancel are live. `count.tick` now ticks rolling HUD counters; `ui.confirm` has no call site yet. Not auditioned |
 | 18 | One vocabulary (HP versus Cohesion) | Not started | 20 source strings and 3 test files involved |
 | 19 | One lighting direction | Not started | |
 | 20 | One frame material | Not started | |
 | 21 | Tarot made visible in play | Not started | |
 | 22 | Suit colour everywhere | Partial | Strikes and card halos |
 | 23 | District identity kit | Partial | Per-district light, weather, ambient life and arrival card |
-| 24 | Leader visual signature | Not started | |
+| 24 | Leader visual signature | Done | Each Leader has a flourish in their Codex accent on Surge entry and on their signature trigger: Fledgling spiral, Spark-Caller arcs, Talon slashes, Tidewarden ripples, Roostkeeper ward |
 | 25 | Consistent button wording | Not started | |
 | 26 | Icons from the world | Not started | |
 | 27 | Particle systems over single images | Done | |
@@ -128,7 +128,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 13–16 | Layered panels, elevation, accents, overlay blur | Not started | Needs one shared panel component across ~550 call sites |
 | 17 | Film grain | Done | Hardware GL only; see Performance |
 | 18 | Contrast in context | Not started | |
-| 19–23 | Transitions, easing, stagger, numbers, bar trails | Partial | Transitions and staggered list entrances are built as draw-time poses, which leave the geometry and opacity tests read untouched. Numbers and bar trails not started |
+| 19–23 | Transitions, easing, stagger, numbers, bar trails | Done | Transitions and staggered list entrances are draw-time poses. Numbers roll (list 1, item 29); Cohesion and enemy bars drain with a lighter ghost that catches up after 420 ms while the real fill stays exact |
 | 24 | Pressed, hover and focus states | Done | See list 1, item 24 |
 | 25–26 | Continuity transitions; motion-reduced cross-fades | Not started | |
 | 27–33 | Feedback and micro-interactions | Not started | Includes drag-to-play and haptics, which are new features |
