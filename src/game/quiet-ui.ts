@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
 import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_TYPE, UI_SPACE, UI_CONTROL } from './theme';
 import { fitTextExcerpt } from './text-excerpt';
+import { asCommit, buttonCue, type ButtonCue } from './button-cue';
 
 /** Shared restrained controls: decoration never changes the input bounds. */
 export function quietButton(scene: Phaser.Scene, options: {
   x: number; y: number; width: number; label: string; name: string;
   onActivate: () => void; kind?: 'primary' | 'secondary' | 'utility' | 'destructive';
   enabled?: boolean; selected?: boolean; focused?: boolean;
+  /** Overrides the label-based choice between `ui.confirm` and the soft click. */
+  cue?: ButtonCue;
 }) {
   const { x, y, label, name, onActivate } = options;
   const width = Math.max(options.width, MIN_SUPPORTED_TOUCH_TARGET);
@@ -74,10 +77,18 @@ export function quietButton(scene: Phaser.Scene, options: {
         if (!parent.active || !parent.visible) return;
         parent = parent.parentContainer;
       }
-      if (hit.active && hit.visible && hit.input?.enabled && hit.getData('enabled') !== false) onActivate();
+      if (!(hit.active && hit.visible && hit.input?.enabled && hit.getData('enabled') !== false)) return;
+      // A brief press: the control dips, then recovers if it survives the action.
+      hit.setAlpha(0.8);
+      scene.time.delayedCall(90, () => { if (hit.active) hit.setAlpha(1); });
+      const shown = hit.getData('status') !== 'idle' && hit.getData('statusLabel') || hit.getData('fullLabel');
+      if ((options.cue ?? buttonCue(String(shown), options.kind)) === 'commit') asCommit(onActivate);
+      else onActivate();
     });
   if (enabled) hit.setInteractive({ useHandCursor: true });
   paint();
+  // Optional depth dressing (bevel, glow, press) lives in a lazy chunk.
+  scene.events.emit('quiet-button', hit);
   return hit;
 }
 

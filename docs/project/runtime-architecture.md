@@ -25,6 +25,7 @@ the design specs, not a replacement for them:
 | Route maps | Authored district maps feed seeded generated maps per run. |
 | Persistence | Active run, account unlocks, and run summaries use `localStorage`. |
 | Test harness | `window.__birdSquadState()` and `render_game_to_text()` drive Playwright smoke tests. |
+| Presentation | Lazy `src/game/spectacle/` for lighting, weather and impact dressing; self-hosted Barlow and Fraunces UI faces. |
 
 ## Code And Data Flow
 
@@ -85,6 +86,8 @@ interpreters instead of hardcoding most card or route outcomes directly.
 stateDiagram-v2
   [*] --> BootScene
   BootScene --> MenuScene
+  BootScene --> BattleSceneLoader: fetch battle chunk beside fonts
+  BattleSceneLoader --> BattleScene: swap into the same slot
   MenuScene --> ProfileScene: profile / leader view
   ProfileScene --> MenuScene
   MenuScene --> CodexScene: codex
@@ -264,6 +267,27 @@ contract are part of the shipped runtime.
   cross-check and do not need individual card art manifest entries.
 - `CodexScene` lazy-loads extended codex data. Do not eagerly import that data
   into boot paths unless bundle budgets are intentionally revisited.
+- `BattleScene` is its own lazy chunk (`battle-scene`, ~267 KB with the
+  combat-only modules it alone imports). The boot config registers
+  `BattleSceneLoader` (`src/scenes/battle-scene-loader.ts`) under the
+  `BattleScene` key; `BootScene` fetches the real chunk beside the UI fonts and
+  swaps it into the same Scene Manager slot, so `scene.start('BattleScene')`
+  from anywhere (including tests calling the manager directly) reaches the real
+  scene. A start that wins the race keeps its data, shows a short loading card
+  (`mode: 'battleLoading'`) and hands off; a failed fetch offers a retry
+  (`mode: 'battleLoadFailed'`). Tests that need the real instance synchronously
+  call `await __birdSquadEnsureScene('BattleScene')` first. Import
+  `BattleScene` as a type only outside `battle-scene.ts`.
+- Presentation pace: Animation Pace and Fast Mode multiply scene tweens,
+  sprite animation, retained actors and set pieces through
+  `animationPaceTimeScale()`; Fast Mode also shortens `combatTimingDelay` and
+  holds Hustle through enemy turns after each beat's readable minimum. None of
+  it touches rules or `advanceTime`, which still steps real game milliseconds.
+  Pure rules: `src/game/pace-rules.ts`.
+- Rumble: `src/game/haptics.ts` (browser glue, Rumble setting, Screen
+  Shake gate) over `src/game/haptic-dispatch.ts` (pure, unit-tested). Heavy
+  hits, Surge and finishing blows pulse Gamepad `vibrationActuator` and, on
+  touch-first devices, `navigator.vibrate`; every path is a safe no-op.
 - Optional route presentation is split by interaction: Flock Stats lives in
   `src/game/flock-stats-overlay.ts`; card hover, Deck Review detail, and market
   dossiers live in `src/game/card-hover-detail.ts`; the pinned Deck Review
@@ -286,6 +310,204 @@ contract are part of the shipped runtime.
 - Generated/source art belongs under `.generated/`; optimized runtime assets
   belong under `assets/runtime/` and should be referenced through manifests or
   Vite-managed imports.
+
+## Spectacle boundary
+
+`src/game/spectacle/` is lazy presentation that never changes game state. It
+loads beside the game (`installSpectacle` in `main.ts`), and boot waits for it
+together with the UI fonts, capped at 1.5 seconds.
+
+- `stage.ts`: adopts scenes as they are created. Battle gets per-district
+  lights and weather on its own layer above the backdrop, bloom and grade on
+  the backdrop, a targeting arc and an outcome grade. Title and route get
+  rain, glow and bloom. Every scene gets an arrival sweep and film grain.
+- `punch.ts`: camera punch, edge flashes and the defeat stagger.
+- `impact.ts`: suit-shaped impacts, feathers, impact light, block sparks,
+  rising motes, danger lines and floor marks, on layers it owns.
+
+Two global patches live in `stage.ts` and affect every scene:
+
+- `roundPanels` rounds rectangles created through the factory, except
+  hairlines, meters and full-screen shades.
+- `keepAuthoredLineMetrics` gives text in the new faces the line metrics of
+  its system fallback; see `docs/game/visual-spectacle.md`.
+
+Gates: Lean graphics removes stage dressing; Reduced Motion keeps still
+lighting only; shader passes and film grain need hardware WebGL (`?fx=full`
+forces them on, `?fx=off` off). WebKit masks its renderer string, so the
+software check does not catch it. Never put a non-solid page background behind
+the canvas: WebKit recomposites it every frame.
+
+## Retained battle actors
+
+`BattleScene.renderAll()` still rebuilds its `root` container on every state
+change. Three kinds of object no longer take part in that rebuild: enemy
+bodies, the flock body and hand cards. They are **actors**, owned by one
+`BattleActorStage` per scene (`src/game/battle/actors.ts`, lazy chunk
+`battle-actors`, reached through `battleActors(scene)` or `scene.battleActors`).
+
+Every actor has two halves, and code must not mix them:
+
+- **Logical slot**: where layout put it (`actor.slot`). Hit areas, forecasts,
+  the targeting arc, `getBounds()` and every layout test read this. Animation
+  never writes it.
+- **Visual pose**: `actor.pose`, an offset, scale, tilt and flash relative to
+  the slot. Only drawing reads it.
+
+How each kind is retained:
+
+| Actor | Id | Retained object | Pose applied by | Hit area |
+| --- | --- | --- | --- | --- |
+| Enemy body | `enemy:<enemy id>` | `combat-enemy-art` container | the stage sets the container's position, scale and angle | `combat-enemy-hit`, a slot rectangle in `root` |
+| Flock body | `flock` | `combat-leader-art` container | same | `combat-leader-hit`, a slot rectangle in `root` |
+| Hand card | `card:<instance id>` | the card's flat objects in `handLayer` | `attachCardBody` multiplies the pose into the parent matrix while each object is drawn | the card's own rectangle (`handCardRects`), never moved |
+
+A hand card that leaves the hand for a pile is released from its actor and
+travels as an ordinary container; see Cards as objects below.
+
+- Combatant bodies are parked by `parkBattleActors(root)` just before the
+  immediate layer is cleared and re-seated in draw order by
+  `renderBattleForeground`. A body is refilled only when its art signature
+  changes and destroyed when it is not drawn in a pass.
+- `renderBattleHand` reconciles: an unchanged face keeps its objects, a card
+  whose slot moved is shifted and slides, a changed face is redrawn, a card
+  that left the hand is destroyed. Card objects keep logical transforms at all
+  times, so their bounds are the layout contract.
+- Enemy portraits report visual bounds (they are inside the animated
+  container); that keeps the breathing-envelope and HUD-clearance checks honest.
+- `combat-leader-pose` inside the flock body still belongs to
+  `living-performances.ts`; the stage animates the container around it.
+
+The actor clock (`stage.time`) follows `scene.time.now`, so the manual
+`advanceTime` clock drives it (`advanceGameTime` emits `clock-advanced` per
+manual frame). It scales with Animation Pace, holds every pose at identity
+under Reduced Motion, and `hitStop(frames)` freezes it for 2–4 frames without
+touching scene timers or tweens. Stagger judder follows Screen Shake and the
+hit flash follows Flash Effects.
+
+To animate an actor:
+
+- `stage.play(id, motion)`: a transient keyframed `ActorMotion`. `action`
+  motions replace each other and blend out; `react` motions layer on top.
+- `actor.rest`: a persistent target the pose eases toward (the hand fan and
+  hover lift are written in `layoutHand`).
+- `stage.ensure(id, kind, x, y)` / `bindNode(...)`: move the slot; the drawn
+  hand card slides from where it was; a combatant body takes the slot at once.
+- The scene announces events and the stage chooses the motion:
+  `queueEnemyMotion(id, 'windup' | 'attack' | 'hit', detail)` and
+  `queueFlockMotion(cue, detail)` emit `living-enemy-cue` / `living-flock-cue`;
+  `living-cast` starts the flock dive. `detail` is the damage of a hit.
+- `stage.debugState()` reports every actor's slot, pose and running motions;
+  `stage.visualPoint(id)` is where a body is drawn now.
+
+Still immediate-mode: the top bar and HUD, enemy vitals, intent, rank and
+status panels (their icons and ghost bars are retained by combat life, below), contact shadows, the target reticle and guide, the selection
+preview, hand pager and all overlays and ceremonies. The hand's compact
+fallback renderer (used when the lazy renderer fails) is neither retained nor
+animated.
+
+### Cards as objects
+
+`src/game/battle/card-objects.ts` (lazy chunk `battle-card-objects`, with the
+pure rules in `card-object-rules.ts`) owns what a card does when it is not
+sitting in its slot. One `CardObjectStage` per scene, reached through
+`cardObjects(scene)` or `scene.cardObjects`; it is created by the first hand
+render, so the scene always calls it as `this.cardObjects?.…` and keeps the old
+card-back transfers as the fallback. It decides nothing: every play goes
+through `onCardClicked` / `onEnemyClicked`, and no logical slot is written.
+
+| Moment | What moves | Where | Driven by |
+| --- | --- | --- | --- |
+| Play | `combat-card-cast-ghost`, a small illustrated card, thrown from the hand card's drawn position to its target | `fxLayer` (as before) | one scene tween that ends with the existing resolve delay |
+| After landing | `combat-card-departing` (`played`), the same small card, to the discard pile, the draw pile, or burned | the stage's own layer `combat-card-objects` (depth 31) | scene tweens |
+| Draw, and the opening hand once the intro clears | the hand card itself, from the draw pile to its slot, staggered | `handLayer`, as a `deal` actor motion | the actor clock |
+| Discard, end of turn | the hand card's own objects, re-parented into one `combat-card-departing` body | `combat-card-objects` | scene tweens |
+| Cleared for the combat | the same body, burned in place (`combat-card-burn-*`) | `combat-card-objects` | scene tweens |
+| Drag | the hand card, through `stage.hand.dragged` | `handLayer` | the actor clock |
+| Refusal | the hand card, a `deny` react motion | `handLayer` | the actor clock |
+
+- **Landing targets:** an enemy for `enemy`, the middle of the living enemies
+  for `allEnemies`, the flock for `self`, stage centre for `none` and `choice`.
+  The arc's control point keeps the card's top edge below the top bar.
+- **Timing is unchanged.** The ghost is still destroyed at the resolve delay;
+  the trip to a pile happens in a layer the player-card FX window does not
+  retire, and nothing waits for it.
+- **Pile counters** show `stage.shownPileCount(pile)` while cards are in the
+  air: a dealt card stays counted until it leaves the draw pile, a discard is
+  counted when it arrives. `render_game_to_text` still reports the real piles.
+- **Drag to play** arms on the press that selected a playable card
+  (`armDrag`, called by the hand renderer after `onCardClick`). After 14 px of
+  travel the card follows the pointer. Release over a valid target calls the
+  same handler a second click would; release anywhere else returns the card and
+  clears the selection that press made. A synthetic `pointerdown` without a
+  held pointer never arms a drag. Under Reduced Motion the card stays in its
+  slot and only the target brackets (`combat-drag-target`) show.
+- **Rarity frames** are canvas textures drawn once per rarity and size
+  (`addRarityFrame`); rare and legendary add a `TileSprite` sheen whose texture
+  slides while its bounds stay fixed. Hand, reward and pile-inspect faces use
+  it. No sheen under Reduced Motion or Lean graphics.
+- **Number highlights** are small text overlays on the rules label
+  (`combat-card-number-tint`); the label's text is never rewritten. Tones:
+  `buff` and `reduced` compare `cardDamageOutcome` / `cardCoverOutcome` with
+  and without current status (passive flock bonuses are excluded), `preen`
+  marks numbers that differ from the unupgraded card. They refresh on every
+  selection refresh without rebuilding the face.
+- **Inspector:** `mountInspectFace` draws the hand face at 1.5× inside the
+  reader (`combat-card-detail-face`, children renamed `inspect-…`), with
+  rarity and flavor under it. Opening and closing the reader stay immediate;
+  only the card animates, and a closing card finishes its trip home in the
+  stage layer as `combat-card-detail-return`.
+- **Diagnostics:** `stage.debugState()` (counts, bodies in the air, shown pile
+  counts, drag state) and `stage.counts`.
+
+Hooks for other battle presentation: `stage.layer` is a free layer between the
+hand and the overlays; `ActorMotion` now takes `from` (start values) and
+`delay`; `ACTOR_EASE` exports the stage easings; `releaseCardBody` hands a
+card's objects back to ordinary rendering; `addRarityFrame` works on any
+rectangle; `paintFlightCard` draws the small illustrated card.
+
+### Combat life
+
+`src/game/battle/combat-life.ts` (lazy chunk `battle-life`, pure rules in
+`combat-life-rules.ts`) makes combatants, status, numbers and big moments
+feel alive. One `CombatLife` per scene, reached through `combatLife(scene)` or
+`scene.combatLife`; the foreground renderer creates it. It never writes game
+state and holds no input.
+
+- **Retained, seated in `root`:** `combat-life-flock` right after the flock
+  body (status badge row, Cover shield plates) and one `combat-life-enemy` per
+  enemy above every label (intent icon, status icons, HP drain and ghost, Cover
+  shimmer). `parkBattleActors` parks them with the bodies before the redraw.
+  Icons sit in the free margin beside the text they repeat and hide rather
+  than squeeze it; the text is unchanged.
+- **Ghost bars:** the real `combat-enemy-health-fill` and Cohesion fill stay
+  exact. A bright drain segment eases out in ~70 ms and a lighter ghost holds
+  420 ms, then catches up (`stepGhost`). The Cohesion pair is inserted under
+  `hud-value-Cohesion` on `battle-hud-rendered`.
+- **Counter rolls:** on `battle-hud-rendered`, a changed Cover, Wingbeats,
+  Scrap or Flow value starts a roll. The real `hud-value-*` text already holds
+  the new value and is set to alpha 0; a `combat-count-roll` overlay counts to
+  it with `count.tick` per step and is removed when done (≤ 420 ms, never
+  under Reduced Motion).
+- **Transitions it watches** (on the scene clock): Flow reaching max (Surge),
+  `flock.molt`, Cover rising, a new boss, boss phase 1→2, an enemy reaching 0
+  (finishing blow: `stage.slowMo` plus `hitStop`), the turn number
+  (`turn.start`), a Leader signature, `cardsPlayedThisTurn` (combo chain) and
+  `mode` leaving `battle` (victory or defeat beat). `waymark-fired` (emitted by
+  `showWaymarkFeedback`) draws a line from the Waymarks chip.
+- **Top layer** `combat-life-top` (depth 76) holds set pieces, flourishes,
+  lines, rolls and the combo chip; hidden while an inspect, Waymark, supply or
+  pause overlay is open. Any pointer or key press skips every running set
+  piece. Each is under 1.5 s.
+- **Body status:** `actor.life` (`droop`, `jitter`, `tempo`) is applied by the
+  actor stage after breathing; Winded slows and droops, Ruffled jitters (Screen
+  Shake on). The targeted enemy's ambient tint pulses brighter; Molt tints the
+  flock violet.
+- **Preferences:** Reduced Motion keeps badges and titles but no motion,
+  rolls, push or particles; Lean graphics drops particles; Flash Effects
+  scales glows; Animation Pace scales the life clock.
+- **Diagnostics:** `combatLife.debugState()` (running pieces, counts seen,
+  combo, zoom, rolls, badges, ghost bars).
 
 ## Flyway expansion boundary
 
@@ -311,6 +533,6 @@ contract are part of the shipped runtime.
   `birdsquad.flyway.medals` retains earned cosmetic seals. Both use journaled
   storage; practice writes stay disposable.
 
-Validation: `tools/tests/flyway-rules.test.mjs`, `tests/flyway-expansion.spec.ts`,
+Validation: `src/game/flyway-rules.test.ts` (`npm run test:unit`), `tests/flyway-expansion.spec.ts`,
 existing sequencing/recovery tests, production bundle budgets, and the shared
 web-game client. The expansion acceptance ledger records final evidence.

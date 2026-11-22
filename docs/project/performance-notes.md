@@ -1,5 +1,47 @@
 # Performance Notes
 
+## November 17 2026 — Visual spectacle and modern polish
+
+WebKit browser qualification hit its 45-minute job limit on PR #26. Per-test
+timings were 1.58× the Coherent City run (2,621 s against 1,656 s for the same
+194 tests). Locally, the slowest test went from 42 s on `main` to 66 s.
+
+Bisection, Playwright on Windows, battle with three enemies, median of 90 frames:
+
+| Step | WebKit frame | Notes |
+| --- | --- | --- |
+| `main` | 31 ms | |
+| #26 | 70 ms | |
+| #26 with filters off (`?fx=off`) | 69 ms | Bloom was not the cause |
+| #26 with Lean graphics and filters off | 60 ms | Nor the ambient layers |
+| #26, hiding every display object live | 58–65 ms | Not a drawing cost |
+| #26 game step per frame | 5.7 ms (3.5 ms on `main`) | Not JavaScript |
+| #26 with the page background made solid | 26 ms | Cause found |
+| Gradient moved to its own composited layer | 57 ms | No help |
+| Gradient replaced by a pre-rendered image | 49 ms | Partial help |
+| Letterbox background removed (`c551ca21`) | 32 ms | Fixed |
+
+WebKit's software compositor recomposites any non-solid page background beneath
+the canvas every frame. The letterbox gradient was removed; the bands keep a
+solid fill. The slowest WebKit test returned to 38 s.
+
+WebKit reports its renderer as "Apple GPU" even when rendering in software, so
+the renderer-string check that keeps shader passes off software GL does not
+catch it. This did not affect the result above, but WebKit can run bloom and
+grain where they are not wanted.
+
+On `codex/modern-polish`, an ungated full-screen film grain took Chromium under
+SwiftShader from 31 ms to 64 ms a frame (WebKit unaffected). Grain now follows
+the shader-pass gate: 36 ms Chromium, 35 ms WebKit.
+
+Boot code is unchanged at 698.7 KiB of 700. New presentation is lazy: the
+`spectacle` chunk measures 17.1 KiB against a new 24 KiB cap; the hand renderer
+cap moved from 10 to 12 KiB and the hand plus reward allowance from 24 to 26 KiB.
+Five font files add 103 KiB, loaded once and cached.
+
+The measuring scripts were throwaway and are not committed. No real-GPU
+measurements yet.
+
 ## November 7 2026 — Clearer choices
 
 Pages boot is 696.5 KiB against the unchanged 700 KiB cap, versus 694.1 KiB

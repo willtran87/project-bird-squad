@@ -11,21 +11,48 @@ export interface DifficultyMods {
   openSkyBonus: number; // extra damage taken while in unguarded Open Sky
   shiftedOpeners: boolean; // cyclic enemies start from a seeded alternate Tell
   restlessPatterns: boolean; // cyclic enemies reroute their next Tell after Roost
+  // Tier 7+ levers. Damage bonuses resolve in incomingHit() (live + forecasts).
+  eliteDamageBonus: number; // extra flat damage on elite/rival hits
+  bossDamageBonus: number; // extra flat damage on boss hits (not its escorts)
+  // Spawn-time Cohesion multipliers stacked on enemyHpMult for elites/bosses.
+  // Apply with enemyHpMultFor(); see the battle-scene spawn scaling.
+  eliteHpMult: number;
+  bossHpMult: number;
+  routeHealMult: number; // scales out-of-combat (Basin/Nest/route) healing
 }
 
-export const MAX_DIFFICULTY = 6;
+export const MAX_DIFFICULTY = 10;
 
 export function difficultyMods(tier: number | undefined): DifficultyMods {
   const t = Math.max(0, Math.min(MAX_DIFFICULTY, Math.floor(tier ?? 0)));
   return {
     tier: t,
-    enemyHpMult: t >= 5 ? 1.3 : t >= 1 ? 1.15 : 1,
+    enemyHpMult: t >= 10 ? 1.45 : t >= 5 ? 1.3 : t >= 1 ? 1.15 : 1,
     rewardChoices: t >= 2 ? 2 : 3,
-    enemyDamageBonus: t >= 6 ? 1 : 0,
-    openSkyBonus: t >= 4 ? 2 : 1,
+    enemyDamageBonus: t >= 10 ? 2 : t >= 6 ? 1 : 0,
+    openSkyBonus: t >= 8 ? 3 : t >= 4 ? 2 : 1,
     shiftedOpeners: t >= 3,
     restlessPatterns: t >= 6,
+    eliteDamageBonus: t >= 7 ? 2 : 0,
+    bossDamageBonus: t >= 9 ? 2 : 0,
+    eliteHpMult: t >= 7 ? 1.15 : 1,
+    bossHpMult: t >= 9 ? 1.2 : 1,
+    routeHealMult: t >= 8 ? 0.7 : 1,
   };
+}
+
+// Total spawn Cohesion multiplier for one enemy, by its authored type.
+export function enemyHpMultFor(mods: Pick<DifficultyMods, 'enemyHpMult' | 'eliteHpMult' | 'bossHpMult'>, enemyType: string | undefined): number {
+  if (enemyType === 'boss') return mods.enemyHpMult * mods.bossHpMult;
+  if (enemyType === 'elite' || enemyType === 'rival') return mods.enemyHpMult * mods.eliteHpMult;
+  return mods.enemyHpMult;
+}
+
+// Out-of-combat healing after the Ascension rest lever (never below 1 when
+// the authored amount is positive).
+export function scaledRouteHeal(amount: number, tier: number | undefined): number {
+  if (amount <= 0) return amount;
+  return Math.max(1, Math.round(amount * difficultyMods(tier).routeHealMult));
 }
 
 // Player-facing label + what each tier ADDS over the one below it.
@@ -37,6 +64,10 @@ export const difficultyTiers: Array<{ tier: number; name: string; adds: string }
   { tier: 4, name: 'Tier 4 · Open Skies', adds: 'Open Sky punishes for +2 instead of +1.' },
   { tier: 5, name: 'Tier 5 · Iron Flocks', adds: 'Enemies have +30% Cohesion.' },
   { tier: 6, name: 'Tier 6 · Restless Patterns', adds: 'Cyclic Tells reroute each Roost; attacks gain +1.' },
+  { tier: 7, name: 'Tier 7 · Elite Escorts', adds: 'Elites and rivals hit +2 and have +15% Cohesion.' },
+  { tier: 8, name: 'Tier 8 · Thin Roosts', adds: 'Route healing restores 30% less; Open Sky punishes for +3.' },
+  { tier: 9, name: 'Tier 9 · Crowned Bosses', adds: 'Bosses hit +2 and have +20% Cohesion.' },
+  { tier: 10, name: 'Tier 10 · Storm Season', adds: 'Enemy Cohesion rises to +45%; attacks gain +2 instead of +1.' },
 ];
 
 export function difficultyLabel(tier: number): string {
@@ -50,7 +81,15 @@ export function difficultyAdds(tier: number): string {
 export function difficultyStatSummary(tier: number): string {
   const mods = difficultyMods(tier);
   const tells = mods.restlessPatterns ? 'reroute' : mods.shiftedOpeners ? 'shifted start' : 'fixed';
-  return `HP x${mods.enemyHpMult.toFixed(2)} · Rewards ${mods.rewardChoices} · Hit +${mods.enemyDamageBonus} · Sky +${mods.openSkyBonus} · Tells ${tells}`;
+  const extras = [
+    mods.eliteDamageBonus || mods.eliteHpMult !== 1 ? `Elite +${mods.eliteDamageBonus}/x${mods.eliteHpMult.toFixed(2)}` : '',
+    mods.bossDamageBonus || mods.bossHpMult !== 1 ? `Boss +${mods.bossDamageBonus}/x${mods.bossHpMult.toFixed(2)}` : '',
+    mods.routeHealMult !== 1 ? `Rest x${mods.routeHealMult.toFixed(2)}` : '',
+  ].filter(Boolean);
+  return [
+    `HP x${mods.enemyHpMult.toFixed(2)} · Rewards ${mods.rewardChoices} · Hit +${mods.enemyDamageBonus} · Sky +${mods.openSkyBonus} · Tells ${tells}`,
+    ...extras,
+  ].join(' · ');
 }
 
 function ascensionHash(text: string, salt: number): number {

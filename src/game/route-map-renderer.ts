@@ -3,6 +3,8 @@ export { renderDistrictFraming } from './district-framing';
 export { renderDistrictAdvanceFlourish, routeCommitStreakFx, renderRouteBossBeaconRing } from './route-transition-fx';
 export { renderUnifiedRunHud, renderRouteGuidance, renderRouteMapFrame, renderRouteDistrictBanner } from './run-hud';
 import { UI_TYPE } from './theme';
+import { addRouteGlyph } from './world-glyphs';
+import { drawFlightTrail, edgeCurveKey, renderRouteLifeOver, renderRouteLifeUnder } from './spectacle/life/route-life';
 
 export interface RouteMapNodeView {
   id: string;
@@ -77,6 +79,7 @@ function drawEdgePath(
   alpha: number,
   dotRadius: number,
   activeMapIndex: number,
+  flown = false,
 ) {
   const { Vector2 } = Phaser.Math;
   const start = new Vector2(from.x + from.iconSize / 2, from.y);
@@ -91,6 +94,8 @@ function drawEdgePath(
     (start.y + end.y) / 2 + (dx / length) * bend,
   );
   const curve = new Phaser.Curves.QuadraticBezier(start, control, end);
+  // A flown edge reads as a flight trail, not as one more dotted option.
+  if (flown) { drawFlightTrail(graphics, curve); return curve; }
   const points = curve.getSpacedPoints(Math.max(7, Math.ceil(length / 16)));
 
   graphics.lineStyle(Math.max(1.6, dotRadius * 1.4), color, alpha * 0.86);
@@ -144,6 +149,12 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
   context.renderNodeIcon(node, visualAlpha)
     .setName('route-node-icon')
     .setData({ routeNodeId: node.id, routeNodeState: visualState });
+  // A crisp world sign on the medallion's upper right says the node type at a
+  // glance, even where the painted medallion is too small to read.
+  const reach = node.radius * 0.74, size = node.boss ? 28 : 24;
+  addRouteGlyph(scene, node.type, node.x + reach, node.y - reach, size)
+    ?.setAlpha(node.completed ? 0.5 : node.selectable || node.current || node.selected ? 1 : 0.86)
+    .setName('route-node-glyph').setData({ routeNodeId: node.id });
 
   if (node.completed) {
     const x = node.x + node.radius * 0.65, y = node.y + node.radius * 0.65;
@@ -157,7 +168,8 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
 
   if (node.current || node.selected) {
     const name = node.current ? 'route-node-current-label' : 'route-node-selected-label';
-    const labelY = node.y + node.radius + 18;
+    // Tucked under the medallion: four-lane columns leave 119px between rows.
+    const labelY = node.y + node.radius + 10;
     scene.add.rectangle(node.x, labelY, 104, 28, 0x06111a, 0.98)
       .setStrokeStyle(1, node.current ? 0xe7eef7 : 0xd8a840, 0.88)
       .setName(name);
@@ -213,6 +225,7 @@ function renderConfirmButton(context: RouteMapRendererContext) {
 export function renderRouteMap(context: RouteMapRendererContext) {
   const nodes = new Map(context.nodes.map((node) => [node.id, node]));
   const lines = context.scene.add.graphics().setName('route-edge-layer');
+  const curves = new Map<string, Phaser.Curves.QuadraticBezier>();
   context.edges.forEach((edge) => {
     const from = nodes.get(edge.from);
     const to = nodes.get(edge.to);
@@ -220,7 +233,8 @@ export function renderRouteMap(context: RouteMapRendererContext) {
     const color = edge.lit ? 0x87b884 : edge.primaryPreview ? 0xd8a840 : edge.available ? 0x77d9df : edge.secondaryPreview ? 0xb3c8d2 : 0x9cb3bf;
     const alpha = edge.lit ? 0.88 : edge.primaryPreview ? 1 : edge.available ? 0.94 : edge.secondaryPreview ? 0.86 : 0.78;
     const dotRadius = edge.lit ? 1.5 : edge.primaryPreview ? 2.2 : edge.available ? 1.8 : edge.secondaryPreview ? 1.5 : 1.3;
-    const curve = drawEdgePath(lines, from, to, edge.key, color, alpha, dotRadius, context.activeMapIndex);
+    const curve = drawEdgePath(lines, from, to, edge.key, color, alpha, dotRadius, context.activeMapIndex, edge.lit);
+    curves.set(edgeCurveKey(edge.from, edge.to), curve);
     if (edge.available || edge.primaryPreview) {
       const marker = curve.getPointAt(0.65);
       const tangent = curve.getTangentAt(0.65);
@@ -232,6 +246,8 @@ export function renderRouteMap(context: RouteMapRendererContext) {
         marker.y - tangent.y * 8 + tangent.x * 5 * side);
     }
   });
+  renderRouteLifeUnder(context, curves);
   context.nodes.forEach((node) => renderNode(context, node));
+  renderRouteLifeOver(context);
   renderConfirmButton(context);
 }

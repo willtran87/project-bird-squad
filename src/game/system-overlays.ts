@@ -37,6 +37,18 @@ import type { ScreenReaderPreference, ScreenReaderState } from './screen-reader-
 import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_TYPE, MENU_UI } from './theme';
 const { gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT, field: UI_FIELD } = MENU_UI;
 import { bindActionFocus } from './action-focus';
+import type { UiIconId } from '../art-assets';
+import { overlayAmbience, overlayEntrance } from './spectacle/life/overlay-fx';
+import { birdAudio } from './shared/bird-audio-director';
+import { fastModePreference, rumbleState, setFastModePreference, setRumblePreference } from './shared/preferences';
+import { pulseHaptic } from './haptics';
+
+// Dim and soften: a slate wash mutes the scene's colour as well as its light.
+// A real blur is a full-screen shader pass; like bloom and grain it would have
+// to be gated off the software renderers WebKit and CI use, and this scene
+// draws its overlays into the same list as the scene, so there is nothing to
+// blur separately. Not built.
+const SCRIM = 0x0a121c, SCRIM_ALPHA = 0.84;
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
@@ -48,7 +60,7 @@ type MotionPreference = 'full' | 'system' | 'reduced';
 type CombatPace = 'cinematic' | 'standard' | 'snappy';
 type AnimationPace = 'relaxed' | 'standard' | 'fast';
 type TextPace = 'relaxed' | 'standard' | 'fast';
-type SettingsRowKind = 'toggle' | 'slider' | 'motion' | 'contrast' | 'graphics' | 'pace' | 'animationPace' | 'textPace' | 'controls' | 'screenReader' | 'colorCues' | 'screenShake' | 'flashEffects';
+type SettingsRowKind = 'toggle' | 'slider' | 'motion' | 'contrast' | 'graphics' | 'pace' | 'animationPace' | 'textPace' | 'controls' | 'screenReader' | 'colorCues' | 'screenShake' | 'flashEffects' | 'fastMode' | 'rumble';
 type FieldFrame = {
   cx: number;
   cy: number;
@@ -79,6 +91,9 @@ export interface SettingsOverlayOptions {
   onSetCombatPacePreference: (value: CombatPace) => void;
   onSetAnimationPacePreference: (value: AnimationPace) => void;
   onSetTextPacePreference: (value: TextPace) => void;
+  /** Both re-render the overlay; the preference itself is stored here. */
+  onSetFastModePreference?: (value: 'off' | 'on') => void;
+  onSetRumblePreference?: (value: 'on' | 'off') => void;
   onSetScreenReaderPreference: (value: ScreenReaderPreference) => void;
   onToggleFullscreen: () => void;
 }
@@ -89,6 +104,11 @@ export interface HowToPlayOverlayOptions {
   guide: { enabled: boolean; completed: boolean };
   onGuideAction: () => void;
   onPractice?: () => void;
+  /** 'loop' (default): the six-step core loop. 'terms': the Map-1 core terms. */
+  page?: 'loop' | 'terms';
+  onPage?: (page: 'loop' | 'terms') => void;
+  /** Asked once per scene to fetch key-term icons that are not loaded yet. */
+  onMissingIcons?: (ids: UiIconId[]) => void;
 }
 
 export interface PauseOverlayOptions {
@@ -682,7 +702,8 @@ function renderSettingsGraphicsQualitySwitch(
 export function renderPauseMenuOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: PauseOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+  addTo = overlayEntrance(scene, 'pause', addTo);
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, SCRIM, SCRIM_ALPHA)
     .setName('pause-actions').setInteractive());
   const frame = renderQuietMenuPanel(scene, addTo, 620, 580);
   dependencies.renderAudioToggleControl(scene, addTo, frame.right - 58, frame.top + 50, options.onToggleAudio);
@@ -705,13 +726,15 @@ export function renderPauseMenuOverlay(
     }).setResolution(2).setOrigin(1, 0.5));
   });
   const returnFocusKey = `birdsquad.pauseReturnFocus.${scene.scene.key}`;
-  const action = (callback: () => void) => () => {
+  // Typed cues (docs/game/audio-events.md): leaving for the menu commits, Resume steps back.
+  const action = (callback: () => void, cue?: 'ui.confirm' | 'ui.cancel') => () => {
     scene.registry.remove(returnFocusKey);
-    dependencies.playUiSound('confirm'); callback();
+    if (cue) birdAudio.play(cue); else dependencies.playUiSound('confirm');
+    callback();
   };
   const actions: Array<{ hit: Phaser.GameObjects.Rectangle; label: string; run: () => void }> = [];
-  const addAction = (x: number, y: number, width: number, label: string, callback: () => void, primary = false) => {
-    const run = action(callback);
+  const addAction = (x: number, y: number, width: number, label: string, callback: () => void, primary = false, cue?: 'ui.confirm' | 'ui.cancel') => {
+    const run = action(callback, cue);
     const hit = renderQuietMenuButton(scene, addTo, x, y, width, label, run, primary);
     actions.push({ hit, label, run });
     return hit;
@@ -720,9 +743,9 @@ export function renderPauseMenuOverlay(
     scene.registry.set(returnFocusKey, 1);
     options.onSettings!();
   } : undefined;
-  addAction(640, frame.top + 368, 300, 'Resume', options.onResume, true);
+  addAction(640, frame.top + 368, 300, 'Resume', options.onResume, true, 'ui.cancel');
   if (settings) addAction(540, frame.top + 440, 170, 'Settings', settings);
-  addAction(options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', options.onMenu);
+  addAction(options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', options.onMenu, false, 'ui.confirm');
   if (options.onAbandon) addAction(640, frame.top + 516, 220,
     memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', options.onAbandon).setName('pause-abandon-hit');
   const initialIndex = scene.registry.get(returnFocusKey) ?? 0;
@@ -736,8 +759,10 @@ export function renderPauseMenuOverlay(
 export function renderConfirmRunExitOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: ConfirmRunExitOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+  addTo = overlayEntrance(scene, 'confirm', addTo);
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, SCRIM, SCRIM_ALPHA)
     .setName('confirm-exit-actions').setInteractive());
+  overlayAmbience(lifecycle, 'confirm');
   renderQuietMenuPanel(scene, addTo, 680, 320);
   addUi(addTo, scene.add.text(640, 254, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
     fontFamily: TOKEN_DISPLAY_FONT, fontSize: '32px', color: UI_FIELD.text,
@@ -787,8 +812,10 @@ export function renderSettingsMenuOverlay(
   // A deferred scene redraw can replace a panel before its old destroy callback.
   // Retire the previous input owner before attaching replacement handlers.
   settingsInputCleanups.get(scene)?.();
+  addTo = overlayEntrance(scene, 'settings', addTo);
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }));
+  overlayAmbience(lifecycle, 'settings');
   const settingsInputKey = settingsOverlayInputRegistryKey(scene);
   const controlsPanelKey = controlPanelRegistryKey(scene);
   const controlsCaptureKey = controlCaptureRegistryKey(scene);
@@ -805,7 +832,7 @@ export function renderSettingsMenuOverlay(
     fontSize: '40px',
     color: UI_FIELD.text,
   }));
-  renderQuietMenuButton(scene, addTo, frame.right - 66, frame.top + 58, 104, 'Close', () => { dependencies.playUiSound('close'); dismissSettingsOverlay(); });
+  renderQuietMenuButton(scene, addTo, frame.right - 66, frame.top + 58, 104, 'Close', () => { birdAudio.play('ui.cancel'); dismissSettingsOverlay(); });
 
   const applyHint = addUi(addTo, scene.add.text(frame.left + 108, frame.top + 120, '', {
     fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT,
@@ -823,6 +850,8 @@ export function renderSettingsMenuOverlay(
   const animationPace = dependencies.animationPacePreference();
   const textPace = dependencies.textPacePreference();
   const screenReader = dependencies.screenReaderState();
+  const fastMode = fastModePreference();
+  const rumble = rumbleState();
   const rows: Array<[string, string, SettingsRowKind]> = [
     ['Audio', dependencies.audio.isMuted() ? 'Muted' : 'On', 'toggle'],
     ['Music', `${Math.round(audioSnapshot.musicVolume * 100)}%`, 'slider'],
@@ -840,10 +869,12 @@ export function renderSettingsMenuOverlay(
     ['Color Cues', colorCueLabel(colorCues.preference), 'colorCues'],
     ['Screen Shake', screenShakeLabel(screenShake), 'screenShake'],
     ['Flashes', flashEffectsLabel(flashEffects), 'flashEffects'],
+    ['Fast Mode', fastMode === 'on' ? 'On' : 'Off', 'fastMode'],
+    ['Rumble', rumble.preference === 'on' ? (rumble.enabled ? 'On' : 'Shake off') : 'Off', 'rumble'],
   ];
   const storageKeys = ['audioMuted', 'musicVolume', 'sfxVolume', 'voiceVolume', 'ambienceVolume',
     'controlBindings', 'motionPreference', 'visualContrast', 'graphicsQuality', 'combatPace',
-    'animationPace', 'textPace', 'screenReader', 'colorCues', 'screenShake', 'flashEffects'];
+    'animationPace', 'textPace', 'screenReader', 'colorCues', 'screenShake', 'flashEffects', 'fastMode', 'rumble'];
   const refreshSaveHint = () => {
     const failed = storageKeys.some(key => storageWriteFailed(`birdsquad.${key}`));
     applyHint.setText(failed ? 'Some settings are session-only. Change them again to retry saving.' : 'Changes apply immediately.')
@@ -871,9 +902,9 @@ export function renderSettingsMenuOverlay(
   const controlsRowIndex = rows.findIndex(([, , kind]) => kind === 'controls');
   const sections = [
     { label: 'Audio', rows: [0, 1, 2, 3, 4] },
-    { label: 'Presentation', rows: [8, 9, 10, 11] },
+    { label: 'Presentation', rows: [8, 9, 10, 11, 16] },
     { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15] },
-    { label: 'Controls', rows: [5] },
+    { label: 'Controls', rows: [5, 17] },
   ];
   const navigationOrder = sections.flatMap((section) => section.rows);
   const explanations = [
@@ -893,6 +924,8 @@ export function renderSettingsMenuOverlay(
     'Reinforced adds patterns and symbols so cues do not rely on color alone.',
     screenShake.reducedByMotion ? 'Reduced Motion keeps shake off. Your chosen preference resumes with Full Motion.' : 'Turn camera shake on or off. Reduced Motion always keeps it off.',
     flashEffects.reducedByMotion ? 'Reduced Motion limits flashes. Your chosen preference resumes with Full Motion.' : 'Reduce bright impact flashes without hiding the action result.',
+    'Speeds enemy turns, card motion and set pieces. Rules and results stay the same. Hold Hustle for a one-off boost.',
+    rumble.blockedByScreenShake ? 'Screen Shake is off, so controller and touch vibration stay off too.' : 'Controller and touch vibration on heavy hits, Surge and finishing blows.',
   ];
   const rowObjects: Phaser.GameObjects.GameObject[][] = rows.map(() => []);
   const sectionButtons: Phaser.GameObjects.Rectangle[] = [];
@@ -994,6 +1027,20 @@ export function renderSettingsMenuOverlay(
     textPacePreference = value;
     options.onSetTextPacePreference(value);
   };
+  let fastModeValue = fastMode;
+  let rumbleValue = rumble.preference;
+  const setFastMode = (value: 'off' | 'on') => {
+    fastModeValue = value;
+    setFastModePreference(scene, value);
+    options.onSetFastModePreference?.(value);
+  };
+  const setRumble = (value: 'on' | 'off') => {
+    rumbleValue = value;
+    setRumblePreference(value);
+    // A short confirmation pulse so the player feels what they turned on.
+    if (value === 'on') pulseHaptic(scene, 'surge');
+    options.onSetRumblePreference?.(value);
+  };
   const setScreenReader = (value: ScreenReaderPreference) => {
     screenReaderPreference = value;
     options.onSetScreenReaderPreference(value);
@@ -1039,6 +1086,8 @@ export function renderSettingsMenuOverlay(
     else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, direction));
     else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, direction));
     else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, direction));
+    else if (kind === 'fastMode') setFastMode(adjacentValue(['off', 'on'] as const, fastModeValue, direction));
+    else if (kind === 'rumble') setRumble(adjacentValue(['on', 'off'] as const, rumbleValue, direction));
   };
   const activateFocused = () => {
     if (focusIndex === 0) {
@@ -1062,6 +1111,8 @@ export function renderSettingsMenuOverlay(
     else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, 1));
     else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
     else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
+    else if (kind === 'fastMode') setFastMode(adjacentValue(['off', 'on'] as const, fastModeValue, 1));
+    else if (kind === 'rumble') setRumble(adjacentValue(['on', 'off'] as const, rumbleValue, 1));
   };
   const addSettingsObject = addTo;
   rows.forEach(([label, value, kind], index) => {
@@ -1094,6 +1145,8 @@ export function renderSettingsMenuOverlay(
       else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, 1));
       else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
       else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
+      else if (kind === 'fastMode') setFastMode(adjacentValue(['off', 'on'] as const, fastModeValue, 1));
+      else if (kind === 'rumble') setRumble(adjacentValue(['on', 'off'] as const, rumbleValue, 1));
     });
     addUi(addTo, scene.add.text(cx - 238, y, label, {
       fontFamily: UI_FONT,
@@ -1207,6 +1260,8 @@ export function renderSettingsMenuOverlay(
           || (kind === 'colorCues' && colorCues.reinforced)
           || (kind === 'screenShake' && screenShake.enabled)
           || (kind === 'flashEffects' && flashEffects.reduced)
+          || (kind === 'fastMode' && fastMode === 'on')
+          || (kind === 'rumble' && rumble.enabled)
           ? 0x0b1723
           : undefined,
       }, dependencies);
@@ -1324,7 +1379,7 @@ export function renderSettingsMenuOverlay(
     if (wasOpen) {
       if (focusRing?.active) focusRing.setVisible(true);
       setFocus(controlsRowIndex);
-      if (playSound) dependencies.playUiSound('close');
+      if (playSound) birdAudio.play('ui.cancel');
     }
   };
 
@@ -1498,7 +1553,7 @@ export function renderSettingsMenuOverlay(
           captureAction = undefined;
           controlsStatus = 'Binding unchanged';
           scene.registry.remove(controlsCaptureKey);
-          dependencies.playUiSound('close');
+          birdAudio.play('ui.cancel');
           renderControlsPanel();
         } else if (!isBindableControlCode(event.code)) {
           controlsStatus = `${controlCodeLabel(event.code)} is reserved`;
@@ -1557,7 +1612,7 @@ export function renderSettingsMenuOverlay(
         captureAction = undefined;
         controlsStatus = 'Binding unchanged';
         scene.registry.remove(controlsCaptureKey);
-        dependencies.playUiSound('close');
+        birdAudio.play('ui.cancel');
         renderControlsPanel();
       } else if (!captureAction && button.index === 12) setControlsFocus(controlsFocusIndex - 1, controlFrame);
       else if (!captureAction && button.index === 13) setControlsFocus(controlsFocusIndex + 1, controlFrame);
@@ -1612,18 +1667,130 @@ export function renderHowToPlayOverlay(
   options: HowToPlayOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
+  addTo = overlayEntrance(scene, 'how-to-play', addTo);
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }).setName('how-to-play-actions'));
+  overlayAmbience(lifecycle, 'how-to-play');
   const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
   addUi(addTo, scene.add.text(168, 98, 'How to Play', {
     fontFamily: TOKEN_DISPLAY_FONT, fontSize: '40px', color: UI_FIELD.text,
   }).setResolution(2));
-  addUi(addTo, scene.add.text(170, 158, 'Build a flock. Find your rhythm. Make every choice count.', {
+  const termsPage = options.page === 'terms';
+  addUi(addTo, scene.add.text(170, 158, termsPage
+    ? 'Key terms, basics first. Each themed name has a plain gloss.'
+    : 'Build a flock. Find your rhythm. Make every choice count.', {
     fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: UI_SOFT, wordWrap: { width: 940 },
   }).setResolution(2).setName('guide-download-status'));
   const close = renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
-    () => { dependencies.playUiSound('close'); options.onClose(); });
+    () => { birdAudio.play('ui.cancel'); options.onClose(); });
+  const pageLabel = termsPage ? 'Core loop' : 'Key terms';
+  const pageToggle = options.onPage
+    ? renderQuietMenuButton(scene, addTo, frame.right - 226, 88, 180, pageLabel,
+      () => options.onPage?.(termsPage ? 'loop' : 'terms'))
+    : undefined;
+  pageToggle?.setData('page', termsPage ? 'terms' : 'loop');
 
+  if (termsPage) {
+    renderHowToPlayTerms(scene, addTo, frame);
+    const missing = HOW_TO_PLAY_TERMS.map((term) => term.icon).filter((id) => !scene.textures.exists(iconKey(id)));
+    if (missing.length && options.onMissingIcons && !termIconRequests.has(scene)) {
+      termIconRequests.add(scene);
+      options.onMissingIcons(missing);
+    }
+  } else renderHowToPlayLoop(scene, addTo, frame);
+
+  const tips: Array<[string, string]> = [
+    [
+      'Quick keys',
+      `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
+    ],
+    ['Waymarks', `Shift+${controlBindingLabel('skipReward')} or RT: read your Waymarks without spending a turn.`],
+  ];
+  renderHowToPlayTips(scene, addTo, frame, tips);
+
+  const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
+  const guide = renderQuietMenuButton(scene, addTo, options.onPractice ? 790 : frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
+  const actions = [{ hit: guide, label: guideLabel, run: options.onGuideAction }, { hit: close, label: 'Close', run: options.onClose }];
+  if (pageToggle) actions.push({ hit: pageToggle, label: pageLabel, run: () => options.onPage?.(termsPage ? 'loop' : 'terms') });
+  if (options.onPractice) {
+    const practice = renderQuietMenuButton(scene, addTo, 500, frame.bottom - 42, 230, 'Practice lessons', options.onPractice, true);
+    actions.unshift({ hit: practice, label: 'Practice lessons', run: options.onPractice });
+  }
+  bindActionFocus(scene, lifecycle, actions, options.onClose, { exclusive: true, initialIndex: options.initialFocus });
+}
+
+/** Map-1 core terms, basics to advanced. Icons appear once their art is loaded. */
+const termIconRequests = new WeakSet<Phaser.Scene>();
+const HOW_TO_PLAY_TERMS: Array<{ title: string; icon: UiIconId; body: string }> = [
+  { title: 'Cohesion (flock HP)', icon: 'flock-heart', body: 'Your health. At 0 the run ends; healing restores it.' },
+  { title: 'Wingbeats (energy)', icon: 'wingbeats', body: 'Spend them to play cards. They refill each turn.' },
+  { title: 'Cover (block)', icon: 'cover-shield', body: 'Absorbs hits before Cohesion. Clears next turn.' },
+  { title: 'Roost (end turn)', icon: 'roost-nest', body: 'Enemies act, then you draw a fresh hand.' },
+  { title: 'Flow / Surge / Scatter', icon: 'codex-momentum-medallion', body: 'Cards build Flow; full Flow is Surge. Low Cohesion: Scatter.' },
+  { title: 'Resonance', icon: 'resonance-battery', body: 'A combo charge you bank, then spend on payoffs.' },
+  { title: 'Winded (weak)', icon: 'codex-pressure-medallion', body: 'Its attacks deal 25% less while stacks last.' },
+  { title: 'Open Sky (vulnerable)', icon: 'open-sky-medallion', body: 'Exposed: incoming attacks hit harder for a while.' },
+  { title: 'Molt', icon: 'codex-molt-medallion', body: 'One turn of cheaper, alternate cards. Then Open Sky.' },
+  { title: 'Preen (upgrade)', icon: 'preen-kit', body: 'Improve a card for this run at Nests and markets.' },
+  { title: 'Waymarks (relics)', icon: 'waymark-compass', body: 'Lasting run modifiers that trigger on their own.' },
+  { title: 'Supplies (consumables)', icon: 'supply-pouch', body: 'Single-use tools for a fight or the route.' },
+];
+
+function renderHowToPlayTerms(scene: Phaser.Scene, addTo: UiAdd, frame: FieldFrame) {
+  HOW_TO_PLAY_TERMS.forEach((term, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const left = frame.left + 102 + column * 340;
+    const top = frame.top + 172 + row * 86;
+    const key = iconKey(term.icon);
+    let textLeft = left;
+    if (scene.textures.exists(key)) {
+      setTextureFilter(scene.textures.get(key), Phaser.Textures.FilterMode.LINEAR);
+      addUi(addTo, scene.add.image(left + 14, top + 13, key).setDisplaySize(28, 28)
+        .setName('how-to-play-term-icon').setData('icon', term.icon));
+      textLeft = left + 38;
+    }
+    addUi(addTo, scene.add.text(textLeft, top, term.title, {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+      fixedWidth: 296 - (textLeft - left),
+      maxLines: 1,
+    }).setResolution(2).setName('how-to-play-term-title').setData('order', index + 1));
+    addUi(addTo, scene.add.text(left, top + 30, term.body, {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      color: '#c5d1d8',
+      lineSpacing: 1,
+      wordWrap: { width: 296 },
+    }).setResolution(2).setName('how-to-play-term-body'));
+  });
+}
+
+function renderHowToPlayTips(scene: Phaser.Scene, addTo: UiAdd, frame: FieldFrame, tips: Array<[string, string]>) {
+  tips.forEach(([label, value], index) => {
+    const y = frame.bottom - 124 + index * 30;
+    const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
+    addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      fontStyle: UI_BOLD,
+      color: textAccent,
+      fixedWidth: 118,
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
+    addUi(addTo, scene.add.text(frame.cx - 314, y, value, {
+      fontFamily: UI_FONT,
+      fontSize: UI_TYPE.secondary,
+      color: UI_FIELD.text,
+      fixedWidth: 804,
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
+  });
+}
+
+function renderHowToPlayLoop(scene: Phaser.Scene, addTo: UiAdd, frame: FieldFrame) {
   const cards = [
     {
       title: '1 / Plan the Route',
@@ -1635,7 +1802,7 @@ export function renderHowToPlayOverlay(
       title: '2 / Read, Play, Roost',
       icon: 'release-card',
       accent: UI_FIELD.danger,
-      body: 'Read enemy intent. Spend Wingbeats on cards; Cover protects Cohesion. Roost ends your turn.',
+      body: 'Read enemy intent. Spend Wingbeats (energy) on cards; Cover (block) protects Cohesion (flock HP). Roost ends your turn.',
     },
     {
       title: '3 / Add or Skip',
@@ -1647,7 +1814,7 @@ export function renderHowToPlayOverlay(
       title: '4 / Preen a Card',
       icon: 'preen-kit',
       accent: UI_FIELD.brass,
-      body: 'Compare the exact upgrade before choosing. Preen improves a card for this flight without adding a copy.',
+      body: 'Preen (upgrade): compare the exact change before choosing. It improves a card for this flight without adding a copy.',
     },
     {
       title: '5 / Shape Your Deck',
@@ -1682,41 +1849,4 @@ export function renderHowToPlayOverlay(
       wordWrap: { width: 296 },
     }).setResolution(2).setName('how-to-play-readable'));
   });
-
-  const tips: Array<[string, string]> = [
-    [
-      'Quick keys',
-      `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
-    ],
-    ['Waymarks', `Shift+${controlBindingLabel('skipReward')} or RT: read artifacts without spending a turn.`],
-  ];
-  tips.forEach(([label, value], index) => {
-    const y = frame.bottom - 124 + index * 30;
-    const accent = index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass;
-    const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
-    addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: UI_TYPE.secondary,
-      fontStyle: UI_BOLD,
-      color: textAccent,
-      fixedWidth: 118,
-      maxLines: 1,
-    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
-    addUi(addTo, scene.add.text(frame.cx - 314, y, value, {
-      fontFamily: UI_FONT,
-      fontSize: UI_TYPE.secondary,
-      color: UI_FIELD.text,
-      fixedWidth: 804,
-      maxLines: 1,
-    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
-  });
-
-  const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
-  const guide = renderQuietMenuButton(scene, addTo, options.onPractice ? 790 : frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
-  const actions = [{ hit: guide, label: guideLabel, run: options.onGuideAction }, { hit: close, label: 'Close', run: options.onClose }];
-  if (options.onPractice) {
-    const practice = renderQuietMenuButton(scene, addTo, 500, frame.bottom - 42, 230, 'Practice lessons', options.onPractice, true);
-    actions.unshift({ hit: practice, label: 'Practice lessons', run: options.onPractice });
-  }
-  bindActionFocus(scene, lifecycle, actions, options.onClose, { exclusive: true, initialIndex: options.initialFocus });
 }

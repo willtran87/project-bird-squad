@@ -18,9 +18,10 @@ import {
   type CodexSavedView,
 } from './codex-saved-views';
 import { sanitizeSavedDecks } from './saved-decks';
+import { futureSaveMessage, migrateActiveRun, migrateSaveBackup, SAVE_BACKUP_VERSION } from './save-migration';
 
 const SAVE_FORMAT = 'bird-squad-save';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = SAVE_BACKUP_VERSION;
 const MAX_BACKUP_BYTES = 2_000_000;
 const CODEX_CARD_LENSES = ['all', 'collected', 'new', 'tagged', 'uncollected', 'seen'] as const;
 
@@ -58,6 +59,8 @@ const PREFERENCE_KEYS = {
 const ALL_OWNED_STORAGE_KEYS = [
   ...Object.values(JOURNALED_KEYS).flatMap((key) => [key, `${key}.backup`, `${key}.corrupt`]),
   ...Object.values(PREFERENCE_KEYS),
+  // Local-only engagement records: cleared with the profile, never exported.
+  'birdsquad.daily', 'birdsquad.daily.backup', 'birdsquad.daily.corrupt', 'birdsquad.ceremony', 'birdsquad.recapSeen',
 ];
 
 export interface SaveBackupPreferences {
@@ -313,20 +316,41 @@ export function parseSaveBackup(raw: string, dependencies: SaveBackupRuntimeDepe
   } catch {
     return { ok: false, error: 'This file is not valid JSON.' };
   }
-  if (!isRecord(parsed) || parsed.format !== SAVE_FORMAT || parsed.version !== SAVE_VERSION || !isRecord(parsed.data)) {
+  if (!isRecord(parsed) || parsed.format !== SAVE_FORMAT) {
     return { ok: false, error: 'This is not a compatible Bird Squad backup.' };
   }
-  const account = sanitizeAccount(parsed.data.account);
-  const runHistory = dependencies.sanitizeRunHistory(parsed.data.runHistory);
-  const guide = sanitizeGuide(parsed.data.guide);
-  const preferences = sanitizePreferences(parsed.data.preferences);
-  const hasActiveRun = Object.prototype.hasOwnProperty.call(parsed.data, 'activeRun');
-  const activeRun = hasActiveRun ? dependencies.sanitizeActiveRun(parsed.data.activeRun) : undefined;
+  // Migrate to the current shape before any schema validation runs.
+  const migration = migrateSaveBackup(parsed);
+  if (!migration.ok) {
+    return {
+      ok: false,
+      error: migration.reason === 'future-version'
+        ? futureSaveMessage('backup', migration.version)
+        : 'This is not a compatible Bird Squad backup.',
+    };
+  }
+  const migrated = migration.value;
+  if (!isRecord(migrated.data)) return { ok: false, error: 'This is not a compatible Bird Squad backup.' };
+  const data = migrated.data;
+  const hasActiveRun = Object.prototype.hasOwnProperty.call(data, 'activeRun');
+  let activeRunPayload: unknown = data.activeRun;
+  if (hasActiveRun) {
+    const runMigration = migrateActiveRun(data.activeRun);
+    if (!runMigration.ok && runMigration.reason === 'future-version') {
+      return { ok: false, error: futureSaveMessage('flight', runMigration.version) };
+    }
+    activeRunPayload = runMigration.ok ? runMigration.value : undefined;
+  }
+  const account = sanitizeAccount(data.account);
+  const runHistory = dependencies.sanitizeRunHistory(data.runHistory);
+  const guide = sanitizeGuide(data.guide);
+  const preferences = sanitizePreferences(data.preferences);
+  const activeRun = hasActiveRun && activeRunPayload !== undefined ? dependencies.sanitizeActiveRun(activeRunPayload) : undefined;
   if (!account || !runHistory || !guide || !preferences || (hasActiveRun && activeRun === undefined)) {
     return { ok: false, error: 'Backup data failed schema validation; nothing was changed.' };
   }
   account.lockedCards = sanitizeLockedCards(
-    isRecord(parsed.data.account) ? parsed.data.account.lockedCards : undefined,
+    isRecord(data.account) ? data.account.lockedCards : undefined,
     account.cardCollection,
   );
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
@@ -336,7 +360,7 @@ export function parseSaveBackup(raw: string, dependencies: SaveBackupRuntimeDepe
   const bundle: SaveBackupBundle = {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
-    exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : 'Unknown date',
+    exportedAt: typeof migrated.exportedAt === 'string' ? migrated.exportedAt : 'Unknown date',
     data: {
       account,
       ...(activeRun === undefined ? {} : { activeRun }),

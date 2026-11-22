@@ -98,7 +98,7 @@ for (const surface of [...menuSurfaces,'profile',...codexSurfaces,...routeSurfac
       return walk(s.children.list).filter(o=>o.type==='Text'&&o.text.trim()).map(o=>{
         const b=o.getBounds(),m=o.getWorldTransformMatrix();
         return {name:o.name,text:o.text,font:o.style.fontSize,size:parseFloat(o.style.fontSize)*Math.hypot(m.c,m.d)*scale,
-          x:b.x,y:b.y,width:b.width,height:b.height,full:o.getData('fullText'),truncated:o.getData('truncated'),role:o.getData('textRole')};
+          x:b.x,y:b.y,width:b.width,height:b.height,full:o.getData('fullText'),truncated:o.getData('truncated'),role:o.getData('textRole'),tier:o.getData('faceTier')};
       }).filter(o=>o.x+o.width>0&&o.x<1280&&o.y+o.height>0&&o.y<720);
     },scene);
     expect(texts.length).toBeGreaterThan(0);
@@ -107,7 +107,10 @@ for (const surface of [...menuSurfaces,'profile',...codexSurfaces,...routeSurfac
     await info.attach('target-inventory',{body:JSON.stringify({surface,targets},null,2),contentType:'application/json'});
     await page.screenshot({path:info.outputPath(`${surface}-1000.png`)});
     checkTargetGeometry(targets,surface);
-    expect(texts.filter(t=>t.size<14-0.01),`${surface}: secondary text floor`).toEqual([]);
+    // Dense card faces keep every effect visible: their rules may use a 15-17px
+    // face tier (>= 11.5 CSS px here) instead of hiding a clause behind Inspect.
+    const denseFace=(t:any)=>/-1[5-7](@|$)|overflow/.test(t.tier??'')&&t.size>=11.5;
+    expect(texts.filter(t=>t.size<14-0.01&&!denseFace(t)),`${surface}: secondary text floor`).toEqual([]);
     const primary=new Set(['codex-card-title','codex-entry-title','codex-tab-label','codex-card-cost-label','codex-card-detail-title',
       'codex-card-detail-paragraph','combat-tooltip-title','run-flight-details-section-body','run-flight-details-section-title',
       'run-defeat-review-headline','route-collection-goal-hit-label','hud-value-Cohesion','hud-value-Scrap','hud-value-Deck',

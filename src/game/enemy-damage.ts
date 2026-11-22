@@ -23,13 +23,29 @@ export function cleanseFlockDebuffs(flock: Pick<IncomingFlock, 'weak' | 'frail' 
   return cleared;
 }
 
+// Ascension damage levers (DifficultyMods). Elite/boss bonuses are optional so
+// fixtures that pass only the base pair keep working.
+export interface IncomingDamageMods {
+  enemyDamageBonus: number;
+  openSkyBonus: number;
+  eliteDamageBonus?: number;
+  bossDamageBonus?: number;
+}
+
+function rankDamageBonus(enemy: IncomingEnemy, mods: IncomingDamageMods) {
+  const type = enemy.runtime?.type;
+  if (type === 'boss') return mods.bossDamageBonus ?? 0;
+  if (type === 'elite' || type === 'rival') return mods.eliteDamageBonus ?? 0;
+  return 0;
+}
+
 // Shared by live resolution and forecasts. This computes one hit only; callers
 // consume protection before executing first-Open-Sky hooks and absorbing Cover.
 export function incomingHit(
   amount: number, enemy: IncomingEnemy, flock: IncomingFlock,
-  mods: { enemyDamageBonus: number; openSkyBonus: number }, firstSkyReduction: number,
+  mods: IncomingDamageMods, firstSkyReduction: number,
 ) {
-  let damage = amount + enemy.nextAttackBonus + enemy.damageBonus + mods.enemyDamageBonus;
+  let damage = amount + enemy.nextAttackBonus + enemy.damageBonus + mods.enemyDamageBonus + rankDamageBonus(enemy, mods);
   if (enemy.weak > 0) damage = Math.floor(damage * 0.75);
   const guardUsed = flock.exposed && flock.openSkyGuard > 0;
   const reductionUsed = flock.exposed && !guardUsed ? Math.min(mods.openSkyBonus, flock.openSkyReduction) : 0;
@@ -41,7 +57,7 @@ export function incomingHit(
 
 export function projectEnemyPhase<F extends IncomingFlock, E extends IncomingEnemy>(config: {
   flock: F; enemies: E[];
-  mods: { enemyDamageBonus: number; openSkyBonus: number };
+  mods: IncomingDamageMods;
   move: (enemy: E, flock: F) => { effects: string[] };
   condition: (condition: string, enemy: E, flock: F) => boolean;
   firstSkyReduction: number;

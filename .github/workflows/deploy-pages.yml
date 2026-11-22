@@ -155,8 +155,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
       options: --init --ipc=host
-    # The expanded visual suite needs room for runner setup and evidence upload.
-    timeout-minutes: 45
+    # The expanded visual suite needs room for runner setup and evidence upload;
+    # WebKit's software rendering takes about 2 min for the large-hand sweep.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -220,10 +221,7 @@ jobs:
 
       - name: Validate content and release policy
         run: |
-          node --test tools/tests/flyway-rules.test.mjs
-          node --test tools/tests/draw-comparison.test.mjs
-          node --test tools/tests/card-contributions.test.mjs
-          node --test tools/tests/distinct-builds.test.mjs
+          npm run test:unit
           npm run validate:docs
           npm run validate:runtime
           npm run validate:runtime-assets

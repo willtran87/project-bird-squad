@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { dismissArrivalCard } from './helpers/route-arrival';
 
 for (const exit of ['reload', 'Main Menu']) test(`${exit} during a paused live fight restores the advertised route checkpoint without spending twice`, async ({ page }, info) => {
   test.setTimeout(90000);
@@ -17,7 +18,7 @@ for (const exit of ['reload', 'Main Menu']) test(`${exit} during a paused live f
     const b = g.scene.getScene('BattleScene');
     return b.hand?.length && b.fxLayer?.active && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued;
   });
-  await title(); await page.keyboard.press('Enter'); await route(); await settleCanvas(page);
+  await title(); await page.keyboard.press('Enter'); await route(); await dismissArrivalCard(page); await settleCanvas(page);
   const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.run.active')!));
   await page.keyboard.press('Enter'); await battle(); await settleCanvas(page);
   const initial = await page.evaluate(() => {

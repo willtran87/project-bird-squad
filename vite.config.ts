@@ -69,15 +69,52 @@ export default defineConfig(({ command }) => ({
         manualChunks(id) {
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.endsWith('/src/main.ts')) return 'index';
+          // Combat is fetched beside the title fonts and swapped into its loader slot.
+          if (moduleId.endsWith('/src/scenes/battle-scene.ts')) return 'battle-scene';
+          // The boot scenes, their shared helpers and the eager art manifest were
+          // split out of main.ts; keep them in the entry chunk exactly as before.
+          if (
+            moduleId.includes('/src/scenes/')
+            || moduleId.includes('/src/game/shared/')
+            || moduleId.endsWith('/src/game/combat-rules.ts')
+            || moduleId.endsWith('/src/art-assets.ts')
+          ) return 'index';
           if (moduleId.endsWith('/src/game/battle/hand-rule-summary.ts')) return 'hand-rule-summary';
+          // Title, route and chrome life: loaded after the stage, never part of boot.
+          // Card reward reveal and the delayed loading card: measurable on their own beside scene life.
+          if (/\/src\/game\/spectacle\/life\/(reward-reveal|reveal-timeline)\.ts$/.test(moduleId)) return 'reward-reveal';
+          if (moduleId.endsWith('/src/game/spectacle/life/loading.ts')) return 'scene-loading';
+          if (moduleId.includes('/src/game/spectacle/life/')) return 'scene-life';
+          // Procedural suit sigils, tarot marks and route node signs; shared by reward faces, the route and the Codex.
+          if (moduleId.endsWith('/src/game/world-glyphs.ts') || moduleId.endsWith('/src/game/tarot-rules.ts')) return 'world-glyphs';
+          if (moduleId.endsWith('/src/game/ui-panel.ts')) return 'ui-panel';
+          // Combat barks: rules, runtime and the line content, loaded when a fight opens.
+          if (moduleId.includes('/src/game/barks/') || moduleId.endsWith('/data/game/barks.json')) return 'barks';
+          if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';
+          // Audio stays lazy: pure rules, the event voices and the district beds
+          // are each measurable beside the legacy cue and music chunks.
+          if (moduleId.endsWith('/src/game/audio-events.ts')) return 'audio-events';
+          if (moduleId.endsWith('/src/game/audio-voices.ts') || moduleId.endsWith('/src/game/audio-cue-budget.ts')) return 'audio-voices';
+          if (moduleId.endsWith('/src/game/audio-ambience.ts')) return 'audio-ambience';
+          // Daily Flight, run recap and the Collection ceremony: asked for by the title after it has drawn.
+          if (moduleId.includes('/src/game/engagement/')) return 'engagement';
+          // Shared by setup, the Collection and the engagement scenes; owned by none of them.
+          if (moduleId.endsWith('/src/game/leader-portrait-assets.ts')) return 'leader-portraits';
+          if (moduleId.endsWith('/src/game/narrative-threads.ts') || moduleId.endsWith('/src/game/narrative-content.ts')) return 'narrative-threads';
           if (moduleId.endsWith('/src/game/district-framing.ts')) return 'district-framing';
           if (moduleId.endsWith('/src/game/build-guidance.ts')) return 'build-guidance';
           if (moduleId.endsWith('/src/game/flight-highlights.ts')) return 'flight-highlights';
           if (moduleId.endsWith('/src/game/opening-district.ts')) return 'opening-district';
           if (moduleId.endsWith('/src/game/canal-markets.ts')) return 'canal-markets';
           if (moduleId.endsWith('/src/game/signal-spires.ts')) return 'signal-spires';
-          if (moduleId.endsWith('/src/game/battle/enemy-breathing.ts')) return 'enemy-breathing';
+          // Retained combatants and hand cards, their animation clock and hit-stop.
+          if (moduleId.endsWith('/src/game/battle/actors.ts')) return 'battle-actors';
+          // Combat life: status/intent badges, ghost health, counter rolls, combo, set pieces and Leader flourishes.
+          if (moduleId.endsWith('/src/game/battle/combat-life.ts') || moduleId.endsWith('/src/game/battle/combat-life-rules.ts')) return 'battle-life';
+          // Cards as objects: flight, deal, discard, drag, rarity frames and number highlights.
+          if (moduleId.endsWith('/src/game/battle/card-objects.ts') || moduleId.endsWith('/src/game/battle/card-object-rules.ts')) return 'battle-card-objects';
           if (moduleId.endsWith('/src/game/run-hud.ts')) return 'run-hud';
+          if (moduleId.endsWith('/src/game/term-introductions.ts') || moduleId.endsWith('/src/game/battle/term-callout.ts')) return 'term-introductions';
           if (moduleId.endsWith('/src/game/route-transition-fx.ts')) return 'route-transition-fx';
           if (moduleId.endsWith('/src/game/battle/state-snapshot.ts')) return 'battle-state-snapshot';
           if (moduleId.endsWith('/src/game/battle/outcome-scene.ts')) return 'battle-outcome-scene';

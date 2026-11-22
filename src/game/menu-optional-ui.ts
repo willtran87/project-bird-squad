@@ -101,23 +101,33 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
     onSetCombatPacePreference: update(setCombatPacePreference),
     onSetAnimationPacePreference: update(value => setAnimationPacePreference(scene, value)),
     onSetTextPacePreference: update(setTextPacePreference),
+    onSetFastModePreference: update(() => undefined),
+    onSetRumblePreference: update(() => undefined),
     onSetScreenReaderPreference: update(setScreenReaderPreference),
     onToggleFullscreen: () => scene.scale.toggleFullscreen(),
   });
   scene.updateMenuTextState();
 }
 
-export function openHelpOverlay(scene: any, _queueAssets = true, initialFocus = 0) {
+export function openHelpOverlay(scene: any, _queueAssets = true, initialFocus = 0, page?: 'loop' | 'terms') {
   if (scene.helpOverlay) return;
   scene.hideLeaderTooltip();
   if (scene.settingsOverlay) scene.closeSettingsOverlay();
-  // This quiet guide has no image controls. A decorative download must not
+  // The loop page has no image controls. A decorative download must not
   // rebuild its pending/error panel or steal the player's focused action.
-  const overlay = scene.add.container(0, 0).setDepth(80);
+  const overlay = scene.add.container(0, 0).setDepth(80).setData('page', page);
   scene.helpOverlay = overlay;
   scene.menuFocusRing?.setVisible(false);
   renderHowToPlayOverlay(scene, (obj) => overlay.add(obj), {
     initialFocus,
+    page,
+    onPage: (next) => {
+      overlay.setData('page', next);
+      playUiSound('confirm');
+      scene.time.delayedCall(16, () => refreshHelpOverlay(scene, overlay));
+    },
+    // Key-term icons are fetched only when that page opens; text never waits.
+    onMissingIcons: (ids) => queueUiIconAssets(scene, ids, 'Guide icons', () => refreshHelpOverlay(scene, overlay)),
     onClose: () => scene.closeHelpOverlay(),
     guide: firstFlightGuideState(),
     onGuideAction: () => toggleFirstFlightGuide(scene),
@@ -156,9 +166,9 @@ export function openHelpOverlay(scene: any, _queueAssets = true, initialFocus = 
 
 function refreshHelpOverlay(scene: any, overlay: any) {
   if (!scene.scene.isActive() || scene.helpOverlay !== overlay || !overlay.active) return;
-  const index = overlay.list.find((child: any) => child.name === 'how-to-play-actions')?.getData('actionFocus')?.index ?? 0;
+  const page = overlay.getData('page'), index = overlay.list.find((child: any) => child.name === 'how-to-play-actions')?.getData('actionFocus')?.index ?? 0;
   scene.closeHelpOverlay();
-  openHelpOverlay(scene, false, index);
+  openHelpOverlay(scene, false, index, page);
 }
 
 function refreshSettingsOverlay(scene: any, queueAssets = true) {

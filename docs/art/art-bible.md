@@ -810,8 +810,13 @@ identity; the effect never changes species or dresses a bird as a spellcaster.
 Combat keeps the established Leader and enemy cutouts throughout each action.
 The played card retains its own canonical card illustration; a Leader portrait
 must not impersonate a card simply because both depict the same species.
-The core combat presenter owns impact effects. Do not add a second set of suit
-particles, portrait echoes, replacement bodies or ground ripples for that event.
+The core combat presenter owns each impact: one actor, one result. Contact
+dressing in `src/game/spectacle/` may add to that event on its own layers:
+a suit-shaped strike (Plumes slash, Basins ripple, Quills volley, Nests thud),
+feathers, impact light, block sparks and settled floor feathers. A defeated
+enemy staggers as a copy of its own canonical portrait; it is never a
+different body. This replaced the earlier rule against second suit particles,
+portrait echoes and ground ripples, at the owner's request (November 2026).
 
 Leader Calls and reactions use small bounded offsets on the original portrait,
 with a fixed scale and one transform owner. During a card action, its actual
@@ -825,6 +830,21 @@ The illustrated Flyway journal uses existing district and resident art. Broken
 routes are muted and dashed; restored districts regain color, a solid connection,
 and a star. Reduced motion keeps static rule cues and removes travel, weather,
 and personality tweens. Lean effects cap transient groups and particle counts.
+
+## Runtime typography and stage light
+
+Interface text is Barlow; titles and card names are Fraunces. Both are SIL OFL
+and self-hosted in `assets/fonts/ui/`. Do not ship the Grindy Brush face: its
+licence is personal use only.
+
+Hand cards show the whole illustration. A name banner and rules panel bracket
+a clear window onto the art; neither may grow into it. The suit colour carries
+the card's halo, rule lines and strike shape.
+
+Battle lighting is authored per painting: warm lamps on the Rooftop Blocks and
+Canal Markets, red beacons and cyan panels on the Signal Spires, lamps and
+beacons over a clear, rainless High Roost. Rain falls on the first three
+districts only. Boss fights add sheet lightning.
 
 ## Character identity and transition gates
 

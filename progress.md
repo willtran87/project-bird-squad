@@ -1,5 +1,24 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-17 — Visual spectacle and modern polish (in progress; not published)
+- Accepted three lists ("visually stunning", "impact and coherence", "modern and
+  polished"). Built on `codex/visual-spectacle` (PR #26) and
+  `codex/modern-polish` (stacked, no PR yet) from `505e5a47`.
+- Hand cards show the full illustration with a serif name banner, cost coin,
+  suit halo and gilt frame for Preened cards. Barlow and Fraunces replace
+  Arial and Georgia, metric-matched and with tabular figures.
+- New lazy `src/game/spectacle/`: per-district lighting and weather, bloom and
+  grade, camera punch, edge flashes, defeat stagger, targeting arc, suit-shaped
+  impacts, feathers, block sparks, danger lines, boss lightning, film grain.
+  Layered attack sounds. Every effect follows Lean, Reduced Motion, Screen
+  Shake and Flash Effects.
+- CI found six layout regressions (hover lift, halo map, line metrics) and a
+  WebKit timeout caused by a letterbox gradient; all fixed. High Roost rain
+  contradicted the art bible and was removed.
+- Reversed the art bible's single-owner effect rule at the owner's request.
+- Scope/evidence ledger: `docs/game/visual-spectacle.md`. Most list items
+  remain open; real-GPU and human acceptance not done.
+
 ## 2026-11-14 — Coherent City polish (qualified; not published)
 - Accepted the 48-item visual/coherence/play-experience list. Implemented on
   `codex/coherent-city-polish` from `6cd75264`; user changes to AGENTS.md excluded.

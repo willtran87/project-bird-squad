@@ -99,9 +99,12 @@ test('Signature Fights reward offers expose owned pairs, tradeoffs and exact del
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.rewardChoices.map((c:any)=>{
       const get=(name:string)=>b.root.list.find((o:any)=>o.name===name&&o.getData('cardId')===c.id);
       const pair=get('reward-owned-pairing'),delta=get('reward-passive-delta'),trade=get('reward-main-tradeoff'),take=get('reward-card-take-hit');
-      return {pair:pair?.getData('fullText'),delta:delta?.getData('fullText'),trade:trade?.getData('fullText'),clear:trade?.getBounds().bottom<=take?.getBounds().top+1};
+      // Face advice yields to full-size rules; the same advice stays in the Build Read dock.
+      const rules=get('reward-card-effect'),advice=b.root.list.filter((o:any)=>o.name==='reward-build-observation').length;
+      return {pair:pair?.getData('fullText'),delta:delta?.getData('fullText'),trade:trade?.getData('fullText'),clear:!trade||trade.getBounds().bottom<=take?.getBounds().top+1,
+        yielded:!trade&&parseFloat(rules?.style.fontSize)>=18&&advice>0};
     });
-  });expect(fit).toHaveLength(3);for(const c of fit){expect(c.pair).toBeTruthy();expect(c.delta).toBeTruthy();expect(c.trade).toBeTruthy();expect(c.clear).toBe(true);}await page.screenshot({path:info.outputPath(`reward-${size.width}.png`)});}
+  });expect(fit).toHaveLength(3);for(const c of fit){expect(c.delta).toBeTruthy();if(!c.yielded){expect(c.pair).toBeTruthy();expect(c.trade).toBeTruthy();}expect(c.clear).toBe(true);}await page.screenshot({path:info.outputPath(`reward-${size.width}.png`)});}
 });
 
 test('Signature Fights lost-fight practice restores exact opening and never saves rewards',async({page},info)=>{

@@ -4,6 +4,7 @@ import type { BattleScene, RenderPayload } from '../../main';
 
 // Typed access contract for the scene's deferred presentation adapter.
 type SceneAccess = Phaser.Scene & {
+  activeTermIntroduction: BattleScene['activeTermIntroduction'];
   currentBattlefieldAsset: BattleScene['currentBattlefieldAsset'];
   rewardChoices: BattleScene['rewardChoices'];
   root: BattleScene['root'];
@@ -312,6 +313,9 @@ export function buildBattleStateSnapshot(raw: BattleScene): RenderPayload {
       },
       practiceLesson: scene.registry.get('birdsquad.practiceLesson'),
       firstFlightGuide: firstFlightGuideState(),
+      termIntroduction: scene.activeTermIntroduction
+        ? { term: scene.activeTermIntroduction.term, text: scene.activeTermIntroduction.text, turn: scene.activeTermIntroduction.turn }
+        : undefined,
       firstMoltGuide: {
         ...firstMoltGuideState(Boolean(scene.hand.find((card) => card.runtime.kind === 'molt'))),
         cardId: scene.firstMoltGuideCard()?.id,

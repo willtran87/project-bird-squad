@@ -47,6 +47,7 @@ The short version:
 | --- | --- |
 | `src/` | Runtime TypeScript and CSS for the playable build. |
 | `assets/splash/` | Splash and promotional images used by the menu or presentation. |
+| `assets/fonts/ui/` | Runtime UI faces (Barlow, Fraunces; SIL OFL), rebuilt by `tools/build-ui-fonts.py`. |
 | `.generated/` | Ignored generated/source masters for imagegen, concept art, screenshots, and raw art pipeline outputs. |
 | `assets/runtime/` | Runtime asset manifests and optimized derived card, enemy, and backdrop targets. |
 | `assets/concept-art/backdrops/`, `assets/concept-art/route-events/`, `assets/concept-art/route-event-centerpieces/` | Current editable world-demo source art; exact allowed generations are defined by `docs/art/world-asset-contract.md`. |
@@ -73,6 +74,20 @@ npm run validate:runtime
 npm run test:e2e
 npm run preview
 ```
+
+### Browser test tiers
+
+| Command | Tests | Time at 3 workers | Use |
+| --- | --- | --- | --- |
+| `npm run test:e2e:gate` | about 220 | about 15 min | Every change: ordered-sequence smoke set, feature, save/resume and typography specs |
+| `npm run test:e2e:standard` | about 1,220 | about 1.8 h | Before merging large work: everything except the long specs |
+| `npm run test:e2e:long` | 57 | about 50 min | Nightly: full start-to-finish flights and catalog sweeps |
+| `npm run test:e2e` | all 1,277 | about 2.5 h | Before a release |
+
+Each run builds first. Set `BIRD_SQUAD_REUSE_BUILD=1` to serve the existing
+`.artifacts/build` when it already matches the source, and
+`BIRD_SQUAD_WORKERS=<n>` to change the default of 3 workers. Files are split
+across workers, so tests must not depend on each other's state.
 
 ## Boundary Rules
 

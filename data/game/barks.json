@@ -1,0 +1,115 @@
+{
+  "version": "1.0",
+  "notes": "Combat barks: one line, six words at most, grounded street voice. Triggers: start (fight opens), bigHit (this speaker just took a heavy hit), lowCohesion (the flock is below 30%), defeated (an enemy goes down: the enemy's last word, or the Leader's quip), phase (a boss changes phase). Enemy families are matched by enemy id in order; anything unmatched is 'crew', and every boss speaks as 'boss'.",
+  "families": [
+    { "id": "corvid", "match": "crow|jackdaw|magpie|grackle|starling|raven" },
+    { "id": "pigeon", "match": "pigeon" },
+    { "id": "raptor", "match": "hawk|kite|kestrel|falcon|harrier|shrike|vulture|talon|sentinel|swift" },
+    { "id": "gull", "match": "gull|cormorant|heron|kingfisher|crane|goose" },
+    { "id": "canal", "match": "eel|frog|turtle|crab|otter" },
+    { "id": "night", "match": "cicada|moth|bat_|mantis" },
+    { "id": "vermin", "match": "rat|raccoon|weasel|skunk|cat|jackrabbit|hedgehog|armadillo|mongoose|opossum|fox|porcupine" }
+  ],
+  "leaders": {
+    "fledgling": {
+      "start": ["Okay. Okay. We've got this.", "Stay close, everybody. Here goes.", "First one to flinch buys chips.", "Wings up. Nobody panic."],
+      "bigHit": ["Ow. Ow. Still flying.", "That one rang my bell.", "Note to self: dodge.", "Everyone still here? Good."],
+      "lowCohesion": ["Tuck in. Tighter. Please.", "We're thin. Don't scatter now.", "Breathe. Then hit back.", "Hold together, flock. Almost."],
+      "defeated": ["Did we do that? We did!", "One down. Nobody tell Mum.", "Ha! Rooftop's ours.", "Clean. Mostly clean."],
+      "phase": ["It's angrier now. Great.", "Second wind? Rude.", "Nobody said it had more."]
+    },
+    "spark_caller": {
+      "start": ["Lights on. Let's make noise.", "Crowd's here. Give them a show.", "Plug in, flock. Big night.", "Feel that hum? That's us."],
+      "bigHit": ["Static in my teeth. Fine.", "Okay, that one sparked.", "Rude. Very rude.", "Still lit. Barely."],
+      "lowCohesion": ["Battery's low. Stay bright.", "Don't fade on me now.", "Flicker, don't fold.", "One more surge. Find it."],
+      "defeated": ["And the crowd goes wild.", "Blown fuse. Next.", "Encore? No? Fine.", "Lights out for you."],
+      "phase": ["Ooh, a remix.", "Turned it up. So will we.", "New track, same ending."]
+    },
+    "talon": {
+      "start": ["Quiet. Pick a target.", "Wings in. Beaks out.", "This won't take long.", "Line up. Cut through."],
+      "bigHit": ["Felt that. Noted.", "Lucky shot.", "Again. I dare you.", "Shake it off. Move."],
+      "lowCohesion": ["We bleed later. Fight now.", "Close ranks. No stragglers.", "Short on feathers. Not nerve.", "Pick them off. Carefully."],
+      "defeated": ["Next.", "Stay down.", "Should've picked another roof.", "Clean cut."],
+      "phase": ["Changed its stance. Adjust.", "Still one throat.", "Watch the new pattern."]
+    },
+    "tidewarden": {
+      "start": ["Patience. Let them come.", "Read the water first.", "Slow wings. Sharp eyes.", "The tide decides. We help."],
+      "bigHit": ["A cold splash. Nothing more.", "Steady. Ripples settle.", "Hm. That was deep water.", "The current shoved. We stand."],
+      "lowCohesion": ["Low water. Hold the bank.", "Gather in the shallows.", "Ebb now. Flow later.", "Rest the wing. Not the eye."],
+      "defeated": ["Downstream with you.", "The canal keeps nothing.", "Washed out.", "Calm returns."],
+      "phase": ["The tide turned. Watch.", "Deeper now. Careful.", "A second current. Expected."]
+    },
+    "roostkeeper": {
+      "start": ["Everyone home by dawn. Promise.", "Mind the gaps. Mind each other.", "Same as patching a roof.", "Steady hands, flock. Begin."],
+      "bigHit": ["That's going to need stitching.", "I've had worse storms.", "Patch it later. Hold now.", "Ooh. Felt that in the rafters."],
+      "lowCohesion": ["Shelter's thin. Stay under it.", "Everyone in. Nobody alone.", "We've rebuilt from less.", "Lean on me. Go on."],
+      "defeated": ["Off our roof, please.", "Tidy. Very tidy.", "Sweep that up later.", "Good work. Water break."],
+      "phase": ["New crack in the wall.", "It's tearing up the shingles.", "Brace. It's not done."]
+    }
+  },
+  "enemies": {
+    "corvid": {
+      "start": ["Shiny things are mine.", "You're on our wire, sparrows.", "Caw. Pay the toll.", "Crows remember faces. Yours."],
+      "bigHit": ["Hey! That was my good wing.", "Okay, that one counted.", "Caw! Cheap shot.", "You'll regret that. Probably."],
+      "lowCohesion": ["Hear that? Feathers falling.", "Nearly picked clean.", "Leave the shinies. Run."],
+      "defeated": ["Remember my face...", "This isn't over, sparrows.", "Fine. Keep the wire."],
+      "phase": ["Now I'm annoyed.", "The whole murder's watching.", "Caw. Round two."]
+    },
+    "pigeon": {
+      "start": ["Coo. Wrong block, pal.", "This ledge is spoken for.", "You got a permit?", "Bread's ours. Beat it."],
+      "bigHit": ["Hey, watch the plumage!", "Coo! That's assault.", "My cousin will hear about this."],
+      "lowCohesion": ["Wobbling already? Pathetic.", "Coo. Go home.", "Not so tough now."],
+      "defeated": ["I'll be on a statue.", "Coo... tell the square.", "Fine. Keep the crumbs."],
+      "phase": ["Now I'm puffed up.", "Bringing the whole flock.", "Coo. Round two, pal."]
+    },
+    "raptor": {
+      "start": ["I see you from up here.", "Small birds. Small problem.", "Dinner walked in.", "Nothing moves without me."],
+      "bigHit": ["Tch. Lucky.", "You scratched me. Bold.", "That won't happen twice."],
+      "lowCohesion": ["You're slowing. I'm not.", "Easy pickings now.", "Count your feathers. Few left."],
+      "defeated": ["The sky... remembers.", "Grounded. Unbelievable.", "Next time, higher."],
+      "phase": ["Now I stoop.", "No more circling.", "Watch the sky now."]
+    },
+    "gull": {
+      "start": ["Mine. Mine. Also mine.", "Whatever you've got, I want.", "Harbour rules, little ones.", "Hand over the chips."],
+      "bigHit": ["Oi! I was eating!", "Squawk! Uncalled for.", "That's going in my report."],
+      "lowCohesion": ["Drop the snacks and scram.", "Soggy little flock now.", "Ha! Wobbly."],
+      "defeated": ["Saving the chips for later...", "Fine. Fly off, then.", "The bins'll miss me."],
+      "phase": ["Now I'm hungry AND angry.", "Back for seconds.", "More gulls inbound. Mine."]
+    },
+    "canal": {
+      "start": ["Canal's closed. Turn around.", "Wet feet? You will.", "Lock's shut, birdies.", "Down here, we bite."],
+      "bigHit": ["Glub. Rude.", "That stirred up the mud.", "Splash me again. Try it."],
+      "lowCohesion": ["Sinking, are we?", "Current's got you now.", "Drip, drip, done."],
+      "defeated": ["Back to the silt...", "Gurgle. Fair enough.", "The water keeps secrets."],
+      "phase": ["The water's rising.", "Now it's deep.", "Lock gates open. Swim."]
+    },
+    "night": {
+      "start": ["Bzzt. Lights out, birds.", "We own the dark hours.", "Hear the hum? Run.", "Wrong lamp, little flock."],
+      "bigHit": ["Bzz! Rude!", "Clipped a wing. Fine.", "Hiss. Lucky flutter."],
+      "lowCohesion": ["Fading like a streetlamp.", "Dark's coming for you.", "Flicker, flicker, out."],
+      "defeated": ["Back to the lamp...", "Bzzt... dawn wins.", "Shell's cracked. Fine."],
+      "phase": ["Louder now. Listen.", "The swarm wakes up.", "Every lamp goes dark."]
+    },
+    "vermin": {
+      "start": ["This alley's taken, feathers.", "Nice snacks. Ours now.", "Squeak. Wrong roof.", "Nobody crosses without paying."],
+      "bigHit": ["Ow! My whiskers!", "That's gonna leave a mark.", "Hey, I bruise easy."],
+      "lowCohesion": ["Losing feathers? Shame.", "Smells like retreat.", "Wobbly, wobbly birds."],
+      "defeated": ["Back in the drain...", "Okay. Okay. I'm out.", "Tell nobody about this."],
+      "phase": ["Now I'm cornered. Bad idea.", "Gnawing time.", "Calling the whole sewer."]
+    },
+    "crew": {
+      "start": ["Wrong roof, flock.", "Boss says nobody passes.", "You lost? You're lost.", "Turn back while you can."],
+      "bigHit": ["Hey! Not the face!", "Okay. That hurt.", "Lucky. Real lucky."],
+      "lowCohesion": ["Running out of feathers?", "Give up. Save the effort.", "Tired already?"],
+      "defeated": ["I'm off the clock.", "They don't pay me enough.", "Fine. Fine. Go on."],
+      "phase": ["Gloves off now.", "Plan B. Worse for you.", "Boss wants this done."]
+    },
+    "boss": {
+      "start": ["My district. My rules.", "You came all this way? Cute.", "Every roof answers to me.", "Let's see your flock fold."],
+      "bigHit": ["Hah. A scratch.", "You'll pay for that feather.", "Bold. Foolish, but bold."],
+      "lowCohesion": ["Your flock is fraying.", "Kneel and I'll be quick.", "This is how crews end."],
+      "defeated": ["The city... has other kings.", "Enjoy it. Briefly.", "Not... the last of us."],
+      "phase": ["Enough. No more holding back.", "Now you see the real me.", "Second round. My rules."]
+    }
+  }
+}

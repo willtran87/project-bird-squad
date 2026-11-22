@@ -173,7 +173,8 @@ test('late setup portraits reserve their space and cannot reappear over home', a
 
 test('saved-flight Continue ignores new-flight choices while Start New Run honors its summary', async ({ page }, info) => {
   test.setTimeout(90000);
-  await boot(page); await click(page, 'primaryRun');
+  await boot(page); await click(page, 'primaryRun'); // opens the leader choice
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').setupOpen); await click(page, 'primaryRun');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').routeAssetsReady);
   const saved = await page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');

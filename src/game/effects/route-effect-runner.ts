@@ -41,6 +41,9 @@ export interface RouteEffectContext {
   preenFirstAvailableCard: () => unknown;
   releaseFirstReleasable: (count: number) => void;
   random?: () => number;
+  // Ascension rest lever: pass (amount) => scaledRouteHeal(amount, runState.difficulty)
+  // and use the same scaler in any route-heal preview so forecasts stay exact.
+  scaleRouteHeal?: (amount: number) => number;
 }
 
 export function checkRouteCondition(condition: string, context: Pick<RouteEffectContext, 'runState' | 'currentMapNodes'>) {
@@ -84,7 +87,7 @@ export function resolveRouteEffect(effect: string, context: RouteEffectContext) 
       break;
     }
     case 'loseCohesion': rs.currentHp = Math.max(0, rs.currentHp - n); break;
-    case 'healCohesion': case 'heal': rs.currentHp = Math.min(max, rs.currentHp + n); break;
+    case 'healCohesion': case 'heal': rs.currentHp = Math.min(max, rs.currentHp + (context.scaleRouteHeal?.(n) ?? n)); break;
     case 'cleanseFlock': {
       const routeHeal = Math.min(max - rs.currentHp, Math.max(1, n || 1) * 2);
       if (routeHeal > 0) {
@@ -99,7 +102,7 @@ export function resolveRouteEffect(effect: string, context: RouteEffectContext) 
     }
     case 'healMissingPct': {
       const heal = Math.max(Number(parsed.args[1]) || 0, Math.round(((max - rs.currentHp) * n) / 100));
-      rs.currentHp = Math.min(max, rs.currentHp + heal);
+      rs.currentHp = Math.min(max, rs.currentHp + (context.scaleRouteHeal?.(heal) ?? heal));
       break;
     }
     case 'gainRouteMark': context.grantRouteMark(arg0); break;

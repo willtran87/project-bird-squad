@@ -51,8 +51,9 @@ export function installMenuDebugState(scene: any) {
     helpTopic: scene.helpOverlay?.getData('topic'),
     pendingOverlay: (scene.children.getByName('pending-overlay') ?? scene.helpOverlay?.getByName('pending-overlay')
       ?? scene.settingsOverlay?.getByName('pending-overlay'))?.getData('status'),
-    helpContent: scene.helpOverlay?.list.filter((child: any) => ['guide-download-status', 'how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(child.name))
+    helpContent: scene.helpOverlay?.list.filter((child: any) => ['guide-download-status', 'how-to-play-readable', 'how-to-play-term-title', 'how-to-play-term-body', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(child.name))
       .map((child: any) => child.text),
+    helpPage: scene.helpOverlay?.getData('page'),
     collectionGoal: {
       ...collectionGoalSummary(scene.menuAccount),
       rendered: scene.children.list.some((child: any) => child.name === 'title-collection-goal-hit'),

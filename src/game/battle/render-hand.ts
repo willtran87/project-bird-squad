@@ -1,10 +1,12 @@
 import { setTextureFilter } from '../texture-filter';
+import { attachCardBody, battleActors } from './actors';
+import { addRarityFrame, cardObjects, handFaceInfo, mountInspectFace, numberTintsFor, tintFaceNumbers } from './card-objects';
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
 import { renderRewardHoverPreview } from '../reward-card-inspection';
-import { readableHandRules, actionFirstHandRules, fitHandRules, wrapHandRules } from './hand-rule-summary';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
+import { readableHandRules, actionFirstHandRules, compactHandRules, fitDeferredHandRules, wrapHandRules } from './hand-rule-summary';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_DISPLAY_FONT, UI_TYPE } from '../theme';
 import { itemKeywordSections } from '../keyword-definitions';
 import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
 
@@ -24,8 +26,27 @@ export function renderCombatHistory(context: Omit<CardDetailContext, 'ui' | 'typ
   return renderHistoryReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, entries);
 }
 
-export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, card: BattleHandCardPreviewView) {
-  return renderCardReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, card);
+/**
+ * The card inspector: the card itself, large, beside its full rules, with
+ * rarity and flavor under it. Reading only.
+ */
+export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, card: BattleHandCardPreviewView,
+  source?: { instanceId: string; id: string }) {
+  const { scene } = context, host = scene as Phaser.Scene & Record<string, any>;
+  const faced = Boolean(source && typeof host.battleHandCardView === 'function');
+  const layer = renderCardReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, card, source, faced);
+  if (!source || !faced) return layer;
+  const view: BattleHandCardView = { ...host.battleHandCardView(source), canPay: true, selected: false, guideCard: false, guideMolt: false,
+    flowVisible: false, retainOrder: undefined, retainSelectable: false, discardSelectable: undefined, discardSelected: false, discardFocused: false };
+  const base = host.battleHandRenderContext() as BattleHandRenderContext, info = handFaceInfo(scene, source.instanceId);
+  mountInspectFace(scene, layer, source, {
+    label: `${view.label}${view.preview.upgraded ? ' · Preened' : ''}`, rarity: info.rarity,
+    fontFamily: context.fontFamily, boldFontStyle: context.boldFontStyle, fontSize: UI_TYPE.secondary,
+    softColor: DECISION_UI.secondary, resolution: DECISION_UI.resolution, cardHeight: base.cardHeight,
+    draw: face => renderCard({ ...base, target: face, handY: 0, cards: [view], onCardClick: () => undefined, onCardHover: () => undefined,
+      onCardOut: () => undefined }, emptyHand(), view, -base.cardWidth / 2, info),
+  });
+  return layer;
 }
 
 export interface BattleHandCardPreviewView {
@@ -164,6 +185,59 @@ function fitCardText(label: Phaser.GameObjects.Text, source: string, maxLines: n
   fitTextExcerpt(label, source, maxLines);
 }
 
+/** Rules face tiers, largest first. The face shows every effect: tighter
+ * phrasing before a smaller type size, and never below the compact floor. */
+export const HAND_RULE_FONT_TIERS = [21, 19, 18, 17, 16, 15] as const;
+/** Sizes at or above the compact-viewport type floor (14 CSS px at 1000 wide). */
+const HAND_RULE_READABLE_FLOOR = 18;
+export const HAND_RULE_PANEL_HEIGHT = 110;
+/** Art window kept between the title banner and a raised rules panel. Dense
+ * cards may trade art for rules down to the compact window, never further. */
+export const HAND_ART_WINDOW = 90;
+export const HAND_COMPACT_ART_WINDOW = 54;
+const HAND_RULE_TOP_PAD = 5;
+
+/** Choose phrasing, type size and panel height so the face shows every
+ * effect: full wording, then the compact dialect at shrinking sizes, then
+ * taller panels. Only later-resolving clauses may ever yield to "Inspect". */
+export function fitHandFaceRules(label: Phaser.GameObjects.Text, readable: string, panelHeights: number[]) {
+  const full = actionFirstHandRules(readable);
+  const compact = compactHandRules(readable);
+  const fitsAt = (size: number, panel: number, tidy = false) => (text: string) => {
+    label.setFontSize(size).setText(text);
+    // At roomy sizes, also refuse a stranded one-word line ("Gain" / "1 Resonance.").
+    const stranded = tidy && label.getWrappedText().some(line => /^\S+$/.test(line.trim()));
+    return !stranded && label.height <= panel - HAND_RULE_TOP_PAD - 2;
+  };
+  const heights = [...new Set(panelHeights)].sort((a, z) => a - z);
+  const candidates: Array<[number, number, string, string]> = [[21, heights[0], full, 'full']];
+  // Raise the panel (trading art) before dropping below the readable floor;
+  // only then shrink the type, still raising the panel as needed.
+  const tier = (step: number, size: number) => `${['compact', 'tall', 'dense'][step]}-${size}`;
+  heights.forEach((panel, step) => {
+    for (const size of HAND_RULE_FONT_TIERS) if (size >= HAND_RULE_READABLE_FLOOR && (step === 0 || size < 21))
+      candidates.push([size, panel, compact, tier(step, size)]);
+  });
+  for (const size of HAND_RULE_FONT_TIERS) if (size < HAND_RULE_READABLE_FLOOR)
+    heights.forEach((panel, step) => candidates.push([size, panel, compact, tier(step, size)]));
+  for (const tidy of [true, false]) for (const [size, panel, text, tier] of candidates) {
+    if (tidy && size < HAND_RULE_READABLE_FLOOR) continue;
+    if (fitsAt(size, panel, tidy)(text)) return { text, fontSize: size, panelHeight: panel, omitted: 0, tier };
+    if (!tidy) continue;
+    // A wrap that strands a one-word condition ("… if / Resonance.") reads as a
+    // loose keyword. Break before the "if" instead when that fits tidily.
+    const bound = text.replace(/ if (\S+)$/gm, `${String.fromCharCode(10)}if $1`);
+    if (bound !== text && fitsAt(size, panel, true)(bound)) return { text: bound, fontSize: size, panelHeight: panel, omitted: 0, tier };
+  }
+  const floor = HAND_RULE_FONT_TIERS[HAND_RULE_FONT_TIERS.length - 1];
+  const tallest = heights[heights.length - 1];
+  const deferred = fitDeferredHandRules(compact, fitsAt(floor, tallest));
+  if (deferred) return { ...deferred, fontSize: floor, panelHeight: tallest, tier: 'deferred-omitted' };
+  // Nothing may hide: grow the panel to the text rather than clip a rule.
+  label.setFontSize(floor).setText(compact);
+  return { text: compact, fontSize: floor, panelHeight: Math.ceil(label.height) + HAND_RULE_TOP_PAD + 2, omitted: 0, tier: 'overflow' };
+}
+
 function addCardArt(
   context: Pick<BattleHandRenderContext, 'scene' | 'renderSnagArt'>,
   target: Phaser.GameObjects.Container,
@@ -189,39 +263,109 @@ function addCardArt(
   target.add(scene.add.rectangle(x, y, width, height, 0x141d2b, 0.92));
 }
 
+const CARD_RADIUS = 9;
+const CARD_ART_INSET = 4;
+const CARD_GLOW_TEXTURE = 'combat-hand-card-glow';
+const CARD_GLOW_PAD = 22;
+
+/** One soft rounded halo, generated once and tinted per card state. */
+function ensureGlowTexture(scene: Phaser.Scene, cardWidth: number, cardHeight: number) {
+  if (scene.textures.exists(CARD_GLOW_TEXTURE)) return;
+  const width = cardWidth + CARD_GLOW_PAD * 2, height = cardHeight + CARD_GLOW_PAD * 2;
+  const glow = scene.make.graphics({ x: 0, y: 0 }, false);
+  for (let step = 0; step < CARD_GLOW_PAD; step += 2) {
+    glow.fillStyle(0xffffff, 0.05 + step * 0.004);
+    glow.fillRoundedRect(step, step, width - step * 2, height - step * 2, CARD_RADIUS + CARD_GLOW_PAD - step);
+  }
+  glow.generateTexture(CARD_GLOW_TEXTURE, width, height);
+  glow.destroy();
+}
+
+type GlowState = Pick<BattleHandCardView, 'selected' | 'guideCard' | 'guideMolt' | 'accent' | 'canPay'>
+  & Partial<Pick<BattleHandCardView, 'discardSelected' | 'discardFocused' | 'discardSelectable'>>;
+
+function glowStyle(card: GlowState) {
+  if (card.discardSelected) return { tint: 0xff6b57, alpha: 0.9 };
+  if (card.discardFocused) return { tint: 0xd8a840, alpha: 0.85 };
+  if (card.selected) return { tint: 0x24d0d6, alpha: 0.95 };
+  if (card.guideMolt) return { tint: 0xff9d4d, alpha: 0.8 };
+  if (card.guideCard) return { tint: 0xd8a840, alpha: 0.8 };
+  const live = card.discardSelectable ?? card.canPay;
+  return { tint: card.accent, alpha: live ? 0.34 : 0 };
+}
+
+/** Hover answers with light here and with a lift on the actor stage. Card
+ * bounds stay a layout contract (forecast clearance, touch separation, pile
+ * motion): the lift is drawn, never written to the card's objects. */
+function hoverCard(rect: Phaser.GameObjects.Rectangle, hovered: boolean) {
+  const glow = rect.getData('halo') as Phaser.GameObjects.Image | undefined;
+  if (!glow?.active) return;
+  const rest = (rect.getData('haloAlpha') as number | undefined) ?? glow.alpha;
+  glow.setAlpha(hovered ? Math.max(rest, 0.78) : rest);
+}
+
 export function renderBattleHandCardArt(
   context: BattleHandRenderContext,
   target: Phaser.GameObjects.Container,
   card: BattleHandCardView,
   centerX: number,
 ) {
+  const live = card.discardSelectable ?? card.canPay;
+  // The full portrait is the card face. Prefer the detailed texture once it
+  // has loaded; the compact thumbnail keeps the first frame complete.
+  const detailed = card.preview.artKey && textureReady(context.scene, card.preview.artKey) ? card.preview.artKey : card.artKey;
   addCardArt(
     context,
     target,
-    card,
-    centerX - context.cardWidth / 2 + 32,
-    context.handY - context.cardHeight / 2 + 50,
-    60,
-    90,
-    card.discardSelectable !== undefined ? card.discardSelectable ? 1 : 0.42 : card.canPay ? 1 : 0.55,
+    { ...card, artKey: detailed },
+    // A retained card that changed slot carries its art layer with it.
+    centerX - target.x,
+    context.handY,
+    context.cardWidth - CARD_ART_INSET * 2,
+    context.cardHeight - CARD_ART_INSET * 2,
+    live ? 1 : 0.78,
   );
+  const art = target.getByName('combat-hand-illustration') as Phaser.GameObjects.Image | null;
+  if (art && !live) art.setTint(0x7c8794);
 }
 
+
+type HandFaceInfo = ReturnType<typeof handFaceInfo>;
+
+/** Recolour the numbers a Preen or current status changed. The overlays join
+ * the card's body; the rules label keeps its text. */
+function applyNumberTints(scene: Phaser.Scene, target: Phaser.GameObjects.Container, summary: Phaser.GameObjects.Text, info: HandFaceInfo) {
+  const overlays = tintFaceNumbers(scene, summary, numberTintsFor(summary.text, info));
+  // Directly above the label, so a later repaint keeps the card's draw order.
+  overlays.forEach((overlay, index) => target.addAt(overlay, target.getIndex(summary) + 1 + index));
+  summary.setData('tintKey', info.key).setData('tintOverlays', overlays);
+  return overlays;
+}
 
 function renderCard(
   context: BattleHandRenderContext,
   result: BattleHandRenderResult,
   card: BattleHandCardView,
   left: number,
+  info: HandFaceInfo = handFaceInfo(context.scene, card.instanceId),
+  order = 0,
 ) {
   const { scene, target, handY, cardWidth, cardHeight, fontFamily, boldFontStyle } = context;
   const presentationStart = target.list.length;
   const centerX = left + cardWidth / 2;
   const top = handY - cardHeight / 2;
   const bottom = handY + cardHeight / 2;
+  ensureGlowTexture(scene, cardWidth, cardHeight);
+  target.add(scene.add.image(centerX, handY + 7, CARD_GLOW_TEXTURE).setTint(0x000000).setAlpha(0.6)
+    .setName('combat-hand-card-shadow'));
+  const glowState = glowStyle(card);
+  const glow = scene.add.image(centerX, handY, CARD_GLOW_TEXTURE).setTint(glowState.tint).setAlpha(glowState.alpha)
+    .setBlendMode(Phaser.BlendModes.ADD).setName('combat-hand-card-glow');
+  target.add(glow);
   const rect = scene.add.rectangle(centerX, handY, cardWidth, cardHeight, 0x0a0f18, 1)
+    .setRounded(CARD_RADIUS)
     .setStrokeStyle(
-      card.discardSelected ? 3 : card.discardFocused ? 3 : card.selected ? 3 : card.guideMolt || card.guideCard ? 3 : 1,
+      card.discardSelected ? 3 : card.discardFocused ? 3 : card.selected ? 3 : card.guideMolt || card.guideCard ? 3 : 2,
       card.discardSelected ? 0xff6b57 : card.discardFocused ? 0xd8a840 : card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     )
@@ -229,9 +373,23 @@ function renderCard(
   rect.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
     event?.stopPropagation();
     context.onCardClick(card.instanceId);
+    // The press is handled exactly as before; moving the pointer now drags.
+    cardObjects(scene).armDrag(card.instanceId, _pointer);
   });
-  rect.on('pointerover', () => context.onCardHover(card.instanceId));
-  rect.on('pointerout', context.onCardOut);
+  const fan = battleActors(scene).hand;
+  rect.on('pointerover', () => {
+    if (fan.dragged) return;
+    hoverCard(rect, true);
+    fan.hovered = card.instanceId;
+    context.onCardHover(card.instanceId);
+  });
+  rect.on('pointerout', () => {
+    hoverCard(rect, false);
+    if (fan.hovered === card.instanceId) fan.hovered = undefined;
+    context.onCardOut();
+  });
+  // The halo travels with its card; the raster pulse map stays reserved.
+  rect.setData('halo', glow).setData('haloAlpha', glowState.alpha);
   target.add(rect);
   result.rects.set(card.instanceId, rect);
 
@@ -250,23 +408,45 @@ function renderCard(
     result.frames.set(card.instanceId, frame);
   }
 
-  // A reserved portrait beside the name keeps the entire illustration visible.
-  // Text and state badges must never turn it into an accidental cropped strip.
-  target.add(scene.add.rectangle(left + 64 + (cardWidth - 68) / 2, top + 50, cardWidth - 68, 90, 0x081624, 0.98)
-    .setName('combat-card-title-panel'));
-  const title = scene.add.text(left + 64, top + 5, card.name, {
-    fontFamily,
+  // The portrait fills the card. A name banner and the rules panel bracket an
+  // unobstructed window onto the illustration; neither may grow into it.
+  const title = scene.add.text(left + 42, top + 5, card.name, {
+    fontFamily: UI_DISPLAY_FONT,
     fontSize: '21px',
     fontStyle: boldFontStyle,
-    color: card.canPay ? '#ffe7b0' : '#9aa7b6',
-    wordWrap: { width: cardWidth - 68, useAdvancedWrap: true }, maxLines: 3, resolution: 2,
+    color: card.canPay ? '#ffe7b0' : '#aab5c1',
+    wordWrap: { width: cardWidth - 48, useAdvancedWrap: true }, maxLines: 2, resolution: 2,
   }).setName('combat-card-title');
-  fitCardText(title, card.name, 3);
-  title.setY(top + 50 - title.height / 2);
+  fitCardText(title, card.name, 2);
+  const bannerHeight = Math.max(38, Math.ceil(title.height) + 8);
+  target.add(scene.add.rectangle(centerX, top + CARD_ART_INSET + bannerHeight / 2, cardWidth - CARD_ART_INSET * 2, bannerHeight, 0x081624, 0.94)
+    .setName('combat-card-title-panel'));
+  target.add(scene.add.rectangle(centerX, top + CARD_ART_INSET + bannerHeight, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
+    .setName('combat-card-title-rule'));
+  title.setY(top + CARD_ART_INSET + bannerHeight / 2 - title.height / 2);
   target.add(title);
+  // Every effect stays on the face. Measure the rules first: a long card may
+  // raise its rules panel, but never into the 90px art window under the title.
+  const summary = scene.add.text(left + 7, 0, '', {
+    fontFamily,
+    fontSize: '21px', resolution: 2, lineSpacing: 1,
+    color: card.canPay ? '#e5edf0' : '#a8b6bf',
+    align: 'left',
+    wordWrap: { width: cardWidth - 14, callback: (text: string, label: Phaser.GameObjects.Text) =>
+      wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 14) },
+  }).setName('combat-card-readable-summary');
+  const readable = readableHandRules(card.summary.split('\n'));
+  const panelFor = (window: number) => Math.max(HAND_RULE_PANEL_HEIGHT, cardHeight - CARD_ART_INSET * 2 - bannerHeight - window);
+  const excerpt = fitHandFaceRules(summary, readable,
+    [HAND_RULE_PANEL_HEIGHT, panelFor(HAND_ART_WINDOW), panelFor(HAND_COMPACT_ART_WINDOW)]);
+  const panelHeight = excerpt.panelHeight;
+  const panelTop = bottom - panelHeight - CARD_ART_INSET;
   // Two reserved rows between title and rules: identity/choice, then Flow.
-  // Their geometry never depends on which other badges happen to be active.
-  const badgeY = top + 111;
+  // Their geometry never depends on which other badges happen to be active;
+  // a raised rules panel lifts both rows together.
+  const flowY = Math.min(top + 140, panelTop - 16);
+  // A raised panel must never lift the badge row into the name banner.
+  const badgeY = Math.max(top + CARD_ART_INSET + bannerHeight + 17, Math.min(top + 111, flowY - 29));
   if (card.usesMolt || card.guideMolt) {
     const badgeName = card.usesMolt ? 'combat-card-molt-badge' : 'combat-molt-guide-tag';
     target.add(scene.add.rectangle(left + 62, badgeY, 60, 28, 0x2a1208, 0.96)
@@ -317,41 +497,46 @@ function renderCard(
       iconOnly: true,
     });
   }
-  target.add(scene.add.circle(left + 16, top + 141, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
-  target.add(scene.add.text(left + 16, top + 141, `${card.cost}`, {
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, panelHeight, 0x081624, 0.95)
+    .setName('combat-card-rules-panel'));
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight - CARD_ART_INSET, cardWidth - CARD_ART_INSET * 2, 2, card.accent, card.canPay ? 0.9 : 0.4)
+    .setName('combat-card-rules-rule'));
+  // Rarity reads from the frame: weight and ornament rise with rarity, and
+  // rare and above catch the light. It sits over the panels, under the coin.
+  for (const part of addRarityFrame(scene, centerX, handY, cardWidth, cardHeight, info.rarity,
+    { alpha: card.canPay ? 1 : 0.5, name: 'combat-card-rarity', phase: order })) target.add(part);
+  // The cost sits in the banner as a recessed coin: dark face, bright rim.
+  const coinY = top + CARD_ART_INSET + 19;
+  target.add(scene.add.circle(left + 22, coinY, 15, 0x05080e, 1)
+    .setStrokeStyle(2, card.cost === 0 ? 0x24d0d6 : 0xe8b830, card.canPay ? 1 : 0.5)
+    .setName('combat-card-cost-coin'));
+  target.add(scene.add.text(left + 22, coinY, `${card.cost}`, {
     fontFamily,
     fontSize: '21px',
     fontStyle: boldFontStyle,
-    color: '#06101c', resolution: 2,
-  }).setOrigin(0.5));
+    color: card.cost === 0 ? '#8df4ff' : card.canPay ? '#ffd76a' : '#b9a36a', resolution: 2,
+  }).setOrigin(0.5).setName('combat-card-cost'));
 
-  const panelHeight = 110;
-  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x081624, 0.98)
-    .setName('combat-card-rules-panel'));
-  {
-    const summary = scene.add.text(left + 8, bottom - panelHeight + 6, '', {
-      fontFamily,
-      fontSize: '21px', resolution: 2, lineSpacing: 1,
-      color: card.canPay ? '#e5edf0' : '#a8b6bf',
-      align: 'left',
-      maxLines: 4,
-      wordWrap: { width: cardWidth - 16, callback: (text: string, label: Phaser.GameObjects.Text) =>
-        wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 16) },
-    }).setName('combat-card-readable-summary');
-    const readable = readableHandRules(card.summary.split('\n'));
-    const excerpt = fitHandRules(actionFirstHandRules(readable), text => summary.getWrappedText(text).length <= 4);
-    summary.setText(excerpt.text).setData('truncated', excerpt.omitted > 0)
-      .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable);
-    summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
-      .setData('quickRead', card.summary);
-    target.add(summary);
+  if (card.preview.upgraded) {
+    // A Preened card wears a gilt inner frame, so an upgrade reads at a glance.
+    target.add(scene.add.rectangle(centerX, handY, cardWidth - CARD_ART_INSET * 2 - 2, cardHeight - CARD_ART_INSET * 2 - 2)
+      .setRounded(CARD_RADIUS - 3).setStrokeStyle(2, 0xf0c36f, card.canPay ? 0.9 : 0.45).setName('combat-card-preen-gilt'));
   }
+  summary.setFontSize(excerpt.fontSize).setText(excerpt.text).setY(panelTop + HAND_RULE_TOP_PAD)
+    .setData('truncated', excerpt.omitted > 0)
+    .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable)
+    .setData('faceTier', excerpt.tier).setData('panelHeight', panelHeight);
+  summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
+    .setData('quickRead', card.summary);
+  summary.setData('rarity', info.rarity);
+  target.add(summary);
+  applyNumberTints(scene, target, summary, info);
 
   if (card.buildsFlow) {
     const container = scene.add.container(0, 0);
-    const background = scene.add.rectangle(centerX + 14, top + 141, cardWidth - 36, 28, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
+    const background = scene.add.rectangle(centerX, flowY, cardWidth - 16, 26, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
       .setStrokeStyle(1, card.surgeNext ? 0xd8a840 : 0x24d0d6, 0.82);
-    const label = scene.add.text(centerX + 14, top + 141, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
+    const label = scene.add.text(centerX, flowY, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
       fontFamily,
       fontSize: UI_TYPE.secondary,
       resolution: UI_TYPE.resolution,
@@ -366,16 +551,91 @@ function renderCard(
   rect.setData('presentation', target.list.slice(presentationStart));
 }
 
+const emptyHand = (): BattleHandRenderResult => ({
+  rects: new Map(), artLayers: new Map(), frames: new Map(), selectionPulses: new Map(), flowIndicators: new Map(),
+});
+
+/** One retained hand card: its flat objects, the slot they were laid out in and
+ * the face data they show. */
+interface HandCardBody { sig: string; art: string; left: number; rect: Phaser.GameObjects.Rectangle; objects: Phaser.GameObjects.GameObject[]; parts: BattleHandRenderResult }
+const HAND_BODIES = new WeakMap<Phaser.GameObjects.Container, Map<string, HandCardBody>>();
+
+/** Status changed since this face was drawn: move the highlights, keep the face. */
+function retintCard(scene: Phaser.Scene, body: HandCardBody, info: HandFaceInfo) {
+  const summary = body.objects.find(object => object.name === 'combat-card-readable-summary') as Phaser.GameObjects.Text | undefined;
+  const target = summary?.parentContainer;
+  if (!summary?.active || !target || summary.getData('tintKey') === info.key) return false;
+  const stale = (summary.getData('tintOverlays') ?? []) as Phaser.GameObjects.Text[];
+  for (const overlay of stale) { body.objects.splice(body.objects.indexOf(overlay), 1); overlay.destroy(); }
+  const overlays = applyNumberTints(scene, target, summary, info);
+  body.objects.splice(body.objects.indexOf(summary) + 1, 0, ...overlays);
+  if (!summary.visible) for (const overlay of overlays) overlay.setVisible(false);
+  return true;
+}
+
+/**
+ * Reconcile the hand instead of rebuilding it. A card keeps its objects for as
+ * long as it stays in hand and its face is unchanged; a card whose slot moved
+ * is shifted and slides there; only a changed face is redrawn, and only a card
+ * that left the hand is destroyed. Everything else in the layer is transient.
+ */
 export function renderBattleHand(context: BattleHandRenderContext): BattleHandRenderResult {
-  const result: BattleHandRenderResult = {
-    rects: new Map(),
-    artLayers: new Map(),
-    frames: new Map(),
-    selectionPulses: new Map(),
-    flowIndicators: new Map(),
-  };
-  if (context.cards.length === 0) return result;
-  context.cards.forEach((card, index) => renderCard(context, result, card, context.cardLeft(index, context.cards.length)));
+  const { scene, target, cards } = context, stage = battleActors(scene);
+  const known = HAND_BODIES.get(target) ?? new Map<string, HandCardBody>();
+  const bodies = new Map<string, HandCardBody>(), result = emptyHand(), keep = new Set<Phaser.GameObjects.GameObject>();
+  HAND_BODIES.set(target, bodies);
+  const ready = (key?: string) => Boolean(key && textureReady(scene, key));
+  const objects = cardObjects(scene);
+  // A card that left the hand travels to its pile as the object it was. A
+  // played card was already hidden when it was thrown.
+  let leaving = 0;
+  for (const [id, body] of known) {
+    if (cards.some(card => card.instanceId === id) || !body.rect.active) continue;
+    objects.depart(id, body.objects, body.rect.visible ? objects.fateOf(id) : undefined, leaving);
+    if (body.rect.visible) leaving += 1;
+  }
+  cards.forEach((card, index) => {
+    const id = card.instanceId, left = context.cardLeft(index, cards.length), info = handFaceInfo(scene, id);
+    const sig = JSON.stringify([{ ...card, selected: 0, flowVisible: 0, surgeNext: 0 },
+      ready(context.assets.cardFrame), context.reinforcedColorCues, info.rarity]);
+    const art = `${ready(card.artKey)}${ready(card.preview.artKey)}`;
+    let body = known.get(id);
+    if (body?.sig === sig && body.rect.active && body.rect.visible) {
+      const shift = left - body.left;
+      if (shift) for (const object of body.objects) (object as Phaser.GameObjects.Rectangle).x += shift;
+      body.left = left;
+      // Art that finished loading is repainted in place; the hit target stays.
+      const layer = body.parts.artLayers.get(id);
+      if (body.art !== art && layer?.active) renderBattleHandCardArt(context, layer, card, left + context.cardWidth / 2);
+      body.art = art;
+    } else {
+      const parts = emptyHand();
+      renderCard(context, parts, card, left, info, index);
+      const rect = parts.rects.get(id)!;
+      body = { sig, art, left, rect, objects: rect.getData('presentation'), parts };
+      if (stage.hand.hovered === id) stage.hand.hovered = undefined;
+    }
+    bodies.set(id, body);
+    const live = body.rect;
+    for (const object of body.objects) keep.add(object);
+    for (const name of ['rects', 'artLayers', 'frames', 'flowIndicators'] as const) {
+      const part = body.parts[name].get(id);
+      if (part) (result[name] as Map<string, unknown>).set(id, part);
+    }
+    retintCard(scene, body, info);
+    const fresh = !stage.actors.has(`card:${id}`);
+    const actor = attachCardBody(stage, id, body.objects, left + context.cardWidth / 2, context.handY, () => live.active);
+    if (fresh) objects.arrive(id, actor);
+  });
+  for (const child of [...target.list]) if (!keep.has(child)) child.destroy();
+  // Draw order follows hand order, whichever cards were kept or redrawn.
+  for (const body of bodies.values()) for (const object of body.objects) target.bringToTop(object);
+  const dragged = stage.hand.dragged && bodies.get(stage.hand.dragged.id);
+  if (dragged) for (const object of dragged.objects) target.bringToTop(object);
+  for (const id of known.keys()) if (!bodies.has(id)) stage.retire(`card:${id}`);
+  stage.hand.order = cards.map(card => card.instanceId);
+  if (cards.length) refreshBattleHandSelection(context, cards, result);
+  else stage.hand.selected = stage.hand.hovered = undefined;
   return result;
 }
 
@@ -401,15 +661,25 @@ export function refreshBattleHandSelection(
   cards: BattleHandSelectionView[],
   result: BattleHandRenderResult,
 ) {
+  const stage = battleActors(context.scene);
+  stage.hand.selected = cards.find(card => card.selected)?.instanceId;
   cards.forEach((card) => {
     const rect = result.rects.get(card.instanceId);
     if (!rect?.scene) return;
+    // Winded, Ruffled and formation change what a number lands for without
+    // changing the face; follow them here, where every refresh passes.
+    const body = HAND_BODIES.get(rect.parentContainer)?.get(card.instanceId);
+    if (body?.rect === rect && retintCard(context.scene, body, handFaceInfo(context.scene, card.instanceId)))
+      attachCardBody(stage, card.instanceId, body.objects, rect.x, rect.y, () => rect.active);
     const guided = card.guideMolt || card.guideCard;
     rect.setStrokeStyle(
-      card.selected ? 3 : guided ? 3 : 1,
+      card.selected ? 3 : guided ? 3 : 2,
       card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     );
+    const glow = rect.getData('halo') as Phaser.GameObjects.Image | undefined;
+    if (glow?.scene) { const style = glowStyle(card); glow.setTint(style.tint).setAlpha(style.alpha); rect.setData('haloAlpha', style.alpha); }
+
     const frame = result.frames.get(card.instanceId);
     if (frame?.scene) {
       frame

@@ -67,7 +67,8 @@ test(`failed ceremony keeps card art, readable Preens and intentional choices, m
           expectedArt: b.rewardChoices.map((c: any, i: number) => b.rewardCardView(c, i).artKey),
           cost: rows('reward-fallback-card-cost').map((o: any) => o.text),
           expectedCost: b.rewardChoices.map((c: any, i: number) => { const cost = b.rewardCardView(c, i).cost; return `${cost} Wingbeat${cost === 1 ? '' : 's'}`; }),
-          effects: rows('reward-fallback-effect').map((o: any) => ({ size: o.style.fontSize, bottom: o.getBounds().bottom, full: Boolean(o.getData('fullText')) })),
+          effects: rows('reward-fallback-effect').map((o: any) => ({ size: parseFloat(o.style.fontSize), tier: o.getData('faceTier'), bottom: o.getBounds().bottom, full: Boolean(o.getData('fullText')), clipped: /\.\.\.$|…$|Inspect/.test(o.text),
+            panelBottom: rows('reward-card-effect-panel').find((p: any) => Math.abs(p.x - (o.x + 118)) < 1)?.getBounds().bottom })),
           context: rows('reward-fallback-decision-context').map((o: any) => ({ size: o.style.fontSize, bottom: o.getBounds().bottom, full: Boolean(o.getData('fullText')) })),
           controls: [...rows('reward-card-inspect-hit'), ...rows('reward-card-take-hit'), ...rows('reward-skip-hit')].map((o: any) => o.height),
         };
@@ -75,8 +76,16 @@ test(`failed ceremony keeps card art, readable Preens and intentional choices, m
       expect(geometry.art).toHaveLength(3); expect(geometry.art).toEqual(geometry.expectedArt);
       expect(geometry.cost).toEqual(geometry.expectedCost);
       expect(geometry.effects).toHaveLength(3);
-      geometry.effects.forEach((o: any) => { expect(o.size).toBe('21px'); expect(o.bottom).toBeLessThan(502); expect(o.full).toBe(true); });
+      // Every rule is on the face: it starts at 21px and steps down to the
+      // 18px floor (dense faces only to the 15-17px tier) while advice rows
+      // yield; it is never clipped and stays above the card frame (y 549).
+      geometry.effects.forEach((o: any) => {
+        expect(o.size >= 18 || /^compact-1[5-7]@/.test(o.tier), o.tier).toBe(true); expect(o.size).toBeLessThanOrEqual(21);
+        expect(o.bottom).toBeLessThan(546); expect(o.full).toBe(true); expect(o.clipped).toBe(false);
+      });
       geometry.context.forEach((o: any) => { expect(o.size).toBe('19px'); expect(o.bottom).toBeLessThan(550); expect(o.full).toBe(true); });
+      // The advice row is omitted only when the rules leave it no room.
+      expect(geometry.context.length + geometry.effects.filter((o: any) => o.panelBottom + 4 + 23 > 549).length).toBeGreaterThanOrEqual(3);
       expect(geometry.controls).toHaveLength(mode === 'cardReward' ? 7 : 6);
       expect(geometry.controls.every((height: number) => height >= 58)).toBe(true);
     }

@@ -625,7 +625,16 @@ const validateEnemy = (enemy, file) => {
         checkMoveRef(entry.moveId, 'conditional');
         if (!entry.if || typeof entry.if !== 'string') fail(`${label}: conditional entry needs an "if"`);
       }
-      if (!pattern.fallback || !moveIds.has(pattern.fallback)) fail(`${label}: conditional attackPattern needs a valid fallback move`);
+      // fallback: one move id, or {type:'cycle', moveIds} walked by intentIndex.
+      if (typeof pattern.fallback === 'string') {
+        if (!moveIds.has(pattern.fallback)) fail(`${label}: conditional attackPattern needs a valid fallback move`);
+      } else if (pattern.fallback && typeof pattern.fallback === 'object' && pattern.fallback.type === 'cycle') {
+        if (!Array.isArray(pattern.fallback.moveIds) || pattern.fallback.moveIds.length === 0) {
+          fail(`${label}: conditional cycle fallback needs a nonempty moveIds`);
+        } else pattern.fallback.moveIds.forEach((id) => checkMoveRef(id, 'conditional fallback cycle'));
+      } else {
+        fail(`${label}: conditional attackPattern needs a fallback move id or {type:'cycle', moveIds}`);
+      }
     } else {
       fail(`${label}: unknown attackPattern type "${pattern?.type}"`);
     }

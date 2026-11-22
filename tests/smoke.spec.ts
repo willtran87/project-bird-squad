@@ -2099,7 +2099,7 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
-  expect(result.guideVisual.text).toMatch(/^Select .+; target .+\. \d+ Wingbeats?\.$/);
+  expect(result.guideVisual.text).toMatch(/^Select .+; target .+\. \d+ Wingbeats?( \(energy\))?\.$/);
   expect(result.guideVisual.fontSize).toBe(21);
   expect(result.guideVisual.panelSize).toEqual([600, 58]);
   expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);
@@ -5151,6 +5151,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
       handAfter: state.hand.length,
       drawAfter: state.drawPile,
       combatCardDraw: state.combatCardDraw,
+      cardObjects: Boolean(scene.cardObjects),
       transfers: scene.fxLayer.list.filter((child: any) => child.name === 'combat-pile-transfer').map((child: any) => child.getData('kind')),
     };
   });
@@ -5172,6 +5173,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
       handAfter: state.hand.length,
       discardAfter: state.discardPile,
       combatDiscardSweep: state.combatDiscardSweep,
+      cardObjects: Boolean(scene.cardObjects),
       transfers: scene.fxLayer.list.filter((child: any) => child.name === 'combat-pile-transfer').map((child: any) => child.getData('kind')),
     };
   });
@@ -5196,6 +5198,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
       drawAfter: state.drawPile,
       discardAfter: state.discardPile,
       combatShuffleVortex: state.combatShuffleVortex,
+      cardObjects: Boolean(scene.cardObjects),
       transfers: scene.fxLayer.list.filter((child: any) => child.name === 'combat-pile-transfer').map((child: any) => child.getData('kind')),
     };
   });
@@ -5255,10 +5258,12 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
     scene.combatWingbeatDrainBursts = 0;
     scene.energy = 3;
     const enemy = scene.enemies.find((candidate: any) => candidate.hp > 0);
+    scene.nextTurnEnergyBonus = 0;
     scene.resolveEnemyEffect(enemy, 'loseWingbeat(flock, 2)');
     const state = window.__birdSquadState!();
     return {
       energy: state.energy,
+      nextTurnEnergyBonus: scene.nextTurnEnergyBonus,
       combatWingbeatDrain: state.combatWingbeatDrain,
     };
   });
@@ -5608,7 +5613,9 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(cardDrawResult.combatCardDraw.rendered).toBe(false);
   expect(cardDrawResult.combatCardDraw.count).toBe(0);
   expect(cardDrawResult.combatCardDraw.bursts).toBe(0);
-  expect(cardDrawResult.transfers).toEqual(['draw']);
+  // Once the card-object stage is up the drawn card itself flies in; the
+  // stand-in card back remains only as the fallback before it has loaded.
+  expect(cardDrawResult.transfers).toEqual(cardDrawResult.cardObjects ? [] : ['draw']);
   expect(discardSweepResult.handBefore).toBeGreaterThanOrEqual(1);
   expect(discardSweepResult.discarded).toBe(1);
   expect(discardSweepResult.handAfter).toBe(discardSweepResult.handBefore - 1);
@@ -5617,7 +5624,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(discardSweepResult.combatDiscardSweep.rendered).toBe(false);
   expect(discardSweepResult.combatDiscardSweep.count).toBe(0);
   expect(discardSweepResult.combatDiscardSweep.bursts).toBe(0);
-  expect(discardSweepResult.transfers).toEqual(['discard']);
+  expect(discardSweepResult.transfers).toEqual(discardSweepResult.cardObjects ? [] : ['discard']);
   expect(shuffleVortexResult.discardBefore).toBe(2);
   expect(shuffleVortexResult.handAfter).toBe(shuffleVortexResult.handBefore + 1);
   expect(shuffleVortexResult.drawAfter).toBe(1);
@@ -5626,7 +5633,7 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(shuffleVortexResult.combatShuffleVortex.rendered).toBe(false);
   expect(shuffleVortexResult.combatShuffleVortex.count).toBe(0);
   expect(shuffleVortexResult.combatShuffleVortex.bursts).toBe(0);
-  expect(shuffleVortexResult.transfers).toEqual(['shuffle', 'draw']);
+  expect(shuffleVortexResult.transfers).toEqual(shuffleVortexResult.cardObjects ? ['shuffle'] : ['shuffle', 'draw']);
   expect(ruffledBreakResult.statuses).toContain('Ruffled 2');
   expect(ruffledBreakResult.combatRuffledBreak.loaded).toBe(true);
   expect(ruffledBreakResult.combatRuffledBreak.rendered).toBe(true);
@@ -5643,7 +5650,9 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(wingbeatSurgeResult.combatWingbeatSurge.rendered).toBe(true);
   expect(wingbeatSurgeResult.combatWingbeatSurge.count).toBeGreaterThanOrEqual(1);
   expect(wingbeatSurgeResult.combatWingbeatSurge.bursts).toBeGreaterThanOrEqual(1);
-  expect(wingbeatDrainResult.energy).toBe(1);
+  // The enemy tax lands on the next player turn, not the current Wingbeats.
+  expect(wingbeatDrainResult.energy).toBe(3);
+  expect(wingbeatDrainResult.nextTurnEnergyBonus).toBe(-2);
   expect(wingbeatDrainResult.combatWingbeatDrain.loaded).toBe(true);
   expect(wingbeatDrainResult.combatWingbeatDrain.rendered).toBe(true);
   expect(wingbeatDrainResult.combatWingbeatDrain.count).toBeGreaterThanOrEqual(1);
@@ -12652,7 +12661,9 @@ test('reward readability separates effects badges and build advice at every supp
     expect(geometry.effects).toHaveLength(3);
     geometry.effects.forEach((effect: any, index: number) => {
       expect(effect.font).toBeGreaterThanOrEqual(18);
-      expect(effect.lines).toBeLessThanOrEqual(4);
+      // Every rule is on the face; the longest offers wrap to seven lines at 18px,
+      // the most the rules area holds at that size (font floor and panel bounds below).
+      expect(effect.lines).toBeLessThanOrEqual(7);
       expect(effect.left).toBeGreaterThanOrEqual(geometry.panels[index].left + 4);
       expect(effect.right).toBeLessThanOrEqual(geometry.panels[index].right - 4);
       expect(effect.bottom).toBeLessThanOrEqual(geometry.panels[index].bottom);
@@ -12707,10 +12718,9 @@ test('reward readability separates effects badges and build advice at every supp
     battle.renderAll();
     return result;
   });
-  expect(truncation.visible).toBe(truncation.primary);
+  // Every rule stays on the face: long rules are never cut to a summary or an ellipsis.
   expect(truncation.visible.endsWith('...')).toBe(false);
-  expect(truncation.lines).toBeLessThanOrEqual(2);
-  expect(truncation.full.length).toBeGreaterThan(truncation.visible.length);
+  expect(truncation.visible).toContain('intentionally long conditional explanation');
   await clickNamedGameObject(page, 'BattleScene', 'reward-skip-hit');
   await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('BattleScene').root.list.some((o: any) => o.name === 'reward-skip-tradeoff'));
   await page.screenshot({ path: '.artifacts/test-results/reward-readability/skip-1000x560.png' });
@@ -12724,6 +12734,9 @@ test('reward deck impact matches live draw targets for every Leader and Preen wi
     const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     const candidates = new Map<string, any>();
     for (let i = 0; i < 96; i++) battle.createRewardChoices().forEach((card: any) => candidates.set(card.id, card));
+    // Map 1 drafts lean on the district suit and common rarity, so few distinct
+    // Plumes are offered there; the starter deck's Plumes fill the set.
+    battle.allDeckCards().forEach((card: any) => { if (!candidates.has(card.id)) candidates.set(card.id, card); });
     const plumes = [...candidates.values()].filter((card) => card.runtime.suit === 'plumes').slice(0, 5);
     if (plumes.length < 5) throw new Error('Missing five distinct Plumes for keystone boundary');
     battle.hand = []; battle.discardPile = []; battle.clearedPile = [];
@@ -13441,10 +13454,11 @@ test('enemy post-Roost punishers react to card spam and empty hands', async ({ p
     scene.roostHeld = 1;
     scene.flock.frail = 0;
     scene.energy = 3;
+    scene.nextTurnEnergyBonus = 0;
     scene.resolveEnemyEffect(enemy, 'if playedCardsAtLeast(4) then applyFrail(1)');
     scene.resolveEnemyEffect(enemy, 'if zeroCostCardsAtLeast(2) then loseWingbeat(1)');
     scene.resolveEnemyEffect(enemy, 'if handEmptyAtRoost then applyWinded(flock, 1)');
-    const restrained = { frail: scene.flock.frail, energy: scene.energy, weak: scene.flock.weak };
+    const restrained = { frail: scene.flock.frail, energy: scene.energy, nextTurn: scene.nextTurnEnergyBonus, weak: scene.flock.weak };
 
     scene.roostCards = 4;
     scene.roostFree = 2;
@@ -13452,16 +13466,18 @@ test('enemy post-Roost punishers react to card spam and empty hands', async ({ p
     scene.flock.frail = 0;
     scene.flock.weak = 0;
     scene.energy = 3;
+    scene.nextTurnEnergyBonus = 0;
     scene.resolveEnemyEffect(enemy, 'if playedCardsAtLeast(4) then applyFrail(1)');
     scene.resolveEnemyEffect(enemy, 'if zeroCostCardsAtLeast(2) then loseWingbeat(1)');
     scene.resolveEnemyEffect(enemy, 'if handEmptyAtRoost then applyWinded(flock, 1)');
-    const spammed = { frail: scene.flock.frail, energy: scene.energy, weak: scene.flock.weak };
+    const spammed = { frail: scene.flock.frail, energy: scene.energy, nextTurn: scene.nextTurnEnergyBonus, weak: scene.flock.weak };
 
     return { restrained, spammed };
   });
 
-  expect(r.restrained).toEqual({ frail: 0, energy: 3, weak: 0 });
-  expect(r.spammed).toEqual({ frail: 1, energy: 2, weak: 1 });
+  // Wingbeat taxes land on the next player turn.
+  expect(r.restrained).toEqual({ frail: 0, energy: 3, nextTurn: 0, weak: 0 });
+  expect(r.spammed).toEqual({ frail: 1, energy: 3, nextTurn: -1, weak: 1 });
 });
 
 test('free draw effects require setup instead of refunding every zero-cost play', async ({ page }) => {
@@ -14383,8 +14399,8 @@ test('reward Preens across every rarity add decisions instead of only larger num
   expect(result.previewText).toContain('Crossed Quills+');
   expect(result.previewText.join(' ')).toContain('Preened');
   expect(result.previewText.join(' ')).toContain('Gain 1 Wingbeat');
-  // The focused combat dossier is rules-only; the card illustration stays in hand.
-  expect(result.previewImages.some((item: {key: string}) => /^card-(?:thumb-)?swords_02$/.test(item.key))).toBe(false);
+  // The combat dossier now shows the large card face, illustration included.
+  expect(result.previewImages.some((item: {key: string}) => /^card-(?:thumb-)?swords_02$/.test(item.key))).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/common-preen-crossed-quills.png' });
 });
 
@@ -15374,7 +15390,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
   }
   await clickNamedGameObject(page, 'MenuScene', 'system-settings-section-0-hit');
 
-  expect(settingsTargets).toHaveLength(25);
+  expect(settingsTargets).toHaveLength(27);
   expect(settingsTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   const settingsFooter = await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -15545,6 +15561,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   const helpTargets = await targetSnapshot('MenuScene');
   expect(helpTargets.map((target) => ({ label: target.label, sceneX: target.sceneX }))).toEqual([
     { label: 'Close', sceneX: 1154 },
+    { label: 'Key terms', sceneX: 994 },
     { label: 'Skip Guide', sceneX: 790 },
     { label: 'Practice lessons', sceneX: 500 },
   ]);
@@ -15571,7 +15588,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
       .map((child: any) => ({ width: child.displayWidth, height: child.displayHeight, bounds: bounds(child) }))
       .sort((a: any, b: any) => a.bounds.top - b.bounds.top);
     const buttonTop = Math.min(...objects
-      .filter((child: any) => child.name === 'system-field-button-hit' && child.getData('label') !== 'Close')
+      .filter((child: any) => child.name === 'system-field-button-hit' && !['Close', 'Key terms'].includes(child.getData('label')))
       .map((child: any) => bounds(child).top));
     return { labels, values, rows, buttonTop };
   });
@@ -15581,7 +15598,7 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   ]);
   expect(helpFooter.values.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
     { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 19 },
-    { text: 'Shift+X or RT: read artifacts without spending a turn.', fontSize: 19 },
+    { text: 'Shift+X or RT: read your Waymarks without spending a turn.', fontSize: 19 },
   ]);
   expect(helpFooter.rows).toEqual([]);
   expect(helpFooter.values[1].bounds.top - helpFooter.values[0].bounds.bottom).toBeGreaterThanOrEqual(8);
@@ -16570,6 +16587,9 @@ test('reinforced color cues persist and add suit shapes plus labels to combat de
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).colorCues)
     .toEqual({ preference: 'standard', reinforced: false });
 
+  // Wrapping up from Audio now passes Rumble (row 17) before Controls and the
+  // Accessibility rows, so reaching this row takes one more ArrowUp.
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -16701,6 +16721,9 @@ test('screen shake setting persists and Reduced Motion suppresses combat camera 
       child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
+  // Wrapping up from Audio now passes Rumble (row 17) before Controls and the
+  // Accessibility rows, so reaching this row takes one more ArrowUp.
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -16797,6 +16820,9 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
       child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
+  // Wrapping up from Audio now passes Rumble (row 17) before Controls and the
+  // Accessibility rows, so reaching this row takes one more ArrowUp.
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => (
@@ -17182,7 +17208,11 @@ test('settings remain usable when browser preference storage is unavailable', as
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus.current
   ))).toBe('primaryRun');
-  await page.keyboard.press('c');
+  await page.keyboard.press('c'); // Start Run opens the leader choice
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').setupOpen
+  ))).toBe(true);
+  await page.keyboard.press('c'); // fly with the selected Leader
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').scene
   )), { timeout: 20_000 }).toBe('RouteScene');
@@ -17273,8 +17303,9 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
   expect(initial.titleFocus).toMatchObject({
     current: 'primaryRun', previous: 'A', next: 'D', confirm: 'Space', ringRendered: true,
   });
+  // Daily Flight joined the title's bottom row as a focus target (engagement).
   expect(initial.titleFocus.order).toEqual([
-    'primaryRun', 'configure', 'howToPlay', 'settings', 'codex', 'profile',
+    'primaryRun', 'configure', 'howToPlay', 'settings', 'codex', 'profile', 'daily',
   ]);
 
   await page.keyboard.press('Tab');
@@ -17356,11 +17387,16 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
       leaderId: route.runState.leaderId,
       difficulty: route.runState.difficulty,
       runMode: route.runState.runMode,
-      confirmCues: routeState.audio.cueRequests.confirm ?? 0,
+      confirmCues: (routeState.audio.cueRequests.confirm ?? 0)
+        + (routeState.audio.events?.requests?.['ui.confirm'] ?? 0),
     };
   });
   expect(result).toMatchObject({ leaderId: 'spark_caller', difficulty: 1, runMode: 'quick' });
-  expect(result.confirmCues - (initial.audio.cueRequests.confirm ?? 0)).toBe(11);
+  // Activating the focused title control (Space on Flight setup, A on Start Run)
+  // now plays the typed ui.confirm event instead of the soft confirm click, so
+  // one cue per action is the sum of both counters.
+  const initialCues = (initial.audio.cueRequests.confirm ?? 0) + (initial.audio.events?.requests?.['ui.confirm'] ?? 0);
+  expect(result.confirmCues - initialCues).toBe(11);
 });
 
 test('title utility destinations are reachable by controller without starting a run', async ({ page }) => {
@@ -17414,9 +17450,9 @@ test('grouped Settings isolate hidden controls and preserve focus and values acr
   await boot(page);
   const sections = [
     { label: 'Audio', rows: [0, 1, 2, 3, 4] },
-    { label: 'Presentation', rows: [8, 9, 10, 11] },
+    { label: 'Presentation', rows: [8, 9, 10, 11, 16] },
     { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15] },
-    { label: 'Controls', rows: [5] },
+    { label: 'Controls', rows: [5, 17] },
   ];
   const snapshot = () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text!());
@@ -17536,7 +17572,7 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   expect(beforeOpenListeners).toBe(1);
   expect(opened.listenerCount).toBe(2);
   expect(opened.focusRings).toBe(1);
-  expect(opened.rowTargets).toBe(16);
+  expect(opened.rowTargets).toBe(18);
   expect(opened.ring).toMatchObject({ index: 0, label: 'Audio' });
 
   const initialMusic = opened.state.audio.musicVolume;
@@ -17679,9 +17715,10 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
 
   await page.keyboard.press('s');
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
+  // 18 rows since Fast Mode (Presentation) and Rumble (Controls) joined Settings.
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 16;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 18;
   }).toBe(true);
   await page.keyboard.press('PageUp');
   await expect.poll(async () => (await controlsSnapshot()).state.settingsFocus).toMatchObject({ index: 5, label: 'Controls' });
@@ -17734,6 +17771,8 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(false);
 
   await boot(page);
+  // The first text snapshot after boot is a placeholder until the lazy menu debug module installs.
+  await expect.poll(async () => Boolean((await controlsSnapshot()).state.controls)).toBe(true);
   const persisted = await controlsSnapshot();
   expect(persisted.state.controls.customized).toBe(true);
   expect(persisted.state.controls.bindings.confirm.key).toBe('P');
@@ -17747,7 +17786,9 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
     await page.keyboard.press('ArrowDown');
   }
   await expect.poll(async () => (await controlsSnapshot()).state.titleFocus.current).toBe('primaryRun');
-  await page.keyboard.press('p');
+  await page.keyboard.press('p'); // Start Run opens the leader choice
+  await expect.poll(async () => (await controlsSnapshot()).state.setupOpen).toBe(true);
+  await page.keyboard.press('p'); // fly with the selected Leader
   await expect.poll(async () => (await controlsSnapshot()).state.scene, { timeout: 20_000 }).toBe('RouteScene');
   await expect.poll(async () => (await controlsSnapshot()).state.routeAssetsReady, { timeout: 20_000 }).toBe(true);
   await page.keyboard.press('c');
@@ -17771,7 +17812,7 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 16;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 18;
   }).toBe(true);
   await page.keyboard.press('PageUp');
   await page.keyboard.press('Enter');
@@ -18221,6 +18262,7 @@ test('title How to Play overlay opens with quiet controls and stable guide actio
   expect(first).toMatchObject({ open: true, settings: false, decorations: 0, topics: 6 });
   expect(first.controls).toEqual([
     { label: 'Close', width: 104, height: 58 },
+    { label: 'Key terms', width: 180, height: 58 },
     { label: expect.stringMatching(/^(Skip|Replay) Guide$/), width: 190, height: 58 },
     { label: 'Practice lessons', width: 230, height: 58 },
   ]);
@@ -19863,9 +19905,11 @@ test('combat intro renders generated encounter plaque behind caption', async ({ 
       await wait(50);
     }
     const state = JSON.parse(window.render_game_to_text!());
+    // The lazy BattleScene stand-in may have been swapped for the real scene since start.
+    const live: any = g.scene.getScene('BattleScene');
     const plaqueObjects = countTexture([
-      ...(battle.root?.list ?? []),
-      ...(battle.fxLayer?.list ?? []),
+      ...(live.root?.list ?? []),
+      ...(live.fxLayer?.list ?? []),
     ]);
     return {
       combatEncounterPlaque: state.combatEncounterPlaque,
@@ -20338,6 +20382,8 @@ test('title start run renders generated launch flourish before route transition'
     // known animation beat instead of racing a wall-clock sleep against loading.
     menu.time.paused = true;
     menu.tweens.paused = true;
+    // The leader choice was already presented; this samples the launch itself.
+    menu.leaderChoicePresented = true;
     menu.startRunAnimated(false, 780, 642, 286);
     for (let i = 0; i < 40 && menu.titleRunLaunchFlourishBursts === 0; i += 1) await wait(50);
     menu.time.paused = false;
@@ -22236,6 +22282,9 @@ test('outcome flight codes copy a shared route link that launches the same seed 
   expect(copied.feedback).toContain('LINK COPIED');
 
   await boot(page, `${copiedUrl.pathname}${copiedUrl.search}`);
+  // The title's first text snapshot is a minimal stand-in while the lazy menu
+  // debug module loads; wait for the full snapshot before reading sharedRoute.
+  await page.waitForFunction(() => 'settingsOpen' in JSON.parse(window.render_game_to_text?.() ?? '{}'));
   const launched = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const menuState = JSON.parse(window.render_game_to_text?.() ?? '{}');

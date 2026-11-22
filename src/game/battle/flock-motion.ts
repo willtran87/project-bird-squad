@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { loadedCardArtKey, prefersReducedMotion, killTweensForTree, FLOCK_FX_X, FLOCK_FX_Y, suitAccentColor, textPaceScale, UI_FONT, displayName, type Card, type ActiveCardContract } from '../../main';
 import { prefersLeanEffects } from '../graphics-quality';
+import { battleActors } from './actors';
+import { cardObjects, paintFlightCard, FLIGHT_CARD } from './card-objects';
+import { flightControl, flightPoint, flightProgress } from './card-object-rules';
+import { CARD_W, GAME_WIDTH, HAND_Y } from '../shared/layout-constants';
 import { contributionKeys, contributionResults, emptyContribution, type CardContribution } from '../card-contributions';
 
 export type FlockAction = 'swoop' | 'shove' | 'shelter' | 'rally' | 'retreat';
@@ -13,6 +17,9 @@ export function flockAction(card: Card, contract: ActiveCardContract): FlockActi
   if (/\b(heal|returnDiscard|removeFouled|removeRuffled)\(/.test(effects)) return 'retreat';
   return 'rally';
 }
+
+/** The played card never climbs into the top bar. */
+const FLIGHT_CEILING = 104;
 
 /** One canonical illustrated actor. Existing card voices and resolved-effect
  * presenters provide sound and impact; this adds neither a wait nor a projectile. */
@@ -32,50 +39,67 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
   host.events.emit('living-cast', budget, style, enemyId);
   host.queueFlockMotion(style === 'shelter' ? 'brace' : style === 'retreat' ? 'heal' : 'cast');
   const crowded = host.enemies.length >= 4;
-  // Four-enemy formations occupy the center lane. Use the clear pocket below
-  // the HUD and above the leader's head instead of crossing the first support.
-  const actor = host.add.container(crowded ? 385 : 450, crowded ? 142 : 190)
-    .setName('combat-card-cast-ghost').setDepth(40)
-    .setScale(crowded ? .58 : 1)
-    .setData({ actionStyle: style, cardId: card.id, budgetMs: budget, reducedMotion: reduced });
-  host.fxLayer.add(actor);
-  const key = loadedCardArtKey(host, card), accent = suitAccentColor(card);
-  actor.add(host.add.rectangle(0, 0, 76, 114, 0x07101c, 0.96).setStrokeStyle(2, accent, 0.8));
-  if (key && host.textures.exists(key)) {
-    actor.add(host.add.image(0, 0, key).setDisplaySize(72, 108).setName('flock-action-canonical-art'));
-  } else {
-    actor.add(host.add.text(0, 0, displayName(card), { fontFamily: UI_FONT, fontSize: '18px',
-      color: '#fff1cf', wordWrap: { width: 72 }, align: 'center', resolution: 2 })
-      .setOrigin(0.5).setName('flock-action-art-fallback'));
-  }
-  // A single grounding mark also distinguishes the still cues without relying
-  // on color: attack slash, cover roof, rally wings, retreat landing line.
-  const mark = host.add.graphics().lineStyle(3, accent, 0.85);
-  if (style === 'shelter') mark.strokePoints([{ x: -44, y: -48 }, { x: 0, y: -70 }, { x: 44, y: -48 }]);
-  else if (style === 'rally') mark.strokePoints([{ x: -48, y: -18 }, { x: -40, y: -40 }, { x: -26, y: -28 }]);
-  else if (style === 'retreat') mark.lineBetween(-42, 62, 42, 62);
-  else mark.lineBetween(-50, style === 'swoop' ? 44 : 0, -28, style === 'swoop' ? 16 : 0);
-  actor.add(mark);
   const enemy = host.enemies.find((entry: any) => entry.id === enemyId && entry.hp > 0);
-  const target = enemy ? host.enemyView(enemy) : { x: FLOCK_FX_X + 230, y: FLOCK_FX_Y };
-  const travel = crowded ? 0 : Math.min(64, Math.max(0, target.x - actor.x - 170));
-  const end = {
-    swoop: { x: actor.x + travel, y: actor.y + 6, angle: 4 },
-    shove: { x: actor.x + travel * 0.65, y: actor.y + 4, angle: -3 },
-    shelter: { x: actor.x - 4, y: actor.y + 4, angle: 0 },
-    rally: { x: actor.x + 8, y: actor.y - 4, angle: -3 },
-    retreat: { x: actor.x - 8, y: actor.y + 4, angle: 3 },
-  }[style];
-  if (!reduced) {
-    // Anticipate in the safe pocket, commit once, then settle before impact.
-    // All three segments fit inside the existing resolution budget.
-    const start = { x: actor.x, y: actor.y, angle: 0 };
-    host.tweens.chain({ targets: actor, tweens: [
-      { x: start.x - 3, y: start.y + 2, duration: budget * .22 * host.tweens.timeScale, ease: 'Sine.easeOut' },
-      { ...end, duration: budget * .48 * host.tweens.timeScale, ease: style === 'shove' ? 'Cubic.easeIn' : 'Sine.easeInOut' },
-      { x: start.x + (end.x - start.x) * .85, y: start.y, angle: 0, duration: budget * .15 * host.tweens.timeScale, ease: 'Sine.easeOut' },
-    ] });
+  const stage = cardObjects(host);
+  if (reduced) {
+    // Still cue. Four-enemy formations occupy the center lane, so it uses the
+    // clear pocket below the HUD and above the leader's head.
+    const actor = host.add.container(crowded ? 385 : 450, crowded ? 142 : 190)
+      .setName('combat-card-cast-ghost').setDepth(40)
+      .setScale(crowded ? .58 : 1)
+      .setData({ actionStyle: style, cardId: card.id, budgetMs: budget, reducedMotion: reduced });
+    host.fxLayer.add(actor);
+    paintFlightCard(host, actor, card);
+    // A single grounding mark also distinguishes the still cues without relying
+    // on color: attack slash, cover roof, rally wings, retreat landing line.
+    const mark = host.add.graphics().lineStyle(3, suitAccentColor(card), 0.85);
+    if (style === 'shelter') mark.strokePoints([{ x: -44, y: -48 }, { x: 0, y: -70 }, { x: 44, y: -48 }]);
+    else if (style === 'rally') mark.strokePoints([{ x: -48, y: -18 }, { x: -40, y: -40 }, { x: -26, y: -28 }]);
+    else if (style === 'retreat') mark.lineBetween(-42, 62, 42, 62);
+    else mark.lineBetween(-50, style === 'swoop' ? 44 : 0, -28, style === 'swoop' ? 16 : 0);
+    actor.add(mark);
+    stage.landing = undefined;
+    host.time.delayedCall(budget, () => { if (actor.active) { killTweensForTree(host, actor); actor.destroy(true); } });
+    return;
   }
+  // The card itself is thrown: out of its hand slot (or from under the pointer
+  // after a drag), along an arc with a little spin, landing on its target as
+  // the existing resolution budget ends. Presentation only: no wait is added.
+  const body = battleActors(host).actors.get(`card:${card.instanceId}`);
+  const from = body ? { x: body.slot.x + body.pose.x, y: body.slot.y + body.pose.y } : { x: GAME_WIDTH / 2, y: HAND_Y };
+  const startScale = (CARD_W / FLIGHT_CARD.width) * (body ? body.pose.scaleX : 0.7);
+  const endScale = crowded ? 0.58 : contract.target === 'enemy' ? 0.82 : 0.9;
+  const living = host.enemies.filter((entry: any) => entry.hp > 0).map((entry: any) => host.enemyView(entry));
+  const view = enemy ? host.enemyView(enemy) : undefined;
+  // On the body, above the enemy's intent and name plate.
+  const to = contract.target === 'enemy' && view ? { x: view.x - 34, y: view.y - 30 * view.scale }
+    : contract.target === 'allEnemies' && living.length
+      ? { x: living.reduce((sum: number, entry: any) => sum + entry.x, 0) / living.length - 20, y: living.reduce((sum: number, entry: any) => sum + entry.y, 0) / living.length + 6 }
+      : contract.target === 'self' ? { x: FLOCK_FX_X + 26, y: FLOCK_FX_Y - 30 }
+        : { x: GAME_WIDTH / 2, y: 262 };
+  const half = FLIGHT_CARD.height / 2;
+  to.y = Math.max(to.y, FLIGHT_CEILING + half * endScale + 4);
+  const control = flightControl(from, to, half * Math.max(endScale, 1), FLIGHT_CEILING);
+  const spin = style === 'shelter' || style === 'retreat' ? -5 : to.x >= from.x ? 13 : -13;
+  const actor = host.add.container(from.x, from.y)
+    .setName('combat-card-cast-ghost').setDepth(40).setScale(startScale).setAngle(body?.pose.angle ?? 0)
+    .setData({ actionStyle: style, cardId: card.id, budgetMs: budget, reducedMotion: reduced, from, to, endScale });
+  host.fxLayer.add(actor);
+  paintFlightCard(host, actor, card);
+  stage.landing = { ...to, scale: endScale };
+  const startAngle = actor.angle;
+  (actor as any).flight = 0;
+  host.tweens.add({
+    targets: actor, flight: 1, duration: budget * host.tweens.timeScale, ease: 'Linear',
+    onUpdate: () => {
+      if (!actor.active) return;
+      const { lift, travel } = flightProgress((actor as any).flight);
+      const point = flightPoint(from, control, to, travel);
+      actor.setPosition(point.x, point.y - 16 * lift * (1 - travel))
+        .setScale((startScale + (endScale - startScale) * travel) * (1 + 0.05 * lift * (1 - travel)))
+        .setAngle(startAngle + (spin - startAngle) * travel + (travel > 0 ? 0 : -2 * lift));
+    },
+  });
   host.time.delayedCall(budget, () => { if (actor.active) { killTweensForTree(host, actor); actor.destroy(true); } });
 }
 

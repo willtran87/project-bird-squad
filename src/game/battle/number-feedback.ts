@@ -60,6 +60,15 @@ export function presentNumberFeedback(scene: Phaser.Scene, layer: Phaser.GameObj
   entries.set(key, entry);
   group.setData('target', value.target).setData('kind', value.kind).setData('source', value.source).setData('placement', enemy ? 'target-lane' : 'flock-stack');
   update(entry);
+  // Damage pops in proportion to the share of the target's maximum it removed.
+  const host = scene as Phaser.Scene & Record<string, any>;
+  const maxHp = enemy ? host.enemies?.find((e: { id: string }) => e.id === value.target)?.maxHp : host.flock?.maxHp;
+  const pop = value.kind === 'damage' && maxHp ? 1 + Math.min(0.6, Math.max(0, value.amount / maxHp - 0.04) * 1.6) : 1;
+  group.setData('pop', pop);
+  if (pop > 1 && !value.reducedMotion) {
+    group.setScale(pop);
+    scene.tweens.add({ targets: group, scale: 1, duration: 260, ease: 'Back.easeOut' });
+  }
   // Impact sprites are created after their numeric result. Promote the result
   // once the synchronous effect chain has finished, not on every render frame.
   const promote = scene.time.delayedCall(0, () => {
