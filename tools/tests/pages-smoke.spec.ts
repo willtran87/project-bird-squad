@@ -23,6 +23,14 @@ test('Pages subdirectory serves title, lazy scenes, full-art combat and checkpoi
     return game.scene.isActive('RouteScene') && game.scene.getScene('RouteScene').routeEssentialAssetsReady;
   });
   const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.run.active')!));
+  // A live player's first confirm only dismisses the district arrival card,
+  // and the route takes no confirm until the card has finished leaving.
+  if (await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').registry.get('district-arrival-card') !== undefined,
+    undefined, { timeout: 4000 }).then(() => true, () => false)) {
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').registry.get('district-arrival-card') === undefined,
+      undefined, { timeout: 5000 }).catch(() => {});
+  }
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const state = JSON.parse((window as any).render_game_to_text?.() ?? '{}');

@@ -95,7 +95,7 @@ const budgets = [
   { label: 'flock stats overlay lazy module', pattern: /^flock-stats-overlay-.*\.js$/, maxKb: 8, hard: true },
   { label: 'screen reader runtime lazy module', pattern: /^screen-reader-runtime-.*\.js$/, maxKb: 4, hard: true },
   { label: 'menu diagnostics lazy module', pattern: /^menu-debug-state-.*\.js$/, maxKb: 7, hard: true },
-  { label: 'menu optional UI lazy module', pattern: /^menu-optional-ui-.*\.js$/, maxKb: 6.25, hard: true }, // import-rename drift from the engagement chunk's shared exports
+  { label: 'menu optional UI lazy module', pattern: /^menu-optional-ui-.*\.js$/, maxKb: 6.75, hard: true }, // import-rename drift from the engagement chunk's shared exports; 6.4 KB under the Pages base path
   { label: 'first-encounter term callouts lazy module', pattern: /^term-introductions-.*\.js$/, maxKb: 4, hard: true },
   { label: 'setup portraits lazy module', pattern: /^setup-portraits-.*\.js$/, maxKb: 1, hard: true },
   { label: 'title launch lazy module', pattern: /^title-run-launch-.*\.js$/, maxKb: 4, hard: true },
@@ -111,8 +111,10 @@ const combinedBootBudget = {
   // title fonts (src/scenes/battle-scene-loader.ts). Was 702.8 KB; now 449.0 KB.
   // +1.6 KB: Fast Mode / Rumble preferences (scene pace syncs at boot) and the
   // context-aware rotate/too-small gate copy. Measured 450.6 KB.
-  maxKb: 452,
-  targetKb: 451,
+  // The Pages build (--base=/project-bird-squad/) lengthens every asset URL:
+  // 451.7 KB locally measures 453.1 KB there.
+  maxKb: 456,
+  targetKb: 454,
 };
 
 if (!fs.existsSync(assetsDir)) {
