@@ -87,9 +87,61 @@ body,
   border: 0;
 }
 
-@media (max-width: 999px),
-  (max-height: 559px),
-  (orientation: portrait) and (max-width: 1100px) {
+/* Phone landscape (below 1000x560) plays through the compact lens: the game
+ * narrows to leave a touch rail on each side (src/game/compact-lens.ts). */
+html[data-layout="compact"] #game-container {
+  width: calc(100% - 2 * var(--compact-rail, 64px));
+  margin: 0 auto;
+}
+
+.compact-rail {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 20;
+  width: var(--compact-rail, 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 6px;
+  background: #07101a;
+  color: #e7eef7;
+  font-family: BirdSquadUI, ui-sans-serif, system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.compact-rail-left { left: 0; border-right: 1px solid #1d3442; }
+.compact-rail-right { right: 0; border-left: 1px solid #1d3442; }
+.compact-rail .compact-stat { display: grid; gap: 1px; text-align: center; }
+.compact-rail .compact-stat span { color: #9fb4c2; font-size: 12px; font-weight: 700; letter-spacing: 0; }
+.compact-rail .compact-stat strong { font-size: 16px; line-height: 1.15; overflow-wrap: anywhere; }
+.compact-rail .compact-note { color: #9fb4c2; font-size: 12px; line-height: 1.3; text-align: center; }
+.compact-rail button {
+  min-height: 48px;
+  padding: 4px 2px;
+  border: 1px solid #3b6272;
+  border-radius: 6px;
+  background: #102331;
+  color: #e7eef7;
+  font: 700 14px/1.15 BirdSquadUI, ui-sans-serif, system-ui, sans-serif;
+  overflow-wrap: anywhere;
+  -webkit-tap-highlight-color: transparent;
+}
+.compact-rail button[data-kind="primary"] { background: #d6b66f; border-color: #f1d796; color: #0b151f; }
+.compact-rail button[aria-pressed="true"] { border-color: #8df4ff; box-shadow: inset 0 0 0 2px #8df4ff; }
+.compact-rail button:disabled { opacity: 0.55; }
+.compact-rail .compact-spacer { flex: 1; }
+#compact-overview-catcher {
+  position: fixed;
+  z-index: 15;
+  cursor: zoom-in;
+  touch-action: none;
+}
+
+@media (orientation: portrait) and (max-width: 1100px),
+  (max-width: 559px),
+  (max-height: 319px) {
   #game-container {
     display: none;
   }

@@ -90,6 +90,8 @@ export default defineConfig(({ command }) => ({
           if (moduleId.endsWith('/src/game/ui-panel.ts')) return 'ui-panel';
           // DPR backing store, shape batching and the Auto quality step: installed after boot.
           if (/\/src\/game\/(platform-rendering|render-resolution|shape-batching|frame-governor|frame-rules)\.ts$/.test(moduleId)) return 'platform-rendering';
+          // Phone landscape lens and rails: loaded by the platform gate only below 1000x560.
+          if (moduleId.endsWith('/src/game/compact-lens.ts')) return 'compact-lens';
           // Combat barks: rules, runtime and the line content, loaded when a fight opens.
           if (moduleId.includes('/src/game/barks/') || moduleId.endsWith('/data/game/barks.json')) return 'barks';
           if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';

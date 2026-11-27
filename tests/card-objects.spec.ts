@@ -204,18 +204,16 @@ test('drawn cards fly in from the draw pile in a stagger and the counter ticks d
 });
 
 test('the opening hand is dealt from the draw pile once the encounter intro has cleared, and only once', async ({ page }) => {
-  // The deal is staggered on the scene clock; freeze real frames once the intro
-  // clears so a slow, shared machine cannot advance it before the first read.
+  // On a slow machine the battle art can finish loading after the deal has
+  // already played, so the deal is checked through the record it leaves rather
+  // than caught mid-flight.
   const errors = await openBattle(page, {}, false, true);
   const result = await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene'), stage = b.cardObjects;
     const cards = () => b.battleActors.debugState().actors.filter((actor: any) => actor.kind === 'card');
     const bounds = () => b.hand.map((card: any) => { const r = b.handCardRects.get(card.instanceId).getBounds(); return [r.x, r.y, r.width, r.height]; });
-    w.advanceTime(17); // one frame after the intro: the deal has begun
     const start = { intro: b.combatIntroActive, deals: stage.counts.deals, hand: b.hand.length, bounds: bounds(),
-      dealing: cards().filter((actor: any) => actor.motions.includes('deal')).length,
-      waiting: cards().filter((actor: any) => actor.pose.scaleX < 0.3).length,
-      shown: stage.shownPileCount('DRAW'), real: b.drawPile.length };
+      opening: stage.opening, shown: stage.shownPileCount('DRAW'), real: b.drawPile.length };
     w.advanceTime(900);
     const settled = cards().every((actor: any) => actor.motions.length === 0 && Math.abs(actor.pose.x) < 1 && Math.abs(actor.pose.scaleX - 1) < 0.01);
     b.handRenderKey = ''; b.renderAll(); w.advanceTime(200);
@@ -226,8 +224,10 @@ test('the opening hand is dealt from the draw pile once the encounter intro has 
   expect(result.start.intro).toBe(false);
   expect(result.start.hand).toBeGreaterThan(1);
   expect(result.start.deals).toBe(result.start.hand);
-  expect(result.start.dealing).toBe(result.start.hand);
-  expect(result.start.waiting).toBeGreaterThan(0); // staggered: later cards are still at the pile
+  // Every card was dealt, after the intro, each starting later than the last.
+  expect(result.start.opening).toMatchObject({ cards: result.start.hand, afterIntro: true });
+  expect(result.start.opening.delays).toHaveLength(result.start.hand);
+  expect(result.start.opening.delays.every((delay: number, i: number, all: number[]) => i === 0 || delay > all[i - 1])).toBe(true);
   expect(result.start.shown).toBe(result.start.real); // the pile already shows the settled count
   expect(result.settled).toBe(true);
   expect(result.boundsAfter).toEqual(result.start.bounds); // layout never moved

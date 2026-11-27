@@ -29,13 +29,13 @@ function addDeckReviewCostBadge(
 }
 import { MIN_SUPPORTED_TOUCH_TARGET, UI_BOLD, READER_UI, UI_TYPE, ROUTE_DECK_VISIBLE_ROWS } from './theme';
 import { quietButton } from './quiet-ui';
+import { panel } from './ui-panel';
 import { fitTextExcerpt } from './text-excerpt';
 import { controlActionForCode, controlBindingLabel } from './input-bindings';
 import { overlayAmbience } from './spectacle/life/overlay-fx';
 import { comparisonPagingHint } from './deck-review-hints';
 import {
   HUD_MENU_PANEL,
-  renderFieldPanel,
   UI_FIELD,
   UI_FONT,
   UI_GOLD,
@@ -228,9 +228,8 @@ export function renderRouteDeckBrowser(scene: Phaser.Scene, view: RouteDeckBrows
   overlayAmbience(scene.add.rectangle(640, 360, 1280, 720, 0x07101a, 1)
     .setName('deck-review-curtain')
     .setInteractive({ useHandCursor: false }), 'deck-browser');
-  renderFieldPanel(scene, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-    accent: UI_FIELD.gold,
-  });
+  panel(scene, { name: 'deck-review-panel', x: HUD_MENU_PANEL.cx, y: HUD_MENU_PANEL.cy, width: HUD_MENU_PANEL.w, height: HUD_MENU_PANEL.h,
+    accent: UI_FIELD.gold });
   const shownCount = view.cards.length === view.totalCards ? `${view.totalCards}` : `${view.cards.length}/${view.totalCards}`;
   scene.add.text(146, 106, `Deck Review (${shownCount})`, {
     fontFamily: UI_FONT,

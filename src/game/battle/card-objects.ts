@@ -40,12 +40,20 @@ const SHEEN_TEXTURE = 'card-rarity-sheen';
 const SHEEN_CYCLE_MS = 4400;
 const SHEEN_SWEEP_MS = 1150;
 
+/** Under the phone-landscape lens the camera is zoomed, so drags follow the
+ * pointer in world space; elsewhere screen and world coincide. */
+const pointerPoint = (pointer: Phaser.Input.Pointer) => document.documentElement.dataset.layout === 'compact'
+  ? { x: pointer.worldX, y: pointer.worldY } : { x: pointer.x, y: pointer.y };
+
 export class CardObjectStage {
   readonly layer: Phaser.GameObjects.Container;
   /** Where the played card landed; its trip to a pile starts here. */
   landing?: Point & { scale: number };
   /** Counters for diagnostics and tests. */
   readonly counts = { deals: 0, departures: 0, burns: 0, denials: 0, drags: 0, drops: 0, returns: 0 };
+  /** What the opening deal did, for diagnostics and tests: the cards it dealt,
+   * whether the encounter intro had played first, and each card's start delay. */
+  opening?: { cards: number; afterIntro: boolean; delays: number[] };
   private pendingDeals = new Map<string, { index: number; at: number; from: Point }>();
   /** Cards still in the air: leaving a pile (shown as still in it) or on their way to one. */
   private leaving: Record<Pile, number> = { DRAW: 0, DISCARD: 0 };
@@ -122,21 +130,29 @@ export class CardObjectStage {
     if (!this.sawIntro || host.mode !== 'battle' || !host.handLayer?.visible || !ids.length) return;
     this.opened = true;
     this.deal(ids, undefined, false);
-    for (const id of ids) { const actor = stage.actors.get(`card:${id}`); if (actor) this.arrive(id, actor); }
+    const delays: number[] = [];
+    for (const id of ids) {
+      const actor = stage.actors.get(`card:${id}`);
+      const delay = actor ? this.arrive(id, actor) : undefined;
+      if (delay !== undefined) delays.push(delay);
+    }
+    this.opening = { cards: ids.length, afterIntro: this.sawIntro, delays };
   }
 
-  /** A card's body has just been created in the hand. */
-  arrive(id: string, actor: BattleActor) {
+  /** A card's body has just been created in the hand. Returns the deal's
+   * start delay when a deal motion was played. */
+  arrive(id: string, actor: BattleActor): number | undefined {
     const deal = this.pendingDeals.get(id);
-    if (!deal) return;
+    if (!deal) return undefined;
     this.pendingDeals.delete(id);
-    if (this.still || this.scene.time.now - deal.at > 1500) return;
+    if (this.still || this.scene.time.now - deal.at > 1500) return undefined;
     const dx = deal.from.x - actor.slot.x, dy = deal.from.y - actor.slot.y;
     actor.settle.y = 0;
     battleActors(this.scene).play(actor.id, {
       name: 'deal', channel: 'action', delay: deal.index * DEAL_STAGGER_MS, from: [dx, dy, -0.82, -0.82, -16],
       keys: [[DEAL_MS * 0.5, dx * 0.42, dy * 0.42 - 46, -0.4, -0.4, -6, ACTOR_EASE.quadOut], [DEAL_MS * 0.5, 0, 0, 0, 0, 0, ACTOR_EASE.backOut]],
     });
+    return deal.index * DEAL_STAGGER_MS;
   }
 
   // ---- leaving the hand -----------------------------------------------------
@@ -294,7 +310,7 @@ export class CardObjectStage {
     const up = (event: Phaser.Input.Pointer) => { if (mine(event)) this.dragEnd(true); };
     const cancel = () => this.dragEnd(false);
     input.on('pointermove', move).on('pointerup', up).on('pointerupoutside', up).on('gameout', cancel);
-    const origin = { x: pointer.x, y: pointer.y };
+    const origin = pointerPoint(pointer);
     this.drag = { id, origin, last: origin, tilt: 0, active: false, target: undefined,
       stop: () => input.off('pointermove', move).off('pointerup', up).off('pointerupoutside', up).off('gameout', cancel) };
   }
@@ -330,7 +346,7 @@ export class CardObjectStage {
     const host = this.scene, drag = this.drag, card = this.dragCard();
     const stage = battleActors(host), actor = drag && stage.actors.get(`card:${drag.id}`);
     if (!drag || !card || !actor || host.selectedInstanceId !== drag.id || host.combatInteractionLocked()) { this.dragEnd(false); return; }
-    const point = { x: pointer.x, y: pointer.y };
+    const point = pointerPoint(pointer);
     if (!drag.active) {
       if (!dragStarted(drag.origin, point)) return;
       drag.active = true;

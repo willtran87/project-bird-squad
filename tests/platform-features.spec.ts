@@ -197,7 +197,7 @@ test('Screen Shake off silences rumble without changing the Rumble preference', 
   expect(effects).toBe(0);
 });
 
-test('phone portrait asks for rotation; phone landscape explains the minimum size', async ({ page }) => {
+test('phone portrait asks for rotation; phone landscape plays; a tiny window explains the minimum size', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./?flight=platform-gate');
   await page.waitForFunction(() => (window as any).__birdSquadGame?.loop.running === false);
@@ -218,12 +218,17 @@ test('phone portrait asks for rotation; phone landscape explains the minimum siz
   expect(portrait.titlePx).toBeGreaterThanOrEqual(16);
   expect(portrait.copyPx).toBeGreaterThanOrEqual(16);
 
+  // Phone landscape now plays through the compact lens (tests/phone-landscape.spec.ts).
   await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForFunction(() => (window as any).__birdSquadGame?.loop.running === true);
+  expect((await read()).shown).toBe(false);
+  // Below 560x320 even the compact lens cannot keep the floors.
+  await page.setViewportSize({ width: 540, height: 300 });
   await expect.poll(async () => (await read()).reason).toBe('small');
   const landscape = await read();
   expect(landscape).toMatchObject({ shown: true, fits: true });
   expect(landscape.title).not.toContain('Rotate');
-  expect(landscape.copy).toContain('1000');
+  expect(landscape.copy).toContain('560');
 
   // Tablet in portrait also asks to rotate; turning it plays.
   await page.setViewportSize({ width: 820, height: 1180 });

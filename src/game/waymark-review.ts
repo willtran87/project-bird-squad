@@ -41,7 +41,8 @@ export function changeWaymarkPage(scene: Phaser.Scene, delta: number) {
 
 export function handleWaymarkWheel(scene: Phaser.Scene, pointer: Phaser.Input.Pointer, delta: number) {
   const panel = readerPanel(scene) as Phaser.GameObjects.Rectangle | null;
-  if (!panel?.getBounds().contains(pointer.x, pointer.y)) return false;
+  const world = document.documentElement.dataset.layout === 'compact';
+  if (!panel?.getBounds().contains(world ? pointer.worldX : pointer.x, world ? pointer.worldY : pointer.y)) return false;
   changeWaymarkPage(scene, delta > 0 ? 1 : -1);
   return true;
 }

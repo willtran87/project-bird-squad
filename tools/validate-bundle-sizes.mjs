@@ -71,6 +71,8 @@ const budgets = [
   { label: 'shared overlay panel lazy module', pattern: /^ui-panel-.*\.js$/, maxKb: 3, hard: true },
   // Device-pixel-ratio backing store, shape batching and the Auto quality step; installed after boot.
   { label: 'platform rendering lazy module', pattern: /^platform-rendering-.*\.js$/, maxKb: 7, hard: true },
+  // Phone landscape lens, framing and rails; the platform gate requests it only below 1000x560 (8.9 KB).
+  { label: 'compact lens lazy module', pattern: /^compact-lens-.*\.js$/, maxKb: 10, hard: true },
   // Daily Flight, run recap/photo card and Collection ceremony scenes; the title
   // requests this after its first frame. Narrative copy rides with the arrival card.
   { label: 'engagement scenes lazy module', pattern: /^engagement-.*\.js$/, maxKb: 30, hard: true },

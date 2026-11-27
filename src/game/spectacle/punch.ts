@@ -15,7 +15,8 @@ const PUNCH_KEY = 'spectacle-punch';
  * hit-stop: a visible freeze of framing that leaves game clocks untouched. */
 export function cameraPunch(scene: Phaser.Scene, strength: number) {
   const reduced = prefersReducedMotion();
-  if (reduced || !screenShakeState(reduced).enabled) return;
+  // The compact lens owns camera zoom on phone landscape.
+  if (reduced || !screenShakeState(reduced).enabled || document.documentElement.dataset.layout === 'compact') return;
   const camera = scene.cameras.main;
   const data = scene.data;
   (data.get(PUNCH_KEY) as Phaser.Tweens.Tween | undefined)?.stop();
