@@ -608,3 +608,21 @@ offsets also differ from `panelLayout`), Waymark and Supply drawers and readers,
 overlays, recap and ceremony (texture-framed "asset frame" panels whose
 art and hit areas the reader specs measure). `renderFieldPanel` stays for
 the boot-resident callers.
+
+### Checks
+
+`tests/phone-landscape.spec.ts` (5 tests, added to the gate): touch-target
+(44 CSS px), secondary (12 CSS px) and primary (14 CSS px) text floors through
+the camera on title, setup, route, pause, Settings, combat hand, combat with a
+selected card and reward at 844x390, and title, route and combat at 932x430
+and 740x360; rail fit, touch and text floors; a flight from the title through
+setup, TAKE ROUTE, a won fight, the card reward, the district contract, pause,
+Settings, Close, Resume, a pan and "Whole screen", by touch taps only; and
+1000x560 never requesting the lens. Tests changed: `platform-features`
+(phone portrait/landscape gate) and smoke `unsupported displays…` now expect
+844x390 to play and check the minimum-size notice at 540x300 instead; their
+portrait, tablet and copy assertions are unchanged. Boot code 451.7 to 452.0
+KB (the compact media query and lazy import in the gate).
+
+Not verified: physical phones (iOS Safari toolbar resizing, notches,
+`devicePixelRatio` 3), WebKit and Firefox, and human play at phone size.
