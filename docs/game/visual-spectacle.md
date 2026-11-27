@@ -73,7 +73,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 35 | Reward reveal | Done | Combat and route card rewards are dealt face down and turn over in order with a rarity glint; any input skips. Draw-time only; see Presentation polish |
 | 36 | Victory and defeat moments | Done | Gold light sweep and falling feathers over the reward screen; dark vignette and grey feathers over the defeat report. The outcome state is immediate; the beat is layered and holds no input |
 | 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
-| 38 | Device-pixel-ratio rendering | Not started | Investigated November 20: Phaser 4.1 has no renderer resolution; see Platform and performance |
+| 38 | Device-pixel-ratio rendering | Done | November 27: the WebGL backing store follows the display up to 2x with game space unchanged; see Frame rate and high-DPI |
 | 39 | Retained-mode battle rendering | Partial | Enemy bodies, the flock body and hand cards are retained actors with a logical slot and a visual pose. HUD, vitals, intent badges, shadows, reticles and overlays are still immediate-mode. See the runtime architecture doc |
 | 40 | More particle systems | Done | Contact dressing in `spectacle/impact.ts` |
 | 41 | Respect quality and motion tiers | Done | `tests/spectacle-stage.spec.ts` |
@@ -135,8 +135,8 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 34 | Loading state | Done | Boot screen in the game's palette; route and battle readiness screens stay dark for 250 ms, then show a panel with the flock crossing and a progress bar |
 | 35–41 | Screens and flow | Not started | |
 | 42–44 | Onboarding and iconography | Not started | |
-| 45 | Device-pixel-ratio rendering | Not started | Same as list 1, item 38 |
-| 46 | Steady frame rate | Partial | WebKit regression found and removed; grain and filters gated; per-frame probe added (Platform and performance) |
+| 45 | Device-pixel-ratio rendering | Done | Same as list 1, item 38 |
+| 46 | Steady frame rate | Partial | WebKit regression found and removed; grain and filters gated; per-frame probe added (Platform and performance); Auto frame-time step, shape batching on hardware GL, occluded-decor skipping (Frame rate and high-DPI) |
 | 47–49 | Preloading, breakpoints, photo mode | Not started | |
 | 50 | Page around the game | Partial | Description, theme colour and social preview tags |
 
@@ -471,7 +471,8 @@ software GL is a design call left open. The probe pins zero text
 re-measurement on idle frames as a regression guard. Compared with the noted
 33 to 67 ms route regression, the route measures 47–64 ms.
 
-**High-DPI**: not done. Phaser 4.1 has no renderer resolution option: the
+**High-DPI**: done November 27, see Frame rate and high-DPI below. As
+investigated here, Phaser 4.1 has no renderer resolution option: the
 backing store is always the 1280x720 game size and FIT scales it with CSS.
 Crisp DPR 2 needs either a 2x game size with camera zoom (changes
 `pointer.x`, `scale.gameSize` and camera zoom resets in about 40 places,
@@ -493,6 +494,89 @@ Tests changed: `settings-readability` walks 18 rows (was 16); smoke
 smoke settings target count 25 to 27 and row count 16 to 18. These follow the
 two new rows; no readability, overlap, touch-target or separation threshold
 changed.
+
+## Frame rate and high-DPI (November 27)
+
+**High-DPI rendering.** Phaser 4.1's WebGL renderer draws every canvas pass
+through a `DrawingContext` with `useCanvas: true` (the renderer's
+`baseDrawingContext` and its per-camera clones); its `width`/`height` feed the
+projection matrix, while its GL `viewport` and `scissor` box only map that
+projection onto the drawing buffer. `src/game/render-resolution.ts` raises the
+canvas backing store and scales only those two (and canvas snapshot areas), so
+game space is untouched: `scale.gameSize`, `pointer.x/y` (Phaser maps pointers
+through the CSS box), cameras, object positions and `getBounds` keep their
+1280x720 values. Framebuffer contexts (filters, render textures) keep game
+size, so shader-graded layers stay at 1x. The ratio is device pixels per game
+pixel of the displayed canvas, in quarter steps, between 1 and 2; Lean and the
+trimmed Auto tier stay at 1. The 2x game-size-with-camera-zoom option was not
+taken: it changes `pointer.x/y`, `scale.gameSize` and camera zoom in about 40
+places. One trap found on the way: the renderer binds the base context's
+`resize` to its RESIZE event at boot, so the patch re-routes that listener;
+without it the frame drew into the lower-left quarter once any filter ran.
+`tests/high-dpi-rendering.spec.ts` (deviceScaleFactor 2) checks the 2560x1440
+backing store and drawing buffer, that every quadrant is drawn (with and without
+`?fx=full` shader passes), a full-size snapshot, Lean and DPR 1 at 1x, that a
+pointer over a route node reads the node's game coordinates and opens its
+dossier and a click selects the intended hand card, and that every visible text
+and interactive object's bounds on the title, route and combat are identical at
+DPR 1 and DPR 2.
+
+**Auto quality step.** Graphics Quality stays Auto (default) / Full / Lean.
+Under Auto, `src/game/frame-governor.ts` reads the loop's raw frame delta; a
+mean over 25 ms across two seconds steps once to a trimmed tier (1x canvas; no
+fog banks, splash rings, motes, horizon glow, steam or shader passes; rain at
+half density, lamps and birds kept; particle scale 0.75), and if still slow to
+Lean. It never steps back up in a session. Frames over 250 ms, three seconds
+after boot or any scene change, hidden tabs, explicit Full or Lean and
+automated browsers (`navigator.webdriver`, unless `?autoQuality=on`) are
+ignored, so every test sees Full unless it drives
+`__birdSquadFrameGovernor.feed`. Text state reports `graphics.tier`,
+`autoStep` and `reason: 'frame-time'`.
+
+**Draw calls.** Shapes (Rectangle, rounded panels, Graphics, strokes) used a
+second shader program, and panels alternate with labels, so almost every draw
+switched program. `src/game/shape-batching.ts` writes shape triangles into the
+image batch as degenerate quads over the white texture with the FILL tint
+(frozen-frame comparisons: identical on combat and pause, within frame-to-frame
+noise on title and route). It is on for hardware GL only: SwiftShader shades on the CPU and runs a
+batch's whole 16-sampler lookup per pixel, which costs more than the calls it
+saves. It also fixes a Phaser 4.1 shader fault: the sampler was chosen with an
+exact float comparison on an interpolated varying, and SwiftShader dropped
+patches of text in long batches; the lookup now compares against half-way
+points. `?shapeBatch=on|off` overrides.
+
+**Cheaper at Full, no visible change.** Weather, ambient and life layers stop
+drawing (main-camera filter only; `visible` and the layers are unchanged) and
+their emitters pause after a near-opaque (0.9 or more) full-screen scrim has
+covered them for 400 ms; rain, splash and mote emitters are capped at their
+steady state; the targeting arc clears once when idle (Graphics clears per
+idle combat frame 2 to 1).
+
+**Measured** with the same probe and method as above (Playwright Chromium,
+SwiftShader, 1280x720, 120 frames after 10 warm-up), baseline `origin/main`
+built separately and runs interleaved. The machine was heavily shared, so
+absolute times moved by 20 ms or more between runs (one baseline run read
+295 ms); compare within a row.
+
+| Build | Route mean | Combat mean | Draws / program switches (route, combat) |
+| --- | --- | --- | --- |
+| `origin/main` (3 runs) | 78–84 ms | 79–96 ms | 85 / 83, 89 / 87 |
+| This change, Full (3 runs) | 70–91 ms | 54–90 ms | 85 / 83, 89 / 87 |
+| Same runs, Auto trimmed | — | 49–79 ms | 89 / 87 |
+| Same runs, Lean | — | 56–69 ms | 88 / 86 |
+| Shape batching forced on in SwiftShader (2 runs) | 165–185 ms | 145–172 ms | 8 / 5, 16.5 / 13.5 |
+
+At Full the software-GL frame is unchanged within noise (the dressing it pays
+for is what Full means); the gains there are the trimmed and Lean tiers the
+governor now reaches on its own, and on a real GPU the batching (85 to 8 and
+90 to 17 draws per idle frame). Not measured: a real GPU, a real DPR 2 device.
+
+Tests changed: `platform-performance` now also reports draw calls and program
+switches, asserts the governor never steps in an automated browser, and walks
+Auto to trimmed and Lean through the test hook. New: `high-dpi-rendering`,
+`spectacle-occlusion`. No readability, overlap, touch-target or separation
+assertion changed. Boot code 452.4 KB (cap 456); the new `platform-rendering`
+chunk is 5.6 KB (budget 7).
 
 ## Presentation polish — November 20, 2026
 
