@@ -102,7 +102,7 @@ test('shared HUD stays deferred and route/battle remain usable with smooth textu
   await boot(page);
   expect(await page.evaluate(() => performance.getEntriesByType('resource').some(e => /\/(run-hud|route-transition-fx)-/.test(e.name)))).toBe(false);
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+  await dismissArrivalCard(page);
   await page.keyboard.press('Enter'); await settleCanvas(page); await page.keyboard.press('Enter');
   await page.waitForFunction(() => { const s = JSON.parse((window as any).render_game_to_text()); return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active; });
   expect(await page.evaluate(() => {

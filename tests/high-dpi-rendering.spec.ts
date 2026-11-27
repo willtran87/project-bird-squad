@@ -206,7 +206,12 @@ function sameGeometry(a: string[], b: string[]) {
   return a.every((entry, i) => {
     const [nameA, numbersA] = [entry.slice(0, entry.lastIndexOf(':')), entry.slice(entry.lastIndexOf(':') + 1).split(',').map(Number)];
     const [nameB, numbersB] = [b[i].slice(0, b[i].lastIndexOf(':')), b[i].slice(b[i].lastIndexOf(':') + 1).split(',').map(Number)];
-    return nameA === nameB && numbersA.every((value, k) => Math.abs(value - numbersB[k]) <= 1);
+    if (nameA !== nameB) return false;
+    // Text boxes can grow by a pixel or two at DPR 2 (line-height rounding);
+    // the centre must stay within a game pixel and the size within two.
+    const [xA, yA, wA, hA] = numbersA, [xB, yB, wB, hB] = numbersB;
+    return Math.abs(xA + wA / 2 - (xB + wB / 2)) <= 1 && Math.abs(yA + hA / 2 - (yB + hB / 2)) <= 1
+      && Math.abs(wA - wB) <= 2 && Math.abs(hA - hB) <= 2;
   });
 }
 
