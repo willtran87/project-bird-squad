@@ -19,7 +19,7 @@ export default defineConfig({
   testIgnore: undefined,
   testMatch: undefined,
   projects: [
-    { ...chromium, name: 'gate-sequence', testMatch: ['**/smoke.spec.ts', '**/asset-loading-recovery.spec.ts', '**/wheel-input-ownership.spec.ts'], grep: new RegExp(sequencing) },
+    { ...chromium, name: 'gate-sequence', testMatch: ['**/smoke-*.spec.ts', '**/asset-loading-recovery.spec.ts', '**/wheel-input-ownership.spec.ts'], grep: new RegExp(sequencing) },
     { ...chromium, name: 'gate-features', testMatch: featureSpecs },
   ],
 });
