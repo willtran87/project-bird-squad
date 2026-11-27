@@ -17,7 +17,8 @@ async function openPage(browser: Browser, deviceScaleFactor: number, storage: Re
   await page.addInitScript(values => {
     for (const [key, value] of Object.entries(values)) localStorage.setItem(key, value as string);
   }, storage);
-  await page.goto(`./?flight=high-dpi${query}`);
+  // Automated browsers stay at 1x unless they opt in.
+  await page.goto(`./?flight=high-dpi&highDpi=on${query}`);
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
   // The renderer patches load beside boot.
   await page.waitForFunction(() => (window as any).__birdSquadRenderResolution && (window as any).__birdSquadFrameGovernor);

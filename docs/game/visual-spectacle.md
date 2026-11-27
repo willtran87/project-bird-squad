@@ -73,7 +73,7 @@ used software rendering with `?fx=full` forcing the shader passes on.
 | 35 | Reward reveal | Done | Combat and route card rewards are dealt face down and turn over in order with a rarity glint; any input skips. Draw-time only; see Presentation polish |
 | 36 | Victory and defeat moments | Done | Gold light sweep and falling feathers over the reward screen; dark vignette and grey feathers over the defeat report. The outcome state is immediate; the beat is layered and holds no input |
 | 37 | Lighting across a run | Done | Dusk, night, night, dawn: route and battle paintings are graded continuously by district and nodes flown |
-| 38 | Device-pixel-ratio rendering | Done | November 27: the WebGL backing store follows the display up to 2x with game space unchanged; see Frame rate and high-DPI |
+| 38 | Device-pixel-ratio rendering | Done | November 27: the WebGL backing store follows the display up to 2x with game space unchanged; see Frame rate and high-DPI. Automated browsers stay at 1x (software GL fill cost) unless `?highDpi=on` |
 | 39 | Retained-mode battle rendering | Partial | Enemy bodies, the flock body and hand cards are retained actors with a logical slot and a visual pose. HUD, vitals, intent badges, shadows, reticles and overlays are still immediate-mode. See the runtime architecture doc |
 | 40 | More particle systems | Done | Contact dressing in `spectacle/impact.ts` |
 | 41 | Respect quality and motion tiers | Done | `tests/spectacle-stage.spec.ts` |

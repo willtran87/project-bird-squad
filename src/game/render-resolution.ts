@@ -116,9 +116,14 @@ export function installRenderResolution(game: Phaser.Game) {
     return postRender.call(this);
   };
 
+  // Automated browsers render with software GL, where a larger backing store
+  // is pure fill cost (4x the pixels in a 2560-wide window). They stay at 1x
+  // unless a test opts in with ?highDpi=on, like the frame governor.
+  const requested = new URLSearchParams(window.location.search).get('highDpi');
+  const automationCap = requested === 'on' ? Infinity : requested === 'off' || navigator.webdriver ? 1 : Infinity;
   const apply = () => {
     const quality = graphicsQualityState();
-    const cap = quality.renderRatioCap;
+    const cap = Math.min(quality.renderRatioCap, automationCap);
     const shown = game.scale.displaySize.width || game.canvas.getBoundingClientRect().width;
     const next = renderRatioFor(window.devicePixelRatio || 1, shown, game.scale.baseSize.width, cap);
     const width = Math.round(game.scale.baseSize.width * next), height = Math.round(game.scale.baseSize.height * next);
