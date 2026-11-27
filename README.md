@@ -89,11 +89,17 @@ Each run builds first. Set `BIRD_SQUAD_REUSE_BUILD=1` to serve the existing
 `BIRD_SQUAD_WORKERS=<n>` to change the default of 3 workers. Files are split
 across workers, so tests must not depend on each other's state.
 
-In CI, pull requests run the gate (in 4 shards), the cross-browser checks
-(Chromium in 2 shards, Firefox in 1, WebKit in 3) and the Pages build check:
-about 20 minutes. Add the `full-ci` label to a pull request to run the full
-regression, campaign and journey suites as well. Pushes to `main` always run
-the full suite, and GitHub Pages deploys only when all of it passes.
+In CI the game is built once per run and every test job serves that build,
+with two workers per job:
+
+| When | What runs |
+| --- | --- |
+| Pull request | The gate (4 shards), including the release smoke set in Chromium, and the Pages build check: about 10-12 min |
+| Push to `main` | The full Chromium regression (8 shards), campaign journeys (3), and the release smoke set in Firefox and WebKit; GitHub Pages deploys only when all of it passes |
+| Nightly, manual runs, PRs labelled `full-ci` | Everything above plus the long live-control reference flights |
+
+The release smoke set lives in `tools/browser-smoke-set.mjs`;
+`npm run test:cross-browser` runs it locally in every browser.
 
 ## Boundary Rules
 

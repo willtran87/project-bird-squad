@@ -1,9 +1,12 @@
 name: Deploy GitHub Pages
 
-# Pull requests run the fast gate, sharded cross-browser checks and the Pages
-# build check (about 20 min). Pushes to main, manual runs and PRs labelled
-# `full-ci` run the full regression, campaigns and journeys; only main deploys,
-# and only when everything passed.
+# Pull requests: the gate (Chromium, including the release smoke set) and the
+#   Pages build check, about 10-12 min.
+# Pushes to main: the full Chromium regression, the campaign journeys, and the
+#   Firefox and WebKit release smoke; Pages deploys only when all of it passes.
+# Nightly, manual runs and PRs labelled `full-ci`: everything above plus the
+#   long live-control reference flights.
+# The game is built once per run and every test job serves that build.
 on:
   pull_request:
     branches:
@@ -12,19 +15,48 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages-${{ github.ref }}-${{ github.event_name == 'schedule' && 'nightly' || 'run' }}
   # A newer push to the same PR replaces the older run; main runs never cancel.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  prepare:
+    name: Build the app once
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
+      options: --init --ipc=host
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Share the build with the test jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build-${{ github.run_id }}
+          path: .artifacts/build
+          retention-days: 1
+
   gate:
     name: Gate (${{ matrix.shard }}/4)
+    needs: prepare
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     container:
@@ -38,27 +70,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify packaged browser
-        uses: ./.github/actions/verify-browser
+      - name: Prepare
+        uses: ./.github/actions/test-setup
         with:
           browser: chromium
-
       - name: Gate
         run: npx playwright test --config=playwright.gate.config.ts --workers=2 --timeout=90000 --shard=${{ matrix.shard }}/4 --reporter=list,json
         env:
+          BIRD_SQUAD_REUSE_BUILD: '1'
+          BIRD_SQUAD_GATE_BROWSER_SMOKE: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/gate-results.json
-
-      - name: Retain gate evidence
+      - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -69,41 +91,31 @@ jobs:
           retention-days: 14
 
   regression:
-    name: Production regression (${{ matrix.shard }}/16)
+    name: Production regression (${{ matrix.shard }}/8)
+    needs: prepare
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
       options: --init --ipc=host
-    timeout-minutes: 90
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify packaged browser
-        uses: ./.github/actions/verify-browser
+      - name: Prepare
+        uses: ./.github/actions/test-setup
         with:
           browser: chromium
-
       - name: Production regression
-        run: npx playwright test --fully-parallel --workers=1 --timeout=90000 --grep-invert="reference flight|seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/16 --reporter=list,json
+        run: npx playwright test --fully-parallel --workers=2 --timeout=90000 --grep-invert="reference flight|seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/8 --reporter=list,json
         env:
+          BIRD_SQUAD_REUSE_BUILD: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/release-results.json
-
-      - name: Retain regression evidence
+      - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -114,41 +126,31 @@ jobs:
           retention-days: 14
 
   campaigns:
-    name: Campaign progression (${{ matrix.shard }}/6)
+    name: Campaign progression (${{ matrix.shard }}/3)
+    needs: prepare
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
       options: --init --ipc=host
-    timeout-minutes: 90
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify packaged browser
-        uses: ./.github/actions/verify-browser
+      - name: Prepare
+        uses: ./.github/actions/test-setup
         with:
           browser: chromium
-
       - name: Campaign progression
-        run: npx playwright test --fully-parallel --workers=1 --grep="seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/6 --reporter=list,json
+        run: npx playwright test --fully-parallel --workers=2 --grep="seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/3 --reporter=list,json
         env:
+          BIRD_SQUAD_REUSE_BUILD: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/campaign-results.json
-
-      - name: Retain campaign evidence
+      - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -159,8 +161,11 @@ jobs:
           retention-days: 14
 
   journeys:
-    name: Live-control journey (${{ matrix.shard }}/4)
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
+    name: Live-control journey (${{ matrix.shard }}/2)
+    needs: prepare
+    # The long reference flights (up to ~17 min each) run nightly, on manual
+    # runs and on PRs labelled full-ci, not on every push to main.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
@@ -169,31 +174,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify packaged browser
-        uses: ./.github/actions/verify-browser
+      - name: Prepare
+        uses: ./.github/actions/test-setup
         with:
           browser: chromium
-
       - name: Live-control journey
-        run: npx playwright test --fully-parallel --workers=1 --grep="reference flight" --shard=${{ matrix.shard }}/4 --reporter=list,json
+        run: npx playwright test --fully-parallel --workers=2 --grep="reference flight" --shard=${{ matrix.shard }}/2 --reporter=list,json
         env:
+          BIRD_SQUAD_REUSE_BUILD: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/reference-results.json
-
-      - name: Retain journey evidence
+      - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -205,46 +199,34 @@ jobs:
 
   browsers:
     name: Browser qualification (${{ matrix.browser }} ${{ matrix.shard }}/${{ matrix.shards }})
+    needs: prepare
+    # Chromium is covered by the gate on PRs and by the regression on main.
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
       options: --init --ipc=host
-    # Sharded by cost, keeping the job count low so runs don't queue: WebKit's
-    # software rendering took about 45 min unsharded, Firefox about 20.
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { browser: chromium, shard: 1, shards: 2 }
-          - { browser: chromium, shard: 2, shards: 2 }
           - { browser: firefox, shard: 1, shards: 1 }
-          - { browser: webkit, shard: 1, shards: 3 }
-          - { browser: webkit, shard: 2, shards: 3 }
-          - { browser: webkit, shard: 3, shards: 3 }
+          - { browser: webkit, shard: 1, shards: 2 }
+          - { browser: webkit, shard: 2, shards: 2 }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Verify packaged browser
-        uses: ./.github/actions/verify-browser
+      - name: Prepare
+        uses: ./.github/actions/test-setup
         with:
           browser: ${{ matrix.browser }}
-      - name: Verify release smoke and district upgrades
-        run: >-
-          node tools/run-cross-browser-smoke.mjs
-          tests/coherent-city.spec.ts tests/tactical-payoffs.spec.ts tests/large-hand-polish.spec.ts tests/clear-choices.spec.ts tests/decisions-rhythm.spec.ts tests/opening-district.spec.ts tests/canal-markets.spec.ts tests/signal-spires.spec.ts tests/high-roost.spec.ts tests/flock-identity.spec.ts tests/flock-motion.spec.ts tests/distinct-builds.spec.ts tests/signature-fights.spec.ts tests/meaningful-victories.spec.ts tests/identity-continuity.spec.ts tests/opening-quality.spec.ts tests/opening-mastery.spec.ts tests/audio-cue-budget.spec.ts tests/smoke-
-          --project=${{ matrix.browser }} --workers=1 --timeout=90000 --shard=${{ matrix.shard }}/${{ matrix.shards }} --reporter=list,json
-          --grep="Coherent City |Tactical payoffs |large hands remain readable|Clear choices |Decisions rhythm |Opening mastery |Opening quality |Identity continuity |Meaningful Victories |Signature Fights |Distinct Builds |Flock Motion |Flock Identity |High Roost |Spires |Canal |strategy choices|plan drafting|real combinations|saved shelter|Crow purpose|strategy presentation|title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow|reward advice preserves costs|reward cost cautions remain visible"
+      - name: Browser qualification
+        run: node tools/run-cross-browser-smoke.mjs --project=${{ matrix.browser }} --workers=2 --timeout=90000 --shard=${{ matrix.shard }}/${{ matrix.shards }} --reporter=list,json
         env:
+          BIRD_SQUAD_REUSE_BUILD: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/browser-results.json
-      - name: Retain browser evidence
+      - name: Retain evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -255,17 +237,17 @@ jobs:
           retention-days: 14
 
   build:
-    needs: [gate, regression, campaigns, journeys, browsers]
+    needs: [prepare, gate, regression, campaigns, journeys, browsers]
     if: >-
       always() && !cancelled()
+      && needs.prepare.result == 'success'
       && !contains(needs.*.result, 'failure')
-      && needs.browsers.result == 'success'
-      && (github.event_name == 'pull_request' || needs.regression.result == 'success')
+      && (github.event_name == 'pull_request' || (needs.regression.result == 'success' && needs.campaigns.result == 'success' && needs.browsers.result == 'success'))
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble@sha256:9bd26ad900bb5e0f4dee75839e957a89ae89c2b7ab1e76050e559790e946b948
       options: --init --ipc=host
-    timeout-minutes: 180
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -323,13 +305,13 @@ jobs:
           retention-days: 14
 
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .artifacts/build
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       pages: write
       id-token: write

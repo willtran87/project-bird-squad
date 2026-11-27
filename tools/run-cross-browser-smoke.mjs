@@ -1,19 +1,14 @@
 #!/usr/bin/env node
+// Runs the cross-browser release smoke set (tools/browser-smoke-set.mjs) under
+// the browser matrix. Extra arguments (--project, --shard, --workers, ...) are
+// passed through to Playwright.
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { browserSmokeFiles, browserSmokeGrep } from './browser-smoke-set.mjs';
 
 const cli = path.resolve('node_modules', '@playwright', 'test', 'cli.js');
-const requested = process.argv.slice(2);
-const tests = requested.length > 0
-  ? requested
-  : [
-      'tests/smoke-',
-      '--grep',
-      'title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow',
-      '--workers=1',
-      '--reporter=line',
-    ];
-const result = spawnSync(process.execPath, [cli, 'test', ...tests], {
+const files = [...browserSmokeFiles.map((name) => `tests/${name}.spec.ts`), 'tests/smoke-'];
+const result = spawnSync(process.execPath, [cli, 'test', ...files, '--grep', browserSmokeGrep, ...process.argv.slice(2)], {
   cwd: process.cwd(),
   env: {
     ...process.env,

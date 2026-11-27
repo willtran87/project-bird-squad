@@ -1,0 +1,31 @@
+name: Prepare a test job
+description: Install dependencies, verify the packaged browser and fetch the app build made once per run.
+inputs:
+  browser:
+    description: Playwright browser to verify
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Verify packaged browser
+      uses: ./.github/actions/verify-browser
+      with:
+        browser: ${{ inputs.browser }}
+
+    # Every test job serves this one build (BIRD_SQUAD_REUSE_BUILD=1) instead
+    # of rebuilding the game itself.
+    - name: Fetch the app build
+      uses: actions/download-artifact@v4
+      with:
+        name: app-build-${{ github.run_id }}
+        path: .artifacts/build
