@@ -98,6 +98,7 @@ test('complete card pool preserves measured rules and bounded frames in every st
       await page.screenshot({ path: info.outputPath(`pool-${width}-${upgraded ? 'preened' : 'base'}-${molt ? 'molt' : 'normal'}.png`) });
     }
   }
-  expect(checked).toBe(manifest.cards.filter(c => c.status === 'approved').length * 12);
+  // Every approved card in each of the four stances (base/Preened x normal/Molt).
+  expect(checked).toBe(manifest.cards.filter(c => c.status === 'approved').length * 4);
   expect(errors).toEqual([]);
 });
