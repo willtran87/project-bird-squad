@@ -27014,7 +27014,9 @@ test('codex: card search filters real metadata without revealing undiscovered ca
 
   await page.keyboard.press('/');
   await expect(searchInput).toBeVisible();
-  await page.setViewportSize({ width: 844, height: 390 });
+  // 844x390 now plays through the phone lens; a window below 560x320 is
+  // still gated, and the gate must close the native search field.
+  await page.setViewportSize({ width: 540, height: 300 });
   await expect(searchInput).toBeHidden();
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).cardSearch.editing).toBe(false);
   await page.setViewportSize({ width: 1000, height: 560 });

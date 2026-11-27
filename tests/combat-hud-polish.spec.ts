@@ -19,6 +19,13 @@ test('combat HUD contains forecast and flow; pile counts stay legible and intera
   });
   for (const viewport of [{ width:2560,height:1600 }, { width:1440,height:900 }, { width:1000,height:560 }]) {
     await page.setViewportSize(viewport);
+    // The run HUD is a lazy module and the scene redraws after a resize; wait
+    // until every part read below is on stage (slow CI runners lag here).
+    await page.waitForFunction(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      return ['run-hud-surface', 'combat-incoming-forecast-label', 'combat-flow-rail', 'combat-pile-count', 'combat-pile-hit']
+        .every(name => b.root?.getByName(name)) && !b.battleRenderQueued;
+    });
     const result = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
       const hud = b.root.getByName('run-hud-surface').getBounds();
