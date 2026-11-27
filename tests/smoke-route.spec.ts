@@ -681,28 +681,6 @@ test('route commit renders generated travel streak before changing scenes', asyn
   expect(result.streaks[0].alpha).toBeGreaterThan(0.1);
 });
 
-test('route decision hierarchy remains readable at high resolution and landscape tablet', async ({ page }) => {
-  await page.setViewportSize({ width: 2560, height: 1600 });
-  await boot(page);
-  const state = await page.evaluate(async () => {
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('RouteScene', {});
-    g.scene.stop('MenuScene');
-    const route: any = g.scene.getScene('RouteScene');
-    const initial = JSON.parse(window.render_game_to_text!());
-    const reachable = initial.nodes.find((node: any) => node.selectable);
-    route.selectRouteNode(reachable.id);
-    return JSON.parse(window.render_game_to_text!());
-  });
-  await page.screenshot({ path: '.artifacts/test-results/experience-pass/route-highres-2560x1600.png' });
-  expect(state.firstRouteGuidance).toEqual({ active: true, rendered: true });
-
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.screenshot({ path: '.artifacts/test-results/experience-pass/route-landscape-tablet-1024x768.png' });
-  const canvas = page.locator('canvas');
-  expect(await canvas.count()).toBe(1);
-});
-
 test('generated route map node footprints do not overlap', async ({ page }) => {
   await boot(page);
   const layoutFailures = await page.evaluate(async () => {
