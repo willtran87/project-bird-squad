@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { prefersReducedMotion } from '../../main';
-import { prefersLeanEffects } from '../graphics-quality';
+import { fullGraphicsTier, prefersLeanEffects } from '../graphics-quality';
 import { flashEffectsState } from '../visual-accessibility';
 
 /**
@@ -74,7 +74,7 @@ let softwareRenderer: boolean | undefined;
 /** Filters are full-screen shader passes. Skip them where they would be drawn
  * on the CPU (software GL), unless explicitly requested with `?fx=full`. */
 export function spectacleFiltersEnabled(scene: Phaser.Scene) {
-  if (scene.game.renderer.type !== Phaser.WEBGL || prefersLeanEffects()) return false;
+  if (scene.game.renderer.type !== Phaser.WEBGL || !fullGraphicsTier()) return false;
   const requested = new URLSearchParams(location.search).get('fx');
   if (requested === 'full') return true;
   if (requested === 'off') return false;
@@ -177,9 +177,11 @@ function addLights(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, lig
   });
 }
 
-function addWeather(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, plan: StagePlan) {
+/** Rain is the district's signature and stays in the trimmed tier, at half
+ * density; fog, splash rings and motes are the large additive fills it drops. */
+function addWeather(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, plan: StagePlan, trimmed = false) {
   const { width, height } = scene.scale.gameSize;
-  if (plan.fog) {
+  if (plan.fog && !trimmed) {
     [0.34, 0.62].forEach((band, index) => {
       const fog = scene.add.image(width * (0.3 + index * 0.4), height * band, GLOW).setTint(plan.fog)
         .setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(width * 1.5, height * 0.5).setAlpha(0.1);
@@ -198,26 +200,31 @@ function addWeather(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, pl
       speedY: { min: 1080, max: 1320 }, speedX: { min: -1320 * lean, max: -1080 * lean },
       scaleX: 0.6, scaleY: { min: 0.6, max: 1.25 }, rotate: plan.wind,
       alpha: { min: 0.1, max: 0.3 }, tint: 0xbcd4ff,
-      frequency: 18, quantity: Math.max(1, Math.round(3 * plan.rain)),
+      frequency: trimmed ? 36 : 18, quantity: Math.max(1, Math.round(3 * plan.rain)),
+      // The steady state is about lifespan / frequency x quantity; the cap only
+      // stops a long frame from banking a burst.
+      maxAliveParticles: 140,
       blendMode: Phaser.BlendModes.ADD,
     }));
     // Splash rings where the rain lands on the open floor.
-    layer.add(scene.add.particles(0, 0, RING, {
+    if (!trimmed) layer.add(scene.add.particles(0, 0, RING, {
       x: { min: (plan.left ?? 0) + 150, max: width - 150 }, y: { min: height * (plan.left ? 0.6 : 0.3), max: height * (plan.left ? 0.92 : 0.74) },
       lifespan: 560,
       scaleX: { start: 0.06, end: 0.5 }, scaleY: { start: 0.02, end: 0.17 },
       alpha: { start: 0.34, end: 0 }, tint: 0xa9c8ff,
       frequency: Math.round(110 / plan.rain), quantity: 1,
+      maxAliveParticles: 16,
       blendMode: Phaser.BlendModes.ADD,
     }));
   }
-  if (plan.motes > 0) {
+  if (plan.motes > 0 && !trimmed) {
     layer.add(scene.add.particles(0, 0, GLOW, {
       x: { min: 40, max: width - 40 }, y: { min: height * 0.25, max: height * 0.7 },
       lifespan: { min: 2600, max: 4200 },
       speedY: { min: -26, max: -10 }, speedX: { min: -14, max: 14 },
       scale: { start: 0.1, end: 0.02 }, alpha: { start: 0.75, end: 0 }, tint: WARM,
       frequency: Math.round(260 / plan.motes), quantity: 1,
+      maxAliveParticles: 24,
       blendMode: Phaser.BlendModes.ADD,
     }));
   }
@@ -272,8 +279,8 @@ function dressBattle(scene: Phaser.Scene) {
     const backdrop = (scene as unknown as { backdropLayer?: Phaser.GameObjects.Container }).backdropLayer;
     const painting = backdrop?.active ? backdrop.list[0] as Phaser.GameObjects.Image | undefined : undefined;
     const key = painting?.texture?.key ?? '';
-    const lean = prefersLeanEffects(), reduced = prefersReducedMotion();
-    const next = key && !lean ? `${key}|${reduced}` : '';
+    const lean = prefersLeanEffects(), reduced = prefersReducedMotion(), trimmed = !lean && !fullGraphicsTier();
+    const next = key && !lean ? `${key}|${reduced}|${trimmed}` : '';
     if (next === signature && (!next || layer?.active)) return;
     signature = next;
     clear();
@@ -282,7 +289,7 @@ function dressBattle(scene: Phaser.Scene) {
     const plan = STAGES[key] ?? FALLBACK_STAGE;
     layer = scene.add.container(0, 0).setDepth(AMBIENT_DEPTH).setName('spectacle-ambient');
     addLights(scene, layer, plan.lights, !reduced);
-    if (!reduced) addWeather(scene, layer, plan);
+    if (!reduced) addWeather(scene, layer, plan, trimmed);
     gradeBackdrop(scene, backdrop);
     // Dusk, night or dawn, by how far the run has come.
     if (painting) life?.gradeBattlePainting(scene, painting);
@@ -311,14 +318,18 @@ function dressTargeting(scene: Phaser.Scene) {
   const arc = scene.add.graphics().setDepth(31).setName('spectacle-target-arc');
   const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(), new Phaser.Math.Vector2(), new Phaser.Math.Vector2());
   const point = new Phaser.Math.Vector2();
+  // Nothing to draw most frames: clear once, not every frame.
+  let drawn = true;
+  const idle = () => { if (drawn) { arc.clear(); drawn = false; } };
   const draw = (time: number) => {
-    arc.clear();
-    if (prefersLeanEffects() || battle.mode !== 'battle' || !battle.handLayer?.visible) return;
+    if (prefersLeanEffects() || battle.mode !== 'battle' || !battle.handLayer?.visible) return idle();
     const card = battle.hand?.find(candidate => candidate.instanceId === battle.selectedInstanceId);
     const rect = card && battle.handCardRects?.get(card.instanceId);
     const enemy = battle.enemies?.find(candidate => candidate.id === battle.selectedEnemyId && candidate.hp > 0);
-    if (!card || !rect?.active || !enemy || !battle.activeCardContract || !battle.enemyView) return;
-    if (!battle.activeCardContract(card).effects.some(effect => /damage|winded|expos|pin|strip/i.test(effect))) return;
+    if (!card || !rect?.active || !enemy || !battle.activeCardContract || !battle.enemyView) return idle();
+    if (!battle.activeCardContract(card).effects.some(effect => /damage|winded|expos|pin|strip/i.test(effect))) return idle();
+    arc.clear();
+    drawn = true;
     const to = battle.enemyView(enemy);
     const fromY = rect.y - rect.height / 2 - 4;
     curve.p0.set(rect.x, fromY);
@@ -437,8 +448,8 @@ function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjec
   };
   const sync = () => {
     if (!painting?.active) painting = findImage(scene, match);
-    const lean = prefersLeanEffects(), reduced = prefersReducedMotion();
-    const next = painting && !lean ? `${painting.texture.key}|${reduced}` : '';
+    const lean = prefersLeanEffects(), reduced = prefersReducedMotion(), trimmed = !lean && !fullGraphicsTier();
+    const next = painting && !lean ? `${painting.texture.key}|${reduced}|${trimmed}` : '';
     if (next === signature && (!next || (layer?.active && (reduced || weather?.active)))) return;
     signature = next;
     clear();
@@ -446,7 +457,7 @@ function dressBackdropScene(scene: Phaser.Scene, match: (image: Phaser.GameObjec
     ensureSpectacleTextures(scene);
     const plan = typeof planFor === 'function' ? planFor(painting.texture.key) : planFor;
     // Weather is its own, nearer layer so it can drift against the painting.
-    if (!reduced) addWeather(scene, weather = layerAbove(scene, painting, 'spectacle-weather'), plan);
+    if (!reduced) addWeather(scene, weather = layerAbove(scene, painting, 'spectacle-weather'), plan, trimmed);
     layer = layerAbove(scene, painting);
     addLights(scene, layer, plan.lights, !reduced);
     bloom(scene, painting, bloomAmount);
@@ -579,6 +590,95 @@ function keepAuthoredLineMetrics() {
   };
 }
 
+const DECOR = new Set(['spectacle-ambient', 'spectacle-weather', 'spectacle-life']);
+/** Overlay scrims fade in over about 220 ms at draw time; wait them out. */
+const OCCLUSION_HOLD_MS = 400;
+const OCCLUDING_ALPHA = 0.9;
+
+type Node = Phaser.GameObjects.GameObject & { parentContainer?: Phaser.GameObjects.Container | null };
+
+/** Draw order as a path of indices from the scene's (depth-sorted) list. */
+function orderPath(scene: Phaser.Scene, object: Node) {
+  const path: number[] = [];
+  let at: Node = object;
+  while (at.parentContainer) { path.unshift(at.parentContainer.getIndex(at)); at = at.parentContainer; }
+  path.unshift(scene.children.getIndex(at));
+  return path;
+}
+
+const drawnAfter = (a: number[], b: number[]) => {
+  for (let i = 0; i < Math.min(a.length, b.length); i += 1) if (a[i] !== b[i]) return a[i] > b[i];
+  return a.length > b.length;
+};
+
+/** A near-opaque full-screen scrim, drawn at its settled alpha. */
+function isOccluder(object: Phaser.GameObjects.GameObject, width: number, height: number) {
+  const shape = object as Phaser.GameObjects.Rectangle;
+  if (object.type !== 'Rectangle' || !shape.visible || !shape.isFilled) return false;
+  if (shape.displayWidth < width || shape.displayHeight < height) return false;
+  let alpha = shape.fillAlpha * shape.alpha;
+  for (let parent = shape.parentContainer; parent; parent = parent.parentContainer) {
+    if (!parent.visible) return false;
+    alpha *= parent.alpha;
+  }
+  if (alpha < OCCLUDING_ALPHA) return false;
+  const bounds = shape.getBounds();
+  return bounds.left <= 0 && bounds.top <= 0 && bounds.right >= width && bounds.bottom >= height;
+}
+
+/** Stop drawing the decorative layers while a near-opaque full-screen overlay
+ * (Codex dialogs, Folio editors, the boss dossier: 0.92-1.0 scrims) hides
+ * them: at 6% they cannot be seen, but their fill is still paid for. Their
+ * particles pause too. Only the main camera's draw is skipped, through
+ * `cameraFilter`; `visible`, positions and the layers themselves are unchanged. */
+function skipOccludedDecor(scene: Phaser.Scene) {
+  let since = 0;
+  let hidden: Phaser.GameObjects.GameObject[] = [];
+  const show = () => {
+    for (const layer of hidden) {
+      layer.cameraFilter = 0;
+      (layer as Phaser.GameObjects.Container).list?.forEach(child => {
+        if (child instanceof Phaser.GameObjects.Particles.ParticleEmitter) child.resume();
+      });
+    }
+    hidden = [];
+  };
+  const sync = () => {
+    const camera = scene.cameras.main;
+    if (!camera) return;
+    const { width, height } = scene.scale.gameSize;
+    const decor: Node[] = [];
+    let occluder: Node | undefined;
+    const visit = (list: Phaser.GameObjects.GameObject[], depth: number) => {
+      for (const child of list) {
+        if (DECOR.has(child.name)) { decor.push(child); continue; }
+        if (isOccluder(child, width, height)) occluder = child;
+        if (depth < 2 && child instanceof Phaser.GameObjects.Container && child.visible) visit(child.list, depth + 1);
+      }
+    };
+    visit(scene.children.list, 0);
+    const scrim = occluder ? orderPath(scene, occluder) : undefined;
+    const covered = scrim ? decor.filter(layer => drawnAfter(scrim, orderPath(scene, layer))) : [];
+    if (!covered.length) { since = 0; show(); return; }
+    const now = performance.now();
+    if (!since) since = now;
+    if (now - since < OCCLUSION_HOLD_MS) return;
+    for (const layer of covered) {
+      if (hidden.includes(layer)) continue;
+      hidden.push(layer);
+      layer.cameraFilter = camera.id;
+      (layer as Phaser.GameObjects.Container).list?.forEach(child => {
+        if (child instanceof Phaser.GameObjects.Particles.ParticleEmitter) child.pause();
+      });
+    }
+  };
+  scene.events.on(Phaser.Scenes.Events.PRE_RENDER, sync);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.PRE_RENDER, sync);
+    show();
+  });
+}
+
 /** Adopt every scene, including ones registered later, and dress it each time
  * it is created. Safe to call once per game. */
 export function installSpectacle(game: Phaser.Game) {
@@ -590,6 +690,7 @@ export function installSpectacle(game: Phaser.Game) {
     adopted.add(scene);
     const dress = (arriving: boolean) => {
       DRESSERS[scene.scene.key]?.(scene);
+      if (DRESSERS[scene.scene.key]) skipOccludedDecor(scene);
       // A wing wipe carries its own light; the sweep covers every other arrival.
       const wiped = life?.dressLife(scene, arriving) ?? false;
       if (arriving && !wiped && scene.scene.key !== 'BootScene') arrivalSweep(scene);
