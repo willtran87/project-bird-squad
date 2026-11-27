@@ -51,6 +51,9 @@ export class CardObjectStage {
   landing?: Point & { scale: number };
   /** Counters for diagnostics and tests. */
   readonly counts = { deals: 0, departures: 0, burns: 0, denials: 0, drags: 0, drops: 0, returns: 0 };
+  /** What the opening deal did, for diagnostics and tests: the cards it dealt,
+   * whether the encounter intro had played first, and each card's start delay. */
+  opening?: { cards: number; afterIntro: boolean; delays: number[] };
   private pendingDeals = new Map<string, { index: number; at: number; from: Point }>();
   /** Cards still in the air: leaving a pile (shown as still in it) or on their way to one. */
   private leaving: Record<Pile, number> = { DRAW: 0, DISCARD: 0 };
@@ -127,21 +130,29 @@ export class CardObjectStage {
     if (!this.sawIntro || host.mode !== 'battle' || !host.handLayer?.visible || !ids.length) return;
     this.opened = true;
     this.deal(ids, undefined, false);
-    for (const id of ids) { const actor = stage.actors.get(`card:${id}`); if (actor) this.arrive(id, actor); }
+    const delays: number[] = [];
+    for (const id of ids) {
+      const actor = stage.actors.get(`card:${id}`);
+      const delay = actor ? this.arrive(id, actor) : undefined;
+      if (delay !== undefined) delays.push(delay);
+    }
+    this.opening = { cards: ids.length, afterIntro: this.sawIntro, delays };
   }
 
-  /** A card's body has just been created in the hand. */
-  arrive(id: string, actor: BattleActor) {
+  /** A card's body has just been created in the hand. Returns the deal's
+   * start delay when a deal motion was played. */
+  arrive(id: string, actor: BattleActor): number | undefined {
     const deal = this.pendingDeals.get(id);
-    if (!deal) return;
+    if (!deal) return undefined;
     this.pendingDeals.delete(id);
-    if (this.still || this.scene.time.now - deal.at > 1500) return;
+    if (this.still || this.scene.time.now - deal.at > 1500) return undefined;
     const dx = deal.from.x - actor.slot.x, dy = deal.from.y - actor.slot.y;
     actor.settle.y = 0;
     battleActors(this.scene).play(actor.id, {
       name: 'deal', channel: 'action', delay: deal.index * DEAL_STAGGER_MS, from: [dx, dy, -0.82, -0.82, -16],
       keys: [[DEAL_MS * 0.5, dx * 0.42, dy * 0.42 - 46, -0.4, -0.4, -6, ACTOR_EASE.quadOut], [DEAL_MS * 0.5, 0, 0, 0, 0, 0, ACTOR_EASE.backOut]],
     });
+    return deal.index * DEAL_STAGGER_MS;
   }
 
   // ---- leaving the hand -----------------------------------------------------
