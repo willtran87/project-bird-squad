@@ -18,6 +18,8 @@ type Profile = {
   renderMs: number;
   textUpdatesPerFrame: number;
   graphicsClearsPerFrame: number;
+  drawCallsPerFrame: number;
+  programSwitchesPerFrame: number;
   topText: [string, number][];
   topGraphics: [string, number][];
 };
@@ -52,6 +54,18 @@ async function profile(page: Page, sceneKey: string, frames = 120): Promise<Prof
       graphicsCounts.set(key, (graphicsCounts.get(key) ?? 0) + 1);
       return clear.apply(this, args);
     };
+    // Draw calls and shader-program switches actually issued to WebGL.
+    const gl = game.renderer.gl as WebGLRenderingContext | undefined;
+    let drawCalls = 0;
+    let programSwitches = 0;
+    const drawElements = gl?.drawElements;
+    const drawArrays = gl?.drawArrays;
+    const useProgram = gl?.useProgram;
+    if (gl && drawElements && drawArrays && useProgram) {
+      gl.drawElements = function (...args: Parameters<WebGLRenderingContext['drawElements']>) { drawCalls += 1; return drawElements.apply(this, args); };
+      gl.drawArrays = function (...args: Parameters<WebGLRenderingContext['drawArrays']>) { drawCalls += 1; return drawArrays.apply(this, args); };
+      gl.useProgram = function (...args: Parameters<WebGLRenderingContext['useProgram']>) { programSwitches += 1; return useProgram.apply(this, args); };
+    }
     const manager = game.scene;
     const update = manager.update;
     const render = manager.render;
@@ -69,7 +83,7 @@ async function profile(page: Page, sceneKey: string, frames = 120): Promise<Prof
     try {
       // Warm-up frames are not counted.
       for (let i = 0; i < 10; i += 1) await new Promise(requestAnimationFrame);
-      textUpdates = 0; graphicsClears = 0; updateMs = 0; renderMs = 0;
+      textUpdates = 0; graphicsClears = 0; updateMs = 0; renderMs = 0; drawCalls = 0; programSwitches = 0;
       textCounts.clear(); graphicsCounts.clear();
       let last = performance.now();
       for (let i = 0; i < frames; i += 1) {
@@ -82,6 +96,11 @@ async function profile(page: Page, sceneKey: string, frames = 120): Promise<Prof
       graphicsProto.clear = clear;
       manager.update = update;
       manager.render = render;
+      if (gl && drawElements && drawArrays && useProgram) {
+        gl.drawElements = drawElements;
+        gl.drawArrays = drawArrays;
+        gl.useProgram = useProgram;
+      }
     }
     const sorted = [...deltas].sort((a, b) => a - b);
     const round = (value: number) => Math.round(value * 10) / 10;
@@ -95,6 +114,8 @@ async function profile(page: Page, sceneKey: string, frames = 120): Promise<Prof
       renderMs: round(renderMs / frames),
       textUpdatesPerFrame: round(textUpdates / frames),
       graphicsClearsPerFrame: round(graphicsClears / frames),
+      drawCallsPerFrame: round(drawCalls / frames),
+      programSwitchesPerFrame: round(programSwitches / frames),
       topText: top(textCounts),
       topGraphics: top(graphicsCounts),
     };
@@ -108,7 +129,7 @@ async function frames(page: Page, count = 3) {
 
 async function openTitle(page: Page) {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('./?flight=platform-performance');
+  await page.goto(`./?flight=platform-performance${process.env.BIRD_SQUAD_PROBE_QUERY ?? ''}`);
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
 }
 
@@ -143,8 +164,47 @@ test('route and combat idle frames do no per-frame text re-measurement and repor
   await page.evaluate(() => (window as any).advanceTime(900));
   await frames(page, 20);
   const combat = await profile(page, 'BattleScene');
+  // Frames here run at 40-60 ms, yet an automated browser never steps down on its own.
+  const untouched = await page.evaluate(() => (window as any).__birdSquadFrameGovernor.state());
+  expect(untouched).toMatchObject({ enabled: false, step: 0, tier: 'full' });
 
-  const report = { viewport: '1280x720', renderer: await page.evaluate(() => (window as any).__birdSquadGame.renderer.type === 2 ? 'WebGL' : 'Canvas'), route, combat };
+  // Auto's cheaper tiers, driven through the governor with synthetic slow frames.
+  const stage = () => page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    const layer = b.children.list.find((child: any) => child.name === 'spectacle-ambient');
+    return {
+      present: Boolean(layer),
+      emitters: layer?.list.filter((child: any) => child.type === 'ParticleEmitter').map((child: any) => child.texture.key) ?? [],
+      images: layer?.list.filter((child: any) => child.type === 'Image').length ?? 0,
+    };
+  });
+  const full = await stage();
+  const step = async () => {
+    const stepped = await page.evaluate(() => (window as any).__birdSquadFrameGovernor.feed(Array(80).fill(40), { skipGrace: true }));
+    await frames(page, 20);
+    return stepped;
+  };
+  expect(await step()).toBe(1);
+  expect(await page.evaluate(() => (window as any).__birdSquadFrameGovernor.state())).toMatchObject({ step: 1, tier: 'trimmed' });
+  const trimmed = await stage();
+  // Rain and lamps stay; fog banks and splash rings go.
+  expect(trimmed.present).toBe(true);
+  expect(trimmed.emitters).toEqual(['spectacle-streak']);
+  expect(full.emitters).toContain('spectacle-ring');
+  expect(trimmed.images).toBeLessThan(full.images);
+  const combatTrimmed = await profile(page, 'BattleScene');
+  expect(await step()).toBe(1);
+  expect(await page.evaluate(() => JSON.parse((window as any).render_game_to_text()).graphics))
+    .toMatchObject({ preference: 'auto', effective: 'lean', lean: true, reason: 'frame-time', tier: 'lean' });
+  expect((await stage()).present).toBe(false);
+  const combatLean = await profile(page, 'BattleScene');
+  // Never past Lean.
+  expect(await step()).toBe(0);
+
+  const report = {
+    viewport: '1280x720', renderer: await page.evaluate(() => (window as any).__birdSquadGame.renderer.type === 2 ? 'WebGL' : 'Canvas'),
+    route, combat, combatTrimmed, combatLean,
+  };
   console.log(`platform-performance ${JSON.stringify(report)}`);
   await info.attach('frame-time.json', { body: JSON.stringify(report, null, 2), contentType: 'application/json' });
 

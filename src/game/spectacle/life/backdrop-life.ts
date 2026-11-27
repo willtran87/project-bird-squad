@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { fullGraphicsTier } from '../../graphics-quality';
 import { currentMap } from '../../shared/run-session';
 import { birdTexture, eachFrame, hash01, motion, renderPose, sceneNow, type Pose } from './kit';
 
@@ -18,6 +19,8 @@ import { birdTexture, eachFrame, hash01, motion, renderPose, sceneNow, type Pose
  * in its own layer and is a function of the scene clock, so the route's
  * destroy-and-redraw rendering resumes it mid-flight. Reduced Motion keeps
  * the grade and the lit windows and drops all movement; Lean removes it all.
+ * The trimmed automatic tier drops the two large additive fills (horizon glow
+ * and steam) and keeps the birds and windows.
  */
 
 const GLOW = 'spectacle-glow';
@@ -176,9 +179,12 @@ export function dressBackdropLife(scene: Phaser.Scene) {
     const made: Life = { layer, birds: [], puffs: [], windows: [] };
     if (!scene.textures.exists(GLOW)) return made;
     const { width, height } = scene.scale.gameSize;
-    made.horizon = scene.add.image(width * 0.5, height * 0.06, GLOW).setBlendMode(Phaser.BlendModes.ADD)
-      .setDisplaySize(width * 1.1, height * 0.55).setAlpha(0).setName('spectacle-horizon');
-    layer.add(made.horizon);
+    const full = fullGraphicsTier();
+    if (full) {
+      made.horizon = scene.add.image(width * 0.5, height * 0.06, GLOW).setBlendMode(Phaser.BlendModes.ADD)
+        .setDisplaySize(width * 1.1, height * 0.55).setAlpha(0).setName('spectacle-horizon');
+      layer.add(made.horizon);
+    }
     litWindows(scene, image.texture.key, plan.windows).forEach(([x, y]) => {
       const glow = scene.add.image(x * width, y * height, GLOW).setBlendMode(Phaser.BlendModes.ADD)
         .setTint(0xffc983).setDisplaySize(46, 46).setAlpha(0).setName('spectacle-window');
@@ -186,7 +192,7 @@ export function dressBackdropLife(scene: Phaser.Scene) {
       layer.add(glow);
     });
     if (mode !== 'full') return made;
-    plan.vents.forEach((_vent, vent) => {
+    if (full) plan.vents.forEach((_vent, vent) => {
       for (let order = 0; order < 3; order += 1) {
         const image = scene.add.image(0, 0, GLOW).setBlendMode(Phaser.BlendModes.ADD).setTint(0xcfd8e6).setAlpha(0).setName('spectacle-steam');
         made.puffs.push({ image, vent, order });
@@ -256,7 +262,7 @@ export function dressBackdropLife(scene: Phaser.Scene) {
     const key = painting?.texture.key ?? '';
     const planKey = key === 'splash' ? 'splash' : DISTRICTS[districtOf(key)];
     const plan = planKey ? PLANS[planKey] : undefined;
-    const next = painting && plan && mode !== 'lean' ? `${key}|${mode}` : '';
+    const next = painting && plan && mode !== 'lean' ? `${key}|${mode}|${fullGraphicsTier()}` : '';
     if (next !== signature || (next && !life?.layer.active)) {
       signature = next;
       clear();
