@@ -89,6 +89,12 @@ Each run builds first. Set `BIRD_SQUAD_REUSE_BUILD=1` to serve the existing
 `BIRD_SQUAD_WORKERS=<n>` to change the default of 3 workers. Files are split
 across workers, so tests must not depend on each other's state.
 
+In CI, pull requests run the gate (in 4 shards), the cross-browser checks
+(Chromium in 2 shards, Firefox in 1, WebKit in 3) and the Pages build check:
+about 20 minutes. Add the `full-ci` label to a pull request to run the full
+regression, campaign and journey suites as well. Pushes to `main` always run
+the full suite, and GitHub Pages deploys only when all of it passes.
+
 ## Boundary Rules
 
 - Put gameplay implementation in `src/`.
