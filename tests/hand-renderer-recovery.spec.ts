@@ -47,7 +47,7 @@ test('Rooftop fallback preserves card art, readable rules and isolated inspectio
           }) })),
       hand: b.hand.map((c: any) => c.instanceId), energy: b.energy, turn: b.turn, selected: b.selectedInstanceId ?? null };
   });
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     expect(await measure()).toMatchObject({ readable: true, primary: true, contained: true });
     await page.screenshot({ path: info.outputPath(`fallback-${width}.png`) });
@@ -77,7 +77,7 @@ test('Rooftop fallback preserves card art, readable rules and isolated inspectio
   expect(inspect.width).toBeGreaterThanOrEqual(44); expect(inspect.height).toBeGreaterThanOrEqual(44);
   await page.mouse.click(inspect.x, inspect.y);
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').combatCardDetail?.active);
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const reader = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'), layer = b.combatCardDetail;

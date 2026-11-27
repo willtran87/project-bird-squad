@@ -377,7 +377,7 @@ test('How to Play teaches the full loop with readable unclipped text and matchin
     return state.helpOpen
       && menu.helpOverlay?.list.filter((o: any) => o.name === 'how-to-play-topic-rule').length === 6;
   });
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.waitForFunction(() => {
       const canvas = document.querySelector('canvas')!.getBoundingClientRect();

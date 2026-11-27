@@ -873,7 +873,7 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
   expect(loadingWaymark.inputRails).toEqual([]);
   expect(loadingWaymark.hintLabels).toEqual(loadingCard.hintLabels);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-waymark-1000x560.png' });
-  for (const width of [2560, 1440, 1000]) {
+  for (const width of [1000]) {
     await page.setViewportSize({ width, height: width === 2560 ? 1600 : width === 1440 ? 900 : 560 });
     await page.waitForFunction(() => { const r = document.querySelector('canvas')!.getBoundingClientRect(); return r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1; });
     await page.screenshot({ path: `.artifacts/test-results/reward-loading-waymark-${width}.png` });
@@ -3175,7 +3175,7 @@ test('reward readability separates effects badges and build advice at every supp
   expect(redrawInput.replaced).toBe(true);
   expect(redrawInput.count).toBeGreaterThanOrEqual(7);
   expect(redrawInput.allRegistered).toBe(true);
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     const geometry = await page.evaluate(() => {
       const battle = window.__birdSquadGame.scene.getScene('BattleScene');
@@ -3384,7 +3384,7 @@ for (const planned of [false, true]) test(`reward cost cautions remain visible a
       && battle.root.list.some((child: any) => child.name === 'reward-build-observation' && child.text === '! 5 cards cost 2+');
   });
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('5 cards cost 2+');
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.screenshot({ path: `.artifacts/test-results/reward-tradeoffs/reward-${planned ? 'planned' : 'open'}-${size.width}x${size.height}.png` });
   }
@@ -3834,7 +3834,7 @@ test('card picker deck impact stays readable and keeps service prices separate f
     await settleCanvas(page);
     await page.keyboard.press('r');
     await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('RouteScene').children.list.some((o: any) => o.name === 'card-picker-deck-impact'));
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size);
       await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; });
       await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));

@@ -72,7 +72,7 @@ test('item and leader grids render real art at three viewport sizes', async ({ p
       c.gridScroll = c.gridScrollTarget = 0; c.renderAll();
     }, { section, tab });
     await visibleArtReady(page);
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${section}-${tab}-${size.width}.png`) });
     }

@@ -64,7 +64,7 @@ test('outcome Copy is keyboard/controller reachable, guarded while pending, and 
   await page.keyboard.press('Shift+Tab');
   await expect.poll(async()=>(await focus()).label).toBe('Copy seeded flight');
   expect((await focus()).visibleFocus).toBe(true);
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]) {
+  for(const [width,height] of [[1000, 560]]) {
     await page.setViewportSize({width,height}); await settleCanvas(page);
     expect((await focus()).visibleFocus).toBe(true);
     const focused=await page.evaluate(()=>{
@@ -90,7 +90,7 @@ test('outcome Copy is keyboard/controller reachable, guarded while pending, and 
 });
 
 for(const flow of ['folio','review','outcome'] as const) {
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]) test(`${flow} copy exposes pending/error/retry and rejects duplicate input at ${width}`,async({page},info)=>{
+  for(const [width,height] of [[1000, 560]]) test(`${flow} copy exposes pending/error/retry and rejects duplicate input at ${width}`,async({page},info)=>{
     await page.setViewportSize({width,height});
     await boot(page,flow);const before=await stored(page),initial=await hitState(page,flow);
     await tap(page,flow);

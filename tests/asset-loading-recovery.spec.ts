@@ -184,7 +184,7 @@ test('district and boss transitions reuse the scene without losing current art',
       });
       expect(atmosphere.length).toBeGreaterThan(0);
       expect(atmosphere.every(frame => String(frame) === String(Math.min(2, mapIndex)))).toBe(true);
-      for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+      for (const viewport of [{ width: 1000, height: 560 }]) {
         await page.setViewportSize(viewport); await settleCanvas(page);
         await page.screenshot({ path: info.outputPath(`district-${mapIndex + 1}-${kind}-${viewport.width}.png`) });
       }

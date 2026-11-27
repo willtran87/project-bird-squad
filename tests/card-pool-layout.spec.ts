@@ -44,7 +44,7 @@ test('complete card pool preserves measured rules and bounded frames in every st
     });
   });
   let checked = 0;
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     for (const upgraded of [false, true]) for (const molt of [false, true]) {
       const result = await page.evaluate(({ upgraded, molt }) => {

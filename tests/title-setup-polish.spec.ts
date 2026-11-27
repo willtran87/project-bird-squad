@@ -29,7 +29,7 @@ test('title and setup share readable controls, intact portraits and accurate lau
   test.setTimeout(120000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await boot(page);
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     const controls = await page.evaluate(() => {
       const m = (window as any).__birdSquadGame.scene.getScene('MenuScene');

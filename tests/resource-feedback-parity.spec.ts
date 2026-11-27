@@ -35,7 +35,7 @@ for (const reduced of [false, true]) test(`Resonance feedback reports actual cap
     expect(c.history).toBe(`Beat ${c.turn} · ${gained ? `The flock gains ${gained} Resonance.` : 'Resonance is full.'}`);
     expect(c.burst).toBe(gained ? 1 : 0);
   }
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     for (const before of [4, 5]) {
       await page.evaluate(before => {

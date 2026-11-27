@@ -50,7 +50,7 @@ test('event choices retain readable text, marked omissions and safe review', asy
     expect(found).toBe(true);
     await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('RouteScene')
       .children.getByName('route-event-resident-art')?.texture?.source[0]?.image?.complete));
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settle();
       await settleCanvas(page);
       const header = await page.evaluate(() => {

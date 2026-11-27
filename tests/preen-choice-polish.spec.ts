@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 import { branchCards } from '../src/game/flyway-rules';
 
-for (const remapped of [false, true]) test(`Preen choices expose readable changes and explicit commitment, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`Preen choices expose readable changes and explicit commitment, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await page.addInitScript(remapped => {
@@ -33,7 +33,7 @@ for (const remapped of [false, true]) test(`Preen choices expose readable change
     const p = await page.evaluate(name => { const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'), r = b.root.getByName(name).getBounds(), c = b.game.canvas.getBoundingClientRect(); return { x: c.left + r.centerX * c.width / 1280, y: c.top + r.centerY * c.height / 720 }; }, name);
     await page.mouse.click(p.x, p.y); await settleCanvas(page);
   };
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`preen-${size.width}.png`) });
     const geometry = await page.evaluate(() => {

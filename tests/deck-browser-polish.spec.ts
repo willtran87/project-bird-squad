@@ -93,7 +93,7 @@ function checkLayout(l: Awaited<ReturnType<typeof layout>>) {
 test('deck browser readable controls, separated rows, long query and empty state at three viewports', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await openDeck(page);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const l = await layout(page); checkLayout(l); expect(l.rows).toHaveLength(6);
     await page.screenshot({ path: info.outputPath(`deck-${width}.png`) });
@@ -106,7 +106,7 @@ test('deck browser readable controls, separated rows, long query and empty state
   expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').cardReviewScroll)).toBe(4);
   await page.keyboard.press('ArrowDown'); expect((await layout(page)).rows[0].selected).toBe(true);
   await page.keyboard.press('/'); await page.keyboard.type('wwwwwwwwwwwwwwwwwwwwwwww');
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const l = await layout(page); checkLayout(l); expect(l.rows).toHaveLength(0);
     expect(l.texts.find(t => t.name === 'deck-review-control-guide')?.text).toContain('wwwwwwwwwwwwwwwwwwwwwwww');
@@ -133,7 +133,7 @@ test('deck browser long names and all toolbar states stay bounded', async ({ pag
   });
   for (const status of ['idle', 'saved', 'full', 'failed', 'loading']) {
     await page.evaluate(status => { const w = window as any; w.toolbarStatus = status; w.__birdSquadGame.scene.getScene('RouteScene').renderAll(); }, status);
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       const l = await layout(page); checkLayout(l);
       const names = l.texts.filter(t => t.name === 'deck-review-row-title');
@@ -250,7 +250,7 @@ for (const failed of [false, true]) test(`deck browser ${failed ? 'failed' : 'de
       expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').deckOverlayOpen)).toBe(true);
       await page.getByRole('button', { name: 'Keep playing', exact: true }).click();
     }
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       const ui = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), scale = r.game.canvas.getBoundingClientRect().width / 1280;

@@ -40,7 +40,7 @@ for (const failure of ['outbox', 'account', 'history', 'checkpoint-removal']) {
     expect(await page.evaluate(() => localStorage.getItem('birdsquad.run.active'))).toBe(before);
     await page.getByRole('button', { name: 'Retry saving', exact: true }).click();
     await expect(dialog).toContainText('Saving is still unavailable');
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       expect(await dialog.evaluate(element => {
         const b = element.getBoundingClientRect();

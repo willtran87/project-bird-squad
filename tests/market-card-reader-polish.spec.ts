@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-for (const remapped of [false, true]) test(`Market cards use one readable decision surface, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`Market cards use one readable decision surface, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(180000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

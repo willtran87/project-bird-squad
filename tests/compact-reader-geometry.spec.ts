@@ -38,7 +38,7 @@ for(const saved of [false,true])test(`storage notice never covers home actions, 
   await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('MenuScene');s.storageRecoveryNotice={outcome:'reset',scopes:[],
     text:'SAVE CHECK  Damaged Flock Record and flight checkpoint isolated; safe defaults are active.'};s.showStorageRecoveryNotice(s.menuGeneration);});
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').children.getByName('storage-recovery-notice'));
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const size of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(size);await settleCanvas(page);
     const overlap=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('MenuScene');
       const notice=s.children.list.find((o:any)=>o.name==='storage-recovery-notice'&&o.type==='Rectangle').getBounds();

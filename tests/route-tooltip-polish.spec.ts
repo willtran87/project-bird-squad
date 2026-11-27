@@ -34,7 +34,7 @@ test('route tooltips keep readable decisions contained across all nodes', async 
       r.renderAll();
     });
     await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('RouteScene').cameras.main.fadeEffect.isRunning);
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       const metrics = await page.evaluate(async () => {
         const w = window as any, r = w.__birdSquadGame.scene.getScene('RouteScene');

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
-for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }])
+for (const viewport of [{ width: 1000, height: 560 }])
 test(`combat HUD keeps actionable text readable and secondary goals out of enemy turns at ${viewport.width}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

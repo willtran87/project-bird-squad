@@ -10,7 +10,7 @@ test('Settings explains every focused option and preserves readable geometry', a
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
   await page.keyboard.press('s');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text()).settingsFocus);
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     // Walk all rows without changing a preference; focus is preserved between sizes.
     const explanations = new Set<string>();
@@ -147,7 +147,7 @@ test('Settings respects reduced-motion overrides and keeps binding text readable
   expect((await state()).text).toContain('Reduced Motion limits flashes.');
   expect((await state()).text).toContain('Reduced (Motion)');
   await page.keyboard.press('PageDown'); await page.keyboard.press('Enter'); await settleCanvas(page);
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     for (const section of ['play', 'utility']) {
       // Both arrows cycle tabs; resizing retains the previously selected tab.

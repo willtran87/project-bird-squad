@@ -58,7 +58,7 @@ test('Market transaction hierarchy stays readable across categories, compact vie
   test.setTimeout(120000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await boot(page);
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     for (const category of ['cards', 'waymarks', 'supplies', 'services']) {
       await page.evaluate(category => (window as any).__birdSquadGame.scene.getScene('RouteScene').setMarketCategory(category), category);

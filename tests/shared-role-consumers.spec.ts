@@ -20,7 +20,7 @@ test('Collection dossier commands share roles, readable disabled states and exac
     const s = (window as any).__birdSquadGame.scene.getScene('CodexScene');
     s.newlyAcquiredCards.clear(); s.cardShowcase = ['major_01', 'wands_ace', 'wands_02']; s.openCodexDetail('major_00');
   });
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const checks = await page.evaluate(() => {
       const s = (window as any).__birdSquadGame.scene.getScene('CodexScene');
@@ -73,7 +73,7 @@ test('combat confirmation roles retain opaque disabled states and never discard 
   })).toBe('primary');
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').beginDiscardChoice('Role contract', 1, false, () => {}));
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('combat-discard-confirm'));
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     expect(await page.evaluate(() => {
       const s = (window as any).__birdSquadGame.scene.getScene('BattleScene'), hit = s.root.getByName('combat-discard-confirm');

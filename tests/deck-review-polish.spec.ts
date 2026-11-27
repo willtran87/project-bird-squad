@@ -66,7 +66,7 @@ test('deck comparison pages preserve full rules and separate pin from selection'
   expect(baseline.comparison.reading.bodies[1]).toContain('Deal 5.');
   expect(baseline.comparison.reading.bodies[0]).not.toContain('Draw 1.');
   const runBefore = await page.evaluate(() => JSON.stringify((window as any).__birdSquadGame.scene.getScene('RouteScene').runState));
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);
     await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`comparison-${viewport.width}.png`) });

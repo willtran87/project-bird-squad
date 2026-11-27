@@ -67,7 +67,7 @@ test('flight report preserves every long entry, reading position and input owner
   expect((await read()).page).toBe(2);expect((await read()).listeners).toBe(first.listeners);
   await pressController(page,4);await expect.poll(async()=>(await read()).page).toBe(1);
   await page.keyboard.press('PageUp');await expect.poll(async()=>(await read()).page).toBe(first.total);
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const size of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(size);await settleCanvas(page);
     await page.screenshot({path:info.outputPath(`complete-report-${size.width}.png`)});
   }

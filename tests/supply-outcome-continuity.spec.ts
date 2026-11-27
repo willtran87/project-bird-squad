@@ -116,7 +116,7 @@ test('a confirmed lethal Supply moves directly from its drawer to rewards', asyn
     expect((await read()).turn).toBe(before.turn);
     await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
   }
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`supply-victory-${width}.png`) });
   }

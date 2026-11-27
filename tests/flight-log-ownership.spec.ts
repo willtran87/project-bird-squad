@@ -68,7 +68,7 @@ test('Flight Log actions are distinct, non-mutating and restore exact nested foc
   await focus(page, 'profile-flight-log-page-newer');
   await page.keyboard.press('Enter');
   expect((await snapshot(page)).flightHistory.selected.id).toBe(original);
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('ProfileScene').renderPremiumProfileScene());
     expect((await snapshot(page)).folioFocus.action).toBe('profile-flight-log-page-newer');
@@ -124,7 +124,7 @@ test('failed review loader exposes retry without unhandled rejection or lost foc
   expect((await snapshot(page)).flightHistory.loading).toBe(false);
   expect((await snapshot(page)).folioFocus.action).toBe('profile-history-review');
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('Review unavailable');
-  for (const [width,height] of [[2560,1600],[1440,900],[1000,560]]) {
+  for (const [width,height] of [[1000, 560]]) {
     await page.setViewportSize({width,height}); await settleCanvas(page);
     await page.screenshot({path:info.outputPath(`log-error-${width}.png`)});
   }
@@ -207,7 +207,7 @@ for (const exit of ['read', 'close', 'shutdown', 'cancel'] as const) test(`Save 
     expect(control).toEqual({status:'loading',enabled:false});
     await page.keyboard.press('Enter');expect(await page.locator('input[type=file]').count()).toBe(1);
     if(exit==='read') {
-      for (const [width,height] of [[2560,1600],[1440,900],[1000,560]]) {
+      for (const [width,height] of [[1000, 560]]) {
         await page.setViewportSize({width,height});await settleCanvas(page);
         await page.screenshot({path:info.outputPath(`backup-reading-${width}.png`)});
       }

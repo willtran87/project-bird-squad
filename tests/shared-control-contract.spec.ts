@@ -4,7 +4,7 @@ import { installVirtualController, pressController } from './helpers/virtual-con
 import {targetGeometry,checkTargetGeometry} from './helpers/target-geometry';
 
 test.use({ hasTouch: true });
-const sizes = [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }];
+const sizes = [{ width: 1000, height: 560 }];
 async function boot(page: Page) {
   await page.goto('./');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);

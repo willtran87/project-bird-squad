@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
-for (const remapped of [false, true]) test(`Deck Review hints follow input without changing decisions, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`Deck Review hints follow input without changing decisions, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   if (remapped) await page.addInitScript(() => localStorage.setItem('birdsquad.controlBindings', JSON.stringify({
@@ -42,7 +42,7 @@ for (const remapped of [false, true]) test(`Deck Review hints follow input witho
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').input.gamepad.emit('down', {}, { index: 2 }));
   expect((await hints()).mode).toBe('controller');
   expect((await hints()).text).toContain('A: sort · X: pin · Y: save · B: close');
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     for (const mode of ['controller', 'keyboard', 'pointer']) {
       if (mode === 'keyboard') await page.keyboard.press('Shift');

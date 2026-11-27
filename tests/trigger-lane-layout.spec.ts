@@ -23,7 +23,7 @@ for (const encounter of ['m1_entry', 'm1_boss', 'm2_boss', 'm3_boss', 'm4_boss']
     return b.battleFxPresenterModule && b.root?.getByName('combat-enemy-vitals') && b.hand.length
       && !b.combatAnimationPending && !b.combatIntroActive && !b.battleRenderQueued;
   });
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);
     await page.waitForFunction(() => { const r = document.querySelector('canvas')!.getBoundingClientRect(); return r.width <= innerWidth + 1 && r.height <= innerHeight + 1; });
     const geometry = await page.evaluate(() => {

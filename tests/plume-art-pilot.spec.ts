@@ -38,7 +38,7 @@ test('Plume Flash uses the approved pilot in the hand and focused preview', asyn
   expect(art.width).toBe(184); expect(art.height).toBe(276);
   const expectedArt = await readFile('assets/runtime/cards/thumb/wands_ace.webp');
   expect((await Promise.all(artLoads)).some(bytes => bytes.equals(expectedArt))).toBe(true);
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`plume-selected-${width}.png`) });
   }

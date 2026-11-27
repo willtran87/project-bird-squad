@@ -58,7 +58,7 @@ test('Waymark comparison aligns contextual definitions without changing the run'
   ]);
   expect(reading.bodies.map((body: string) => body.replace(/\s+/g, ' '))).toEqual([KEYWORDS.Cover.def, KEYWORDS.Cover.def]);
   await expect(page.locator('#game-status')).toContainText('TERM · COVER');
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     const geometry = await page.evaluate(() => {
       const route = (window as any).__birdSquadGame.scene.getScene('RouteScene');

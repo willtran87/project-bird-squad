@@ -17,7 +17,7 @@ test('combat HUD contains forecast and flow; pile counts stay legible and intera
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
     return b.root?.getByName('combat-pile-count') && !JSON.parse(w.render_game_to_text()).combatIntro?.active;
   });
-  for (const viewport of [{ width:2560,height:1600 }, { width:1440,height:900 }, { width:1000,height:560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);
     const result = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

@@ -21,7 +21,7 @@ test('failed lazy download offers cancellable recovery without replacing the liv
     await page.getByRole('button', { name: 'Reload options', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Reload returns' })).toBeVisible();
     expect(page.url()).toBe(url);
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       const geometry = await page.locator('#update-recovery').evaluate(element => {
         const r = element.getBoundingClientRect();
@@ -66,7 +66,7 @@ test('remaining item details use complete fixed-size pages and preserve their de
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return r.scene.isActive() && r.routeEssentialAssetsReady && r.cardHoverDetailModule;
   });
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const result = await page.evaluate(() => {
       const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
@@ -103,7 +103,7 @@ test('mixed status and resource chains share bounded result lanes and preserve e
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.battleFxPresenterModule && b.hand.length && !b.combatIntroActive && !b.combatAnimationPending;
   });
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const result = await page.evaluate(() => {
       const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');

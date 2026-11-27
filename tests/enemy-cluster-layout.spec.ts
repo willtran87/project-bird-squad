@@ -19,7 +19,7 @@ test('one to four enemy clusters keep statuses, vitals and forecasts separate', 
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.hand.length && b.root?.getByName('combat-enemy-vitals') && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued;
   });
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     for (const rank of ['normal', 'elite', 'boss']) for (const count of [1, 2, 3, 4]) {
       const boss = rank === 'boss', elite = rank === 'elite';

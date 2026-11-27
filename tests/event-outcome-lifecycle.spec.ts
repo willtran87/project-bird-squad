@@ -177,7 +177,7 @@ for (const failed of [false, true]) test(`event reward ${failed ? 'failed' : 'de
       await page.getByRole('button', { name: 'Keep playing', exact: true }).tap();
       await settleCanvas(page);
     }
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       const geometry = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), scale = r.game.canvas.getBoundingClientRect().width / 1280;

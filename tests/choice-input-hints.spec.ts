@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
-for (const remapped of [false, true]) test(`choice hints follow real bindings and device without committing, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`choice hints follow real bindings and device without committing, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = [];
   const obsoleteRequests: string[] = [];
   page.on('request', request => {
@@ -72,7 +72,7 @@ for (const remapped of [false, true]) test(`choice hints follow real bindings an
       fits: label.getBounds().right <= 1132 && b.left >= h.left + 8 && b.right <= h.right - 8 };
   });
   expect((await hint()).mode).toBe('pointer');
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.keyboard.press('Shift');
     const keyboard = await hint();

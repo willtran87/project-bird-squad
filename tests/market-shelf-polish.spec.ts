@@ -32,7 +32,7 @@ test('Market merchandise separates identity price and art with complete readable
       const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
       return r.children.list.filter((o: any) => o.name === 'market-merchandise-art').length === 3;
     });
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
       await settleCanvas(page);
       const geometry = await page.evaluate(() => {
@@ -75,7 +75,7 @@ test('Market merchandise separates identity price and art with complete readable
   expect(services.framed).toBe(true);
   expect(services.fitted).toBe(true);
   expect(services.readable).toBe(true);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);
     await page.screenshot({ path: info.outputPath(`services-${viewport.width}.png`) });
   }

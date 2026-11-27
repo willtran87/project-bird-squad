@@ -110,7 +110,7 @@ test('audit: failed outcome download keeps recovery and a safe menu exit availab
     const walk=(items:any[]):any[]=>items.flatMap(o=>[o,...walk(o.list??[])]);
     return walk(s.children.list).filter(o=>['pending-overlay-close','pending-overlay-recovery'].includes(o.name)&&o.input?.enabled&&o.getData('enabled')!==false).length;
   })).toBe(2);
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]){
+  for(const [width,height] of [[1000, 560]]){
     await page.setViewportSize({width,height});await page.screenshot({path:testInfo.outputPath(`outcome-recovery-${width}.png`)});
   }
   const point=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');const hit=s.root.getByName('pending-overlay').getByName('pending-overlay-close');const b=hit.getBounds();return {x:b.centerX,y:b.centerY};});

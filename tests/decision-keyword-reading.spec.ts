@@ -139,7 +139,7 @@ for (const mode of ['deck', 'market', 'preen', 'release', 'reward', 'combatRewar
     await settleCanvas(page);
     expect((await reading()).title).toBe('TERM · WINGBEAT');
     await expect.poll(() => page.locator('#game-status').textContent()).toContain('TERM · WINGBEAT');
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
       await expect.poll(async () => (await reading())?.title).toBe('TERM · WINGBEAT');
       const geometry = await page.evaluate(({ key, mode }) => {

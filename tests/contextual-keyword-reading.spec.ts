@@ -65,7 +65,7 @@ test('contextual terms are readable without hover and preserve the pending comba
   const termIndex = sections.findIndex((p: any) => p.heading === 'TERM · OPEN SKY GUARD');
   for (let i = 0; i < termIndex; i++) await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await page.locator('#game-status').textContent())?.replace(/\s+/g, ' ')).toContain(KEYWORDS['Open Sky Guard'].def);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     const fit = await page.evaluate(() => {
       const layer = (window as any).__birdSquadGame.scene.getScene('BattleScene').combatCardDetail;

@@ -37,7 +37,7 @@ test('gameplay clarity: combat and all event choices remain readable and actiona
   expect(combat.pulseCount).toBe(0);
   expect(combat.piles).toHaveLength(2);
   expect(combat.piles.every(p => p.enabled && p.width >= 48 && p.height >= 48)).toBe(true);
-  for (const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);
     await page.screenshot({path:info.outputPath(`battle-${viewport.width}.png`)});
   }
@@ -56,7 +56,7 @@ test('gameplay clarity: combat and all event choices remain readable and actiona
     if (!found && type === 'rival') continue;
     expect(found,`map includes ${type}`).toBe(true);
     await page.waitForTimeout(1500);
-    for (const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
       const layout = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');

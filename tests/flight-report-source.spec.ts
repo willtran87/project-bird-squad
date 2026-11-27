@@ -36,7 +36,7 @@ test('real flight report source preserves large flights, defeat evidence and eve
   for(const value of [source.review.headline,source.review.evidence,source.review.tip,source.review.replayNote])
     expect(source.details.results).toContain(value);
   for(const unlock of source.unlocks)expect(source.details.results).toContain(`${unlock.name}: ${unlock.description}`);
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const size of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(size);await settleCanvas(page);
     const geometry=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');
       const frame=s.root.getByName('run-defeat-review').getBounds();

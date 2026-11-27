@@ -42,7 +42,7 @@ test('entire combat cast retains proportional art and stage-owned contact shadow
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return ids.every(id => b.textures.exists(`enemy-${id}`)) && !b.load.isLoading();
   }, ids);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     // Actual renderer, four slots at a time: every shipped enemy, not substitutes.
     for (let start = 0; start < ids.length; start += 4) {

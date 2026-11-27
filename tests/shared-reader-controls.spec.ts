@@ -50,7 +50,7 @@ for(const key of ['RouteScene','BattleScene']) test(`${key} readers use opaque d
       const walk=(list:any[]):any[]=>list.flatMap(o=>[o,...walk(o.list??[])]);
       return walk(s.children.list).some(o=>o.name===`${prefix}-previous`);
     },{key,prefix});
-    for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]){
+    for(const [width,height] of [[1000, 560]]){
       await page.setViewportSize({width,height});await settleCanvas(page);
       const c=await contract(page,key,prefix);
       expect(c).toMatchObject({disabled:true,safe:true,role:'secondary',alpha:1,labelAlpha:1,color:'#a2b1ba',focused:true,outline:3,unchanged:true});

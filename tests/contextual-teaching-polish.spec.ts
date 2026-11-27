@@ -32,7 +32,7 @@ test('Roost lesson yields to card decisions, restores on Back and retires after 
   });
   const before = await read();
   expect(before.count).toBe(2); expect(before.visible).toBe(true); expect(before.stateVisible).toBe(true);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const point = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

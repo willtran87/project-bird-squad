@@ -49,7 +49,7 @@ for (const kind of ['scrap', 'mixed', 'leave']) for (const remapped of [false, t
   };
   const capture = async (surface: string) => {
     if (remapped) return;
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size);
       await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.width <= innerWidth + 1 && b.height <= innerHeight + 1 && b.left >= -1 && b.top >= -1; });
       await settle();
@@ -169,7 +169,7 @@ for (const kind of ['card', 'supply']) test(`${kind} choice Details preserves ar
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-decision-inspect-hit'));
   const settle = async () => { const f = await page.evaluate(() => (window as any).__birdSquadGame.loop.frame); await page.waitForFunction(f => (window as any).__birdSquadGame.loop.frame >= f + 2, f); };
   const press = async (key: string) => { await page.keyboard.press(key); await settle(); };
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.width <= innerWidth + 1 && b.height <= innerHeight + 1; });
     await settle();

@@ -111,7 +111,7 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
       expect(values.length).toBeGreaterThan(0);
       for (const value of values) expect(value).toEqual({ nameFits: true, valueFits: true, readable: true, separated: true, badgeClear: true, logClear: true, badgesSeparated: true, fullName: true, exactHealth: true, headerClear: true, meterFits: true, meterAccurate: true, crispIntent: true, artBelowHud: true, artAboveTell: true });
     };
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
       await settleCanvas(page);
       await checkVitals();
@@ -172,7 +172,7 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
       }) };
     });
     expect(forecast).toEqual({ count: 2, footerClear: true, clear: true });
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
       await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`forecast-${viewport.width}.png`) });

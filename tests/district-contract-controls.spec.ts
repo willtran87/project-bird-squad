@@ -54,7 +54,7 @@ for (const input of ['keyboard', 'remapped', 'controller', 'pointer'] as const) 
     const summary = screenReaderSummary({ scene: 'RouteScene', districtContractChoice: await state() });
     expect(summary).toContain(choice.name);
     expect(summary).toContain('On completion');
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       const layout = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');

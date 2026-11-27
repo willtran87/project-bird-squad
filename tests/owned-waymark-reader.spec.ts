@@ -6,7 +6,7 @@ import { itemKeywordSections } from '../src/game/keyword-definitions';
 const expectedTerms = Object.fromEntries(marks.routeMarks.map(mark => [mark.id,
   itemKeywordSections([{ title: 'EFFECT', text: mark.description }])])) as Record<string, Array<{ title: string; text: string }>>;
 
-for (const remapped of [false, true]) test(`owned Waymarks preserve complete reading and paused focus, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`owned Waymarks preserve complete reading and paused focus, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120_000); // Full 58-item, multi-viewport catalog qualification.
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

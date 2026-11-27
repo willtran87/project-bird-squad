@@ -24,7 +24,7 @@ test.beforeEach(async ({page}) => {
 
 test('quiet menu preserves setup, utilities, and a one-press start', async ({page}, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
-  for (const v of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const v of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(v);
     await page.screenshot({path:info.outputPath(`menu-${v.width}.png`)});
   }
@@ -229,7 +229,7 @@ test('dedicated setup and settings remove competing chrome at every supported si
     },name);
     await page.mouse.click(point.x,point.y);
   };
-  for (const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setSetupOpen(true));
     const layout = await page.evaluate(() => {

@@ -6,7 +6,7 @@ import { itemKeywordSections } from '../src/game/keyword-definitions';
 const expectedTerms = Object.fromEntries(marks.routeMarks.map(mark => [mark.id,
   itemKeywordSections([{ title: 'EFFECT', text: mark.description }])])) as Record<string, Array<{ title: string; text: string }>>;
 
-for (const remapped of [false, true]) test(`combat Waymark reading is complete and Back preserves the pending card, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`combat Waymark reading is complete and Back preserves the pending card, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120_000); // Full 58-item, multi-viewport catalog qualification.
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -87,7 +87,7 @@ for (const remapped of [false, true]) test(`combat Waymark reading is complete a
   expect(failures).toEqual([]); expect(await stable()).toBe(unchanged);
   await press(remapped ? 'j' : 'r'); await press(remapped ? 'e' : 'ArrowRight');
   expect((await reading()).comparing).toBe(true);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const bounds = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

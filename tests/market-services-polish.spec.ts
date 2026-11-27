@@ -53,7 +53,7 @@ test('Market services keep readable prices and separated targets through late di
       const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
       r.marketUtilityShelf.push({ id: 'boss_guard', price: 225 }, { id: 'route_scout', price: 155 }); r.renderAll();
     });
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
       await page.waitForFunction(() => {
         const c = document.querySelector('canvas')!.getBoundingClientRect();

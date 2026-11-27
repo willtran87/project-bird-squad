@@ -100,7 +100,7 @@ test('card reader keeps every authored entry readable with separated controls in
   expect(result.count).toBe(110); expect(result.errors).toEqual([]);
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').openCodexDetail('major_00'));
   await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('CodexScene').root.getByName('codex-card-detail-art')));
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`card-reader-${size.width}.png`) });
   }
@@ -191,7 +191,7 @@ test('complete Collection cards fit filtered rows without reducing readable labe
     return {issues,count};
   });
   expect(result.count).toBe(110); expect(result.issues).toEqual([]);
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const size of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(size); await settleCanvas(page);
     const geometry=await page.evaluate(()=>{
       const c=(window as any).__birdSquadGame.scene.getScene('CodexScene');

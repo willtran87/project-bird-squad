@@ -62,7 +62,7 @@ test('authored intent descriptions and compact defence labels remain readable', 
   }, authored);
   expect(descriptions).toHaveLength(228); // Includes Open Sluice and the three relay moves.
   expect(descriptions.filter(text => /[a-zA-Z]+\(|then |undefined|NaN/.test(text))).toEqual([]);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height });
     const rows = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

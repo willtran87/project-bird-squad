@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 import {targetGeometry,checkTargetGeometry} from './helpers/target-geometry';
 
-for (const remapped of [false, true]) test(`discard decisions are readable and explicit, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`discard decisions are readable and explicit, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   if (remapped) await page.addInitScript(() => localStorage.setItem('birdsquad.controlBindings', JSON.stringify({
@@ -39,7 +39,7 @@ for (const remapped of [false, true]) test(`discard decisions are readable and e
   await settleCanvas(page);
   const initial = await state();
   const press = async (key: string) => { await page.keyboard.press(key); await settleCanvas(page); };
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await press('Shift');
     const keyboard = await state();

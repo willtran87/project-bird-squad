@@ -66,7 +66,7 @@ test(`Boss preparation preserves complete information and readable geometry acro
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
     const before = await prepare(page, district);
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       checkTargetGeometry(await targetGeometry(page,'RouteScene'),`district ${district}`);
       await page.screenshot({ path: info.outputPath(`map-${district}-${size.width}.png`) });

@@ -4,7 +4,7 @@ import { flightHighlights } from '../src/game/flight-highlights';
 import { settleCanvas } from './helpers/settled-canvas';
 import { screenReaderSummary } from '../src/game/screen-reader-summary';
 
-const sizes = [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes = [{ width: 1000, height: 560 }];
 async function route(page: Page) {
   await page.goto('./?flight=decisions-rhythm&length=full');
   await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);

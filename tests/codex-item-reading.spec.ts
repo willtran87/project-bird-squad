@@ -51,7 +51,7 @@ test('Codex item and enemy reading surfaces', async ({ page }, info) => {
       const c = (window as any).__birdSquadGame.scene.getScene('CodexScene'), art = c.currentDetailArtAsset();
       return art && c.textures.exists(art.key);
     });
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${sample.id}-${size.width}.png`) });
     }

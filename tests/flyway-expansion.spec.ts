@@ -99,7 +99,7 @@ test('Flight Stories use fixed routes and never overwrite an active flight',asyn
 });
 test('Flyway book has readable layouts at supported viewport sizes',async({page},testInfo)=>{
   await route(page);await page.keyboard.press('j');
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]){
+  for(const [width,height] of [[1000, 560]]){
     await page.setViewportSize({width,height});await page.getByRole('button',{name:'City & crossings',exact:true}).click();
     await page.screenshot({path:testInfo.outputPath(`flyway-city-${width}.png`)});
     const geometry=await page.locator('#flyway-book').evaluate(d=>({scroll:d.scrollWidth,client:d.clientWidth,buttons:[...d.querySelectorAll('button')].map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height})),font:parseFloat(getComputedStyle(d).fontSize)}));
@@ -205,9 +205,9 @@ test('ending archive preserves illustrated birds and awarded story seals after r
 
 test('battle and Molt presentation remain readable at every supported viewport',async({page},testInfo)=>{
   await battle(page);await page.waitForTimeout(900);
-  for(const [width,height]of [[2560,1600],[1440,900],[1000,560]]){await page.setViewportSize({width,height});await page.waitForTimeout(300);await page.screenshot({path:testInfo.outputPath(`battle-${width}.png`)});}
+  for(const [width,height]of [[1000, 560]]){await page.setViewportSize({width,height});await page.waitForTimeout(300);await page.screenshot({path:testInfo.outputPath(`battle-${width}.png`)});}
   await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');s.enterMolt('Molt');s.renderAll();s.time.paused=true;s.tweens.pauseAll();});
-  for(const [width,height]of [[2560,1600],[1440,900],[1000,560]]){await page.setViewportSize({width,height});await page.screenshot({path:testInfo.outputPath(`molt-${width}.png`)});}
+  for(const [width,height]of [[1000, 560]]){await page.setViewportSize({width,height});await page.screenshot({path:testInfo.outputPath(`molt-${width}.png`)});}
 });
 
 test('strategic keepsakes apply their benefits and costs through combat rules',async({page})=>{

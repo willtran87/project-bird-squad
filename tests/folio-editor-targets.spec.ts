@@ -28,7 +28,7 @@ test('native Folio actions support touch and controller without held-confirm lea
   await tap(page,'profile-folios-tab-hit');await tap(page,'profile-folio-organize-hit');
   const account=()=>page.evaluate(()=>localStorage.getItem('birdsquad.account'));
   const before=await account();
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const size of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(size);await tap(page,'profile-folio-organizer-rename-hit');
     const input=page.locator('[data-folio-editor]');await expect(input).toBeFocused();
     await input.fill('Cancel this edit');

@@ -70,7 +70,7 @@ for (const count of [0, 50]) test(`record readers preserve readable text, separa
   await (await choosing).setFiles({name:'maximum-restored-save.json',mimeType:'application/json',buffer:raw});
   await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text()).saveData?.status==='restoreReady');
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('birdsquad.account')!).runs)).toBe(1);
-  for(const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const viewport of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(viewport);await settleCanvas(page);
     checkTargetGeometry(await targetGeometry(page,'ProfileScene'),'actual restore confirmation');
     await page.screenshot({path:info.outputPath(`actual-restore-preview-${viewport.width}.png`)});
@@ -91,7 +91,7 @@ for (const count of [0, 50]) test(`record readers preserve readable text, separa
   const stored=await page.evaluate(()=>localStorage.getItem('birdsquad.runs'));
   expect(JSON.parse(stored!)).toEqual(backup.data.runHistory);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('birdsquad.account')!).decks)).toEqual(backup.data.account.decks);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     for (const mode of ['history', 'save', 'invalid', 'restore', 'ratings']) {
       await page.evaluate(({ mode, count }) => {

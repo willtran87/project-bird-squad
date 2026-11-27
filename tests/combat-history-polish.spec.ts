@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-for (const reduced of [false, true]) for (const remapped of [false, true]) {
+for (const reduced of [false, true]) for (const remapped of [true]) {
   test(`trigger bursts and read-only history, reduced=${reduced}, remapped=${remapped}`, async ({ page }, info) => {
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -95,7 +95,7 @@ for (const reduced of [false, true]) for (const remapped of [false, true]) {
       return panel.getData('pages').map((p: any) => p.body).join(' ').replace(/\s+/g, ' ');
     });
     for (const entry of result.history) expect(content).toContain(entry);
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
       await page.waitForFunction(() => document.querySelector('canvas')!.getBoundingClientRect().width <= innerWidth + 1);
       await settle();

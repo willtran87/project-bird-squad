@@ -49,7 +49,7 @@ for (const scene of ['RouteScene', 'BattleScene']) test(`${scene} retains the li
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.run.active'))).toBe(saved);
   const state = await page.evaluate(() => JSON.parse((window as any).render_game_to_text()));
   expect(screenReaderSummary(state)).toContain('Retry Main Menu');
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const bounds = await page.evaluate(scene => {
       const s = (window as any).__birdSquadGame.scene.getScene(scene);

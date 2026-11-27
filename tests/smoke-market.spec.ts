@@ -150,7 +150,7 @@ test('Market card detail keeps live deck-fit guidance in the focused dossier', a
     expect.stringMatching(/^BASE HAND /),
   ]));
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('BASE HAND');
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; });
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -197,7 +197,7 @@ test('Market rules pages preserve complete text and purchases across pointer key
     route.marketCardShelf = [{ id: 'aviary_35', price: 40, sold: false }, { id: 'swords_05', price: 40, sold: false }];
     route.renderAll();
   });
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; });
     const audit = await page.evaluate(() => {

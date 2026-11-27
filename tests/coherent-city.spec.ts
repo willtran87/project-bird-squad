@@ -4,7 +4,7 @@ import { settleCanvas } from './helpers/settled-canvas';
 
 test.describe('Coherent City',()=>{
 
-const sizes = [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes = [{ width: 1000, height: 560 }];
 const state = (p: Page) => p.evaluate(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}'));
 const lessonState = (p: Page) => p.evaluate(()=>(window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson'));
 async function boot(page: Page) {

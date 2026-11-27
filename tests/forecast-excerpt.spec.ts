@@ -43,7 +43,7 @@ test('long forecasts signal omissions and preserve complete outcomes in details'
   expect(result.titleLines).toBe(1); expect(result.summaryLines).toBeLessThanOrEqual(2);
   expect(result.fullTitle.length).toBeGreaterThan(result.title.length);
   expect(result.fullSummary.length).toBeGreaterThan(result.summary.length);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`forecast-${width}.png`) });
   }

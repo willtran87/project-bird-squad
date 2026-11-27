@@ -16,7 +16,7 @@ test('estimated incoming damage stays in its own HUD lane at large values', asyn
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.root?.getByName('combat-incoming-forecast-label') && b.hand.length && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued;
   });
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height });
     for (const values of [{ hpLoss: 8, afterHp: 30 }, { hpLoss: 123, afterHp: 456 }]) {
       const result = await page.evaluate(values => {

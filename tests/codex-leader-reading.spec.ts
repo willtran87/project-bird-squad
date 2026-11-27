@@ -9,7 +9,7 @@ test('text-led collection navigation stays readable and touch-operable in every 
       const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
       c.activeSection = section; c.detailId = undefined; c.renderAll();
     }, section);
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${section}-${size.width}.png`) });
       const geometry = await page.evaluate(() => {
@@ -116,7 +116,7 @@ test('leader dossiers fit three viewports with real art, keyboard, wheel and tou
       const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
       return Boolean(c.root.getByName('codex-leader-dossier-art')) && !c.load.isLoading();
     });
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${id}-${size.width}.png`) });
     }

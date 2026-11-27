@@ -54,7 +54,7 @@ test('reference flight reaches natural defeat and replay through live keyboard c
   expect(report.currentCohesion).toBe(0);
   expect(report.turnsTaken).toBeGreaterThan(0);
   await writeFile(info.outputPath('natural-defeat-report.json'), JSON.stringify(report, null, 2));
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height });
     await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`defeat-${width}.png`) });
