@@ -510,7 +510,9 @@ size, so shader-graded layers stay at 1x. The ratio is device pixels per game
 pixel of the displayed canvas, in quarter steps, between 1 and 2; Lean and the
 trimmed Auto tier stay at 1. The 2x game-size-with-camera-zoom option was not
 taken: it changes `pointer.x/y`, `scale.gameSize` and camera zoom in about 40
-places. One trap found on the way: the renderer binds the base context's
+places. Camera zoom is left to scenes (the phone-landscape compact lens zooms
+the main camera about 1.5x): a zoomed camera composes with the backing store,
+checked at zoom 1.5 for full coverage and pointer-to-world mapping. One trap found on the way: the renderer binds the base context's
 `resize` to its RESIZE event at boot, so the patch re-routes that listener;
 without it the frame drew into the lower-left quarter once any filter ran.
 `tests/high-dpi-rendering.spec.ts` (deviceScaleFactor 2) checks the 2560x1440

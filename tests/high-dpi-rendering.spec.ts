@@ -124,6 +124,31 @@ test('DPR 2 renders a 2x backing store across the whole canvas with game space u
   await context.close();
 });
 
+test('a zoomed main camera (the compact lens uses about 1.5x) still fills the 2x backing store and maps pointers', async ({ browser }) => {
+  const { page, context, errors } = await openPage(browser, 2);
+  await page.evaluate(() => {
+    const camera = (window as any).__birdSquadGame.scene.getScene('MenuScene').cameras.main;
+    camera.setZoom(1.5);
+    camera.centerOn(640, 360);
+  });
+  for (const share of await quadrants(page)) expect(share).toBeGreaterThan(0.5);
+  const box = (await page.locator('canvas').boundingBox())!;
+  await page.mouse.move(box.x + 100 * box.width / 1280, box.y + 100 * box.height / 720);
+  const mapped = await page.evaluate(() => {
+    const game = (window as any).__birdSquadGame, pointer = game.input.activePointer;
+    const world = game.scene.getScene('MenuScene').cameras.main.getWorldPoint(pointer.x, pointer.y);
+    return [pointer.x, pointer.y, world.x, world.y].map(value => Math.round(value * 10) / 10);
+  });
+  // Pointer stays in game space; the camera alone applies the zoom.
+  expect(mapped[0]).toBeCloseTo(100, 0);
+  expect(mapped[1]).toBeCloseTo(100, 0);
+  expect(mapped[2]).toBeCloseTo(640 + (100 - 640) / 1.5, 0);
+  expect(mapped[3]).toBeCloseTo(360 + (100 - 360) / 1.5, 0);
+  expect(await resolution(page)).toMatchObject({ ratio: 2, backingWidth: 2560, gameSize: [1280, 720] });
+  expect(errors).toEqual([]);
+  await context.close();
+});
+
 test('Lean graphics and DPR 1 keep the 1280x720 backing store', async ({ browser }) => {
   const lean = await openPage(browser, 2, { 'birdsquad.graphicsQuality': 'lean' });
   expect(await resolution(lean.page)).toMatchObject({ ratio: 1, backingWidth: 1280, backingHeight: 720, css: [1280, 720] });
