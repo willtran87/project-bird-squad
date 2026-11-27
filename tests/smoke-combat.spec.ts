@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { boot } from './helpers/smoke';
 
 // Split from the former tests/smoke.spec.ts (combat topics). Tests drive
@@ -3785,56 +3785,6 @@ test('flock Cohesion bar exposes incoming damage prediction after Cover', async 
   expect(result.gaugeObjects).toEqual([]);
 });
 
-test('battle hand is compact (no full effect text) and enemies expose intents', async ({ page }) => {
-  await boot(page);
-  const state = await page.evaluate(async () => {
-    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
-    g.scene.stop('MenuScene');
-    // create() (which draws the opening hand) runs a tick after start.
-    for (let i = 0; i < 20 && !(window.__birdSquadState?.()?.hand?.length); i += 1) await wait(50);
-    return window.__birdSquadState!();
-  });
-  expect(state.hand.length).toBeGreaterThan(0);
-  for (const card of state.hand) expect(card.text).toBeUndefined();
-  for (const enemy of state.enemies) expect(typeof enemy.intent).toBe('string');
-});
-
-test('hand cards carry unique per-combat instance ids', async ({ page }) => {
-  await boot(page);
-  const ids: string[] = await page.evaluate(async () => {
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
-    g.scene.stop('MenuScene');
-    return window.__birdSquadState!().hand.map((card: any) => card.instanceId);
-  });
-  expect(ids.length).toBeGreaterThan(0);
-  expect(new Set(ids).size).toBe(ids.length);
-  for (const id of ids) expect(typeof id).toBe('string');
-});
-
-test('boss uses a scripted attack pattern that loops from move 2', async ({ page }) => {
-  await boot(page);
-  const labels: string[] = await page.evaluate(async () => {
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
-    g.scene.stop('MenuScene');
-    const boss = g.scene.getScene('BattleScene').enemies[0];
-    const seq: string[] = [];
-    for (let i = 0; i < 7; i += 1) {
-      boss.intentIndex = i;
-      seq.push(window.__birdSquadState!().enemies[0].intent);
-    }
-    return seq;
-  });
-  expect(labels[0]).toBe('Toll Line');
-  expect(labels[4]).toBe('Heavy Strike 13');
-  // turn 6 (index 5) repeats from move index 1 (loopFrom), not the opener.
-  expect(labels[5]).toBe('Crowbar Tap 8');
-  expect(labels[6]).toBe('Tar Toss 5');
-});
-
 test('boss Phase II is previewed before a real pointer commit and shifts its Tell once at half Cohesion', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
@@ -4247,22 +4197,6 @@ test('opening draws are deterministic, varied, and pressure-protected after the 
     expect(sample.playableCount).toBeGreaterThanOrEqual(2);
   }
   expect(report.repeatedB).toEqual(report.repeatedA);
-});
-
-test('combat tracks per-fight stats (damage dealt / taken / blocked)', async ({ page }) => {
-  await boot(page);
-  const r = await page.evaluate(async () => {
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
-    g.scene.stop('MenuScene');
-    const scene: any = g.scene.getScene('BattleScene');
-    const enemy = scene.enemies[0];
-    scene.damageEnemy(enemy.id, 5, 'Test');
-    scene.resolveEnemyEffect(enemy, 'damage(flock, 6)');
-    return { dealt: scene.statDealt, taken: scene.statTaken + scene.statBlocked };
-  });
-  expect(r.dealt).toBeGreaterThanOrEqual(5);
-  expect(r.taken).toBeGreaterThanOrEqual(1);
 });
 
 test('Flock Leader signatures fire at their once-per-combat hooks', async ({ page }) => {
@@ -5273,4 +5207,77 @@ test('fullyBlocksNextAttack checks the next incoming attack, not stale selection
 
   expect(r.blocksNext).toBe(true);
   expect(r.shortNext).toBe(false);
+});
+
+// These tests only start a combat and read state from it, so one booted page
+// serves them all; each restarts BattleScene from its own route node.
+test.describe('combat state reads', () => {
+  let page: Page;
+  test.beforeAll(async ({ browser }, info) => {
+    page = await browser.newPage({ baseURL: info.project.use.baseURL });
+    await boot(page);
+  });
+  test.afterAll(async () => { await page.close(); });
+
+  test('battle hand is compact (no full effect text) and enemies expose intents', async () => {
+    const state = await page.evaluate(async () => {
+      const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+      const g = window.__birdSquadGame;
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+      g.scene.stop('MenuScene');
+      // create() (which draws the opening hand) runs a tick after start.
+      for (let i = 0; i < 20 && !(window.__birdSquadState?.()?.hand?.length); i += 1) await wait(50);
+      return window.__birdSquadState!();
+    });
+    expect(state.hand.length).toBeGreaterThan(0);
+    for (const card of state.hand) expect(card.text).toBeUndefined();
+    for (const enemy of state.enemies) expect(typeof enemy.intent).toBe('string');
+  });
+
+  test('hand cards carry unique per-combat instance ids', async () => {
+    const ids: string[] = await page.evaluate(async () => {
+      const g = window.__birdSquadGame;
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+      g.scene.stop('MenuScene');
+      return window.__birdSquadState!().hand.map((card: any) => card.instanceId);
+    });
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(typeof id).toBe('string');
+  });
+
+  test('boss uses a scripted attack pattern that loops from move 2', async () => {
+    const labels: string[] = await page.evaluate(async () => {
+      const g = window.__birdSquadGame;
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
+      g.scene.stop('MenuScene');
+      const boss = g.scene.getScene('BattleScene').enemies[0];
+      const seq: string[] = [];
+      for (let i = 0; i < 7; i += 1) {
+        boss.intentIndex = i;
+        seq.push(window.__birdSquadState!().enemies[0].intent);
+      }
+      return seq;
+    });
+    expect(labels[0]).toBe('Toll Line');
+    expect(labels[4]).toBe('Heavy Strike 13');
+    // turn 6 (index 5) repeats from move index 1 (loopFrom), not the opener.
+    expect(labels[5]).toBe('Crowbar Tap 8');
+    expect(labels[6]).toBe('Tar Toss 5');
+  });
+
+  test('combat tracks per-fight stats (damage dealt / taken / blocked)', async () => {
+    const r = await page.evaluate(async () => {
+      const g = window.__birdSquadGame;
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+      g.scene.stop('MenuScene');
+      const scene: any = g.scene.getScene('BattleScene');
+      const enemy = scene.enemies[0];
+      scene.damageEnemy(enemy.id, 5, 'Test');
+      scene.resolveEnemyEffect(enemy, 'damage(flock, 6)');
+      return { dealt: scene.statDealt, taken: scene.statTaken + scene.statBlocked };
+    });
+    expect(r.dealt).toBeGreaterThanOrEqual(5);
+    expect(r.taken).toBeGreaterThanOrEqual(1);
+  });
 });
