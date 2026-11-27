@@ -17,6 +17,8 @@ export interface PanelAction {
 
 export interface PanelSpec {
   name: string;
+  /** Name for the frame rectangle when callers and tests already know it by another (default `${name}-frame`). */
+  frameName?: string;
   /** Centre of the frame. */
   x: number; y: number; width: number; height: number;
   accent?: number; fill?: number; fillAlpha?: number;
@@ -74,7 +76,7 @@ export function panel(scene: Phaser.Scene, spec: PanelSpec, addTo?: (object: Pha
   }
   add(scene.add.rectangle(frame.cx + 8, frame.cy + 10, frame.width, frame.height, 0x020409, 0.42).setName(`${spec.name}-shadow`));
   add(scene.add.rectangle(frame.cx, frame.cy, frame.width, frame.height, spec.fill ?? UI_FIELD.panel, spec.fillAlpha ?? 0.985)
-    .setStrokeStyle(1, accent, 0.42).setName(`${spec.name}-frame`));
+    .setStrokeStyle(1, accent, 0.42).setName(spec.frameName ?? `${spec.name}-frame`));
   if (spec.ornate !== false) {
     const ink = add(scene.add.graphics().setName(`${spec.name}-ornament`));
     ink.fillStyle(accent, 0.72).fillRect(frame.left + 17, frame.top + 13, frame.width - 34, 2);

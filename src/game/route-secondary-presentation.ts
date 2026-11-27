@@ -1,7 +1,8 @@
 import { setTextureFilter } from './texture-filter';
 // Optional market and card-picker presentation, loaded only when opened.
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, MARKET_KIT_ASSETS, MENU_BORDER_WIDTH, MIN_SUPPORTED_TOUCH_TARGET, TOKEN_DISPLAY_FONT, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, addSupplyArtImage, addUiIconImage, addWaymarkArtImage, alphaRouteMarkLibrary, alphaSupplyLibrary, buttonIconForLabel, cardStatEntries, clamp, cloneCard, compactCardArtKey, controlBindingLabel, currentMap, displayName, fitTextExcerpt, flockStatLabel, playUiSound, prefersReducedMotion, quietButton, renderFieldPanel, renderSnagCardBorder, suitAccentColor, supplyCompactArtAssets, uiIconAssets, waymarkCompactArtAssets, waymarkGlyph } from '../main';
+import { GAME_HEIGHT, GAME_WIDTH, MARKET_KIT_ASSETS, MENU_BORDER_WIDTH, MIN_SUPPORTED_TOUCH_TARGET, TOKEN_DISPLAY_FONT, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, addSupplyArtImage, addUiIconImage, addWaymarkArtImage, alphaRouteMarkLibrary, alphaSupplyLibrary, buttonIconForLabel, cardStatEntries, clamp, cloneCard, compactCardArtKey, controlBindingLabel, currentMap, displayName, fitTextExcerpt, flockStatLabel, playUiSound, prefersReducedMotion, quietButton, renderSnagCardBorder, suitAccentColor, supplyCompactArtAssets, uiIconAssets, waymarkCompactArtAssets, waymarkGlyph } from '../main';
+import { panel } from './ui-panel';
 import type { UiIconId, Card, MarketCardListing, MarketWaymarkListing, MarketUtilityListing } from '../main';
 
 export function renderCardPickerScrollButton(this: any, x: number, y: number, direction: 'up' | 'down', enabled: boolean, onClick: () => void): any {
@@ -38,10 +39,9 @@ export function renderCardPickerOverlay(this: any, ): any {
     } else {
       this.renderRouteEventBackdrop(node, 0.82);
     }
-    const frame = renderFieldPanel(this, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1040, 558, {
-      accent,
-      fill: mode === 'preen' ? 0x071824 : 0x1b1114
-    });
+    const { frame: box } = panel(this, { name: 'card-picker-panel', x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 + 8, width: 1040, height: 558,
+      accent, fill: mode === 'preen' ? 0x071824 : 0x1b1114 });
+    const frame = { ...box, w: box.width, h: box.height };
     // Leave the shared eight-pixel gap below the 19px input hint.
     this.add.text(frame.left + 28, frame.top + 13, mode === 'preen'
         ? remainingPicks > 1 ? `Preen ${remainingPicks} Cards${isDistrictPreen ? ' · Free' : ''}` : isDistrictPreen ? 'Choose a Free Preen' : 'Preen a Card'

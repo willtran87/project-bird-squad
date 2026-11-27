@@ -482,10 +482,9 @@ several owned by other changes) or patching Phaser's WebGL drawing contexts
 combat touch target at least 44 CSS px; the canvas now sets
 `touch-action: none` so card drags and sliders do not pan or zoom the page.
 Phone portrait shows "Rotate to Landscape" with a turning device glyph (still
-under Reduced Motion). Phone landscape (844x390) stays gated with its own copy:
-at that size the 1280x720 layout puts 58 px targets at 31 CSS px and body
-text under 9 px, so it is told the 1000x560 minimum instead of being asked to
-rotate. Found and not fixed: on the entry route the selected node's hit area
+under Reduced Motion). Phone landscape was gated here; since November 27 it
+plays through the compact lens (see Phone landscape below), and only a
+landscape window below 560x320 is told the minimum. Found and not fixed: on the entry route the selected node's hit area
 and TAKE ROUTE overlap by 0.13 game px at every size.
 
 Tests changed: `settings-readability` walks 18 rows (was 16); smoke
@@ -505,7 +504,7 @@ scene gained the same four names and a `cardId` on its reward art.
 | Reward reveal | Done | `spectacle/life/reward-reveal.ts` (own chunk). Combat and route card rewards are dealt face down from below the screen, turn over left to right (a horizontal-scale flip about each card's centre) and a band of light in the card's rarity colour crosses each face. About 1.2 s at standard Animation Pace; Reduced Motion fades the faces up in order; Lean graphics shows them at once. Any pointer, key or controller button skips to the settled screen. Input is read at the window and never consumed, so the first click on a card still only arms it. Preen picks and Waymark rewards are not revealed. Every pose is applied at draw time: bounds, alpha, scale and hit areas are final from the first frame |
 | Tarot presentation | Done | `tarot-rules.ts` (pure) and `world-glyphs.ts`. A cartouche with the suit sigil (plume, basin, quill nib, woven nest; a compass rose for majors and the Aviary arcana) and the roman numeral sits over the top of the art on combat and route reward faces and beside the Codex dossier kicker. Majors carry their number (0 for First Flight), minors their rank, courts XI–XIV (Fledgling, Outrider, Matron, Elder). Snags carry none. Hand faces are untouched (another change owns them) |
 | World icons | Done | Procedural signs drawn once per size into 2x canvas textures: claw marks (fight), crew shield (rival), crown (boss), lantern (roost), wrench (nest workshop), stall awning (market), mast (signal), crate (cache). A sign sits on each node medallion's upper right (24px, 28px for the boss) and replaces the painted miniatures in the legend (28px). At 1000×560 they are 19–22 CSS px. Node hit areas are unchanged |
-| Shared panel | Partial | `ui-panel.ts`: scrim, frame (shadow, accent rail, corner brackets), eyebrow/title/subtitle header, body rectangle and footer actions built from `quietButton`, with a pure `panelLayout`. Used by the route reward overlay (replacing `renderFieldPanel` there) and the loading card. Other overlays were not migrated |
+| Shared panel | Partial | `ui-panel.ts`: scrim, frame (shadow, accent rail, corner brackets), eyebrow/title/subtitle header, body rectangle and footer actions built from `quietButton`, with a pure `panelLayout`. Used by the route reward overlay (replacing `renderFieldPanel` there) and the loading card; November 27 migrations are listed under Phone landscape and shared panel |
 | Loading screens | Done | `spectacle/life/loading.ts` (own chunk). While a route or battle readiness screen is up, its medallion and copy stay hidden for 250 ms of wall time; after that a panel shows the screen's own title and line, five birds crossing in a V and a progress bar driven by the readiness groups still pending. Fast loads never show it. Scene start for a lazily loaded BattleScene is not covered: that loader belongs to the platform change |
 | Bark lines | Done | `data/game/barks.json` and `src/game/barks/` (own chunk, requested when a fight opens). Five Leaders and nine enemy families (corvid, pigeon, raptor, gull, canal, night, vermin, a generic crew and bosses), three to four lines per trigger: opening, heavy hit (20% of maximum Cohesion or enemy health), Cohesion under 30%, a defeat (the enemy's last word or the Leader's quip, by seeded coin) and a boss phase turn. Lines are drawn from per-speaker decks shuffled by the flight seed; a pool is exhausted before any line repeats and a pass never opens on the line the last one closed. Tags hold 1.5 s scaled by Text Pace and are off under Fast. A tag is placed above, beside or below its speaker only where it touches no visible text, panel, control, HUD element or small icon; with no clear spot the line is dropped. Hidden under the inspect reader, drawers, pause and settings |
 | UI confirm sound | Done | `quietButton` classifies its current label (`button-cue.ts`): commit words (confirm, select, buy, claim, start, take, fly, skip, save…) or a primary action without a navigation word play `ui.confirm`; back, close, cancel, read, inspect, filters and tabs keep the soft click. Done in the shared helper, so it covers every `quietButton` and `decisionButton` (about 100 call sites) without touching them |
@@ -530,3 +529,100 @@ fail identically on the base commit `0d58b2ee` without these changes.
 
 Not verified: human play, real GPUs, WebKit and Firefox, physical touch and
 controllers, and whether `ui.confirm` on every commit reads well by ear.
+
+## Phone landscape and shared panel — November 27, 2026
+
+### Phone landscape: the compact lens
+
+A phone held sideways (below 1000x560, at least 560x320) now plays instead
+of being gated. Drawing the 1280x720 layout at 844x390 gives 0.54 CSS px per
+game unit: 58-unit targets at 31 CSS px, body text under 9 px. Every screen
+already meets the 44 CSS px target floor and the 14/16 CSS px text floors at
+1000x560 (0.78 CSS px per unit, `compact-type-inventory`), so the phone
+presentation keeps that reading scale and changes how much of the layout is
+on screen at once.
+
+`src/game/compact-lens.ts` (lazy `compact-lens` chunk, 8.9 KB; the platform
+gate imports it only when the compact media query matches):
+
+- **Lens.** Each active scene's main camera zooms to 0.8125 CSS px per unit
+  (1.5x at 844x390, 1.36x at 932x430, 1.7x at 740x360). 58-unit targets are
+  47 CSS px, 18-unit secondary text 14.6 px, 15-unit dense card rules 12.2
+  px, 20.6-unit primary text 16.7 px. The view is 853x480 game units at
+  844x390.
+- **Framing.** Combat: the hand on the bottom edge with the enemy panels
+  (name, Cohesion, intent) above it, sliding to keep a selected card and its
+  targets together; the selection forecast sits between them. Route: the
+  selected stop and TAKE ROUTE when both fit, otherwise the stop. Title: the
+  run commands; setup: run length and Start. Any overlay behind a scrim: its
+  own controls, read from the top-left when larger than the view. Elsewhere:
+  every reachable control. Reduced Motion snaps; otherwise the camera eases.
+- **Moving the view.** A drag that starts on empty space or on an overlay's
+  scrim pans; a drag on a control or card keeps its normal meaning (card
+  drags read world coordinates under the lens). "Whole screen" shows the full
+  layout; the next tap there chooses where to look.
+- **Rails.** The game narrows to leave a rail of at least 64 CSS px on each
+  side. Left: Cohesion, incoming damage, Wingbeats, Cover and Flow (combat) or
+  Cohesion and Scrap (route), mirrored from the HUD text, and "Whole screen".
+  Right: Menu, Confirm play, Roost, Take route, Start and an overlay's
+  Close/Back, each shown only while its in-game control is reachable (not
+  behind an open overlay) and forwarding to that control's own handler.
+  Codex and Flock Record add "Best on a larger screen". Rail text is 12–16
+  CSS px; rail buttons are at least 48 CSS px tall.
+- **Untouched elsewhere.** At 1000x560 and above the chunk is never
+  requested, no rail exists and the camera stays at zoom 1; card drags, the
+  Settings sliders and the Waymark wheel read screen coordinates exactly as
+  before. The camera punch stands down under the lens.
+
+Screens: title, setup, route map, combat (hand, enemies, intents, forecast,
+Confirm play, Roost), rewards, pause and Settings are covered by
+`tests/phone-landscape.spec.ts`. Codex, Flock Record, market, How to Play,
+deck review, drawers and readers are operable through the same lens but were
+not given screen-specific framing.
+
+Found and left: at 740x360 the combat view (423 units tall) clips the top
+row of the enemy panel (the intent badge); the name, Cohesion and the rail's
+incoming damage stay visible, and a drag shows it. Settings and How to Play
+are wider than the view; their Close is in the rail. The Codex still reads
+`pointer.x` in eight places (drag-scroll, wheel) and is not corrected for
+the lens.
+
+### Shared panel migrations
+
+`ui-panel.ts` gained `frameName`, so a migrated frame keeps the name tests
+and callers already use.
+
+| Overlay | Before | Now |
+| --- | --- | --- |
+| Pause, exit confirmation, Settings, Controls, How to Play | `renderQuietMenuPanel`: one flat rectangle | `panel()` with shadow, gold rail and corner brackets; the frame is still `system-quiet-menu-panel`, same fill, size and centre |
+| Deck review (route) | `renderFieldPanel` | `panel('deck-review-panel')`, same geometry and accent |
+| Preen / Release card picker | `renderFieldPanel` | `panel('card-picker-panel')`, same geometry, accent and fill |
+| Combat card index and Flock Stats loading fallbacks | `renderFieldPanel` | `panel()`, same geometry and accent |
+
+Left on their own frames: the market (an art-backed shop scene, not a framed
+panel; its shelves' geometry is tested), the two route-scene overlays still
+on `renderFieldPanel` (the route event choice and the Flock Stats / Boss prep
+loading panel: `route-scene.ts` is boot code and a static import would move
+the panel chunk into boot; the event header's eyebrow, title and subtitle
+offsets also differ from `panelLayout`), Waymark and Supply drawers and readers, Codex and Flock Record
+overlays, recap and ceremony (texture-framed "asset frame" panels whose
+art and hit areas the reader specs measure). `renderFieldPanel` stays for
+the boot-resident callers.
+
+### Checks
+
+`tests/phone-landscape.spec.ts` (5 tests, added to the gate): touch-target
+(44 CSS px), secondary (12 CSS px) and primary (14 CSS px) text floors through
+the camera on title, setup, route, pause, Settings, combat hand, combat with a
+selected card and reward at 844x390, and title, route and combat at 932x430
+and 740x360; rail fit, touch and text floors; a flight from the title through
+setup, TAKE ROUTE, a won fight, the card reward, the district contract, pause,
+Settings, Close, Resume, a pan and "Whole screen", by touch taps only; and
+1000x560 never requesting the lens. Tests changed: `platform-features`
+(phone portrait/landscape gate) and smoke `unsupported displays…` now expect
+844x390 to play and check the minimum-size notice at 540x300 instead; their
+portrait, tablet and copy assertions are unchanged. Boot code 451.7 to 452.0
+KB (the compact media query and lazy import in the gate).
+
+Not verified: physical phones (iOS Safari toolbar resizing, notches,
+`devicePixelRatio` 3), WebKit and Firefox, and human play at phone size.

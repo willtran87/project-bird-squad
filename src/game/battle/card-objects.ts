@@ -40,6 +40,11 @@ const SHEEN_TEXTURE = 'card-rarity-sheen';
 const SHEEN_CYCLE_MS = 4400;
 const SHEEN_SWEEP_MS = 1150;
 
+/** Under the phone-landscape lens the camera is zoomed, so drags follow the
+ * pointer in world space; elsewhere screen and world coincide. */
+const pointerPoint = (pointer: Phaser.Input.Pointer) => document.documentElement.dataset.layout === 'compact'
+  ? { x: pointer.worldX, y: pointer.worldY } : { x: pointer.x, y: pointer.y };
+
 export class CardObjectStage {
   readonly layer: Phaser.GameObjects.Container;
   /** Where the played card landed; its trip to a pile starts here. */
@@ -305,7 +310,7 @@ export class CardObjectStage {
     const up = (event: Phaser.Input.Pointer) => { if (mine(event)) this.dragEnd(true); };
     const cancel = () => this.dragEnd(false);
     input.on('pointermove', move).on('pointerup', up).on('pointerupoutside', up).on('gameout', cancel);
-    const origin = { x: pointer.x, y: pointer.y };
+    const origin = pointerPoint(pointer);
     this.drag = { id, origin, last: origin, tilt: 0, active: false, target: undefined,
       stop: () => input.off('pointermove', move).off('pointerup', up).off('pointerupoutside', up).off('gameout', cancel) };
   }
@@ -341,7 +346,7 @@ export class CardObjectStage {
     const host = this.scene, drag = this.drag, card = this.dragCard();
     const stage = battleActors(host), actor = drag && stage.actors.get(`card:${drag.id}`);
     if (!drag || !card || !actor || host.selectedInstanceId !== drag.id || host.combatInteractionLocked()) { this.dragEnd(false); return; }
-    const point = { x: pointer.x, y: pointer.y };
+    const point = pointerPoint(pointer);
     if (!drag.active) {
       if (!dragStarted(drag.origin, point)) return;
       drag.active = true;

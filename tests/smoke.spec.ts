@@ -3264,7 +3264,9 @@ test('unsupported displays pause the game while landscape tablets remain playabl
   await page.waitForTimeout(250);
   const pausedFrame = await page.evaluate(() => window.__birdSquadGame.loop.frame);
 
-  await page.setViewportSize({ width: 844, height: 390 });
+  // Phone landscape plays through the compact lens; only a window below
+  // 560x320 still pauses for the minimum-size notice.
+  await page.setViewportSize({ width: 540, height: 300 });
   const compactLandscape = await page.evaluate(() => ({
     gate: getComputedStyle(document.querySelector('#portrait-gate')!).display,
     game: getComputedStyle(document.querySelector('#game-container')!).display,

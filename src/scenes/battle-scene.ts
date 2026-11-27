@@ -1,4 +1,5 @@
 import { setTextureFilter } from '../game/texture-filter';
+import { panel } from '../game/ui-panel';
 import { type CardContribution, type ContributionKey, recordContribution, totalContributions } from '../game/card-contributions';
 import Phaser from 'phaser';
 import { loadFlyway } from '../game/flyway-loader';
@@ -6268,9 +6269,8 @@ private playBattleIntro(onComplete?: () => void) {
       const addTo = (object: Phaser.GameObjects.GameObject) => this.root.add(object);
       addTo(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
         .setInteractive({ useHandCursor: false }));
-      const frame = renderFieldPanel(this, addTo, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-        accent: this.flockStatsOverlayFailed ? UI_FIELD.danger : UI_FIELD.cyan,
-      });
+      const { frame } = panel(this, { name: 'flock-stats-loading-panel', x: HUD_MENU_PANEL.cx, y: HUD_MENU_PANEL.cy,
+        width: HUD_MENU_PANEL.w, height: HUD_MENU_PANEL.h, accent: this.flockStatsOverlayFailed ? UI_FIELD.danger : UI_FIELD.cyan }, addTo);
       renderCloseControl(this, addTo, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeOverlay());
       addTo(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.flockStatsOverlayFailed ? 'Flock Stats unavailable' : 'Opening Flock Stats…', {
         fontFamily: UI_FONT,
@@ -6297,9 +6297,8 @@ private playBattleIntro(onComplete?: () => void) {
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
       .setInteractive({ useHandCursor: false });
     this.root.add(scrim);
-    const frame = renderFieldPanel(this, (obj) => this.root.add(obj), HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-      accent: this.battleInspectRendererFailed ? 0xff8c6b : UI_FIELD.gold
-    });
+    const { frame } = panel(this, { name: 'combat-inspect-loading-panel', x: HUD_MENU_PANEL.cx, y: HUD_MENU_PANEL.cy,
+      width: HUD_MENU_PANEL.w, height: HUD_MENU_PANEL.h, accent: this.battleInspectRendererFailed ? 0xff8c6b : UI_FIELD.gold }, (obj) => this.root.add(obj));
     renderCloseControl(this, (obj) => this.root.add(obj), frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeOverlay());
     this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.battleInspectRendererFailed ? 'Card index unavailable' : 'Opening card index…', {
       fontFamily: UI_FONT,
