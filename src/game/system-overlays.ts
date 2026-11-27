@@ -3,6 +3,7 @@ import { UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 import { recoveryOwnsInput } from './recovery-input';
 import { quietButton } from './quiet-ui';
+import { panel } from './ui-panel';
 import { memoryStorageSessionActive, storageWriteResults } from './safe-storage';
 import {
   CONTROL_BINDING_DEFINITIONS,
@@ -788,9 +789,10 @@ export function renderConfirmRunExitOverlay(
 
 const settingsInputCleanups = new WeakMap<Phaser.Scene, () => void>();
 
+/** Pause, exit confirmation, Settings, Controls and How to Play share the overlay panel frame. */
 function renderQuietMenuPanel(scene: Phaser.Scene, addTo: UiAdd, width: number, height: number): FieldFrame {
-  addUi(addTo, scene.add.rectangle(640, 360, width, height, 0x0b1723, 1)
-    .setName('system-quiet-menu-panel'));
+  panel(scene, { name: 'system-quiet-menu', frameName: 'system-quiet-menu-panel', x: 640, y: 360, width, height,
+    fill: 0x0b1723, fillAlpha: 1 }, object => addUi(addTo, object));
   return { cx: 640, cy: 360, w: width, h: height, left: 640 - width / 2,
     right: 640 + width / 2, top: 360 - height / 2, bottom: 360 + height / 2 };
 }
