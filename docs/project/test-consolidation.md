@@ -63,16 +63,19 @@ inventory and a screenshot attached for each.
 
 ### Known issues found by the wider coverage
 
-The sweep reaches states the type inventory never visited. Product issues in
-three places turned up; they are listed in `KNOWN` in the spec (so the sweep guards
-everything else meanwhile) and should be fixed in product code:
+The sweep reaches states the type inventory never visited. It found three
+product issues, all fixed before merging, so `KNOWN` in the spec is empty:
 
-- Folios tab: library/template/import commands sit 3 units below the Flock
-  Record tab row (rule: 8).
-- Combat confirm in a side spot: the "CONFIRM TO PLAY" label drops to
-  16-17px, 12.4-13.2 CSS px at 1000x560 (floor: 14).
-- Draw/discard pile reader: row hits touch (gap 0) and the row metadata
-  ("Draw · 0 Wingbeats", "ACTIVE · NOW") is 16px, 12.4 CSS px at 1000x560.
+- Folios tab: library/template/import commands sat 3 units below the Profile
+  tab row (rule: 8). The tab row moved up 5 units.
+- Combat confirm in a side spot: the "CONFIRM TO PLAY" label dropped to
+  16-17px, 12.4-13.2 CSS px at 1000x560 (floor: 14). Narrow spots now keep
+  18px and wrap the label onto two lines in a 46-unit frame inside the same
+  touch area.
+- Draw/discard pile reader: row hits touched (gap 0) and the row metadata
+  ("Draw · 0 Wingbeats", "ACTIVE · NOW") was 16px. Rows are now 66 units
+  apart (six per page instead of seven) and those labels are 18px; the deck
+  smoke tests that pinned seven rows were updated.
 
 ### Proof that the sweep catches real bugs
 

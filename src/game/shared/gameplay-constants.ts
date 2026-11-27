@@ -28,9 +28,11 @@ export const MULTI_ENCOUNTER_HEALTH_MULT = 1.2;
 
 export const MULTI_ENCOUNTER_DAMAGE_BONUS = 2;
 
-export const CARD_REVIEW_VISIBLE_ROWS = 7;
+// Six rows 66 units apart: each row's 58-unit touch area keeps 8 units clear
+// of the next (seven 58-unit rows used to touch).
+export const CARD_REVIEW_VISIBLE_ROWS = 6;
 
-export const CARD_REVIEW_ROW_H = 58;
+export const CARD_REVIEW_ROW_H = 66;
 
 export const DECK_REVIEW_FILTERS: DeckReviewFilter[] = ['all', 'plumes', 'quills', 'basins', 'nests', 'special', 'preened'];
 

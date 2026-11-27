@@ -33,17 +33,6 @@ const viewports = [
 // Known violations found when the sweep was introduced, listed so the sweep
 // guards everything else meanwhile. Remove an entry once the product fixes it.
 const KNOWN: Record<string, RegExp[]> = {
-  // The Folios tab's library/template/import commands sit 3 game units below
-  // the Flock Record tab row (the rule asks for 8).
-  'profile-folios': [/^8px separation: profile-\w+-tab-hit \/ profile-folio-(template|library|import)-hit gap 3\.0$/],
-  // The side-spot confirm label drops to 16-17px to fit its 150-164 unit
-  // frame: 12.4-13.2 CSS px at 1000x560.
-  'combat-selected': [/^secondary text floor: combat-selection-command "CONFIRM TO PLAY"/],
-  'combat-targeting': [/^secondary text floor: combat-selection-command "CONFIRM TO PLAY"/],
-  // The draw/discard pile reader stacks its row hits with no gap and uses
-  // 16px row metadata.
-  'combat-pile': [/^8px separation: combat-pile-row-hit \/ combat-pile-row-hit gap 0\.0$/,
-    /^secondary text floor: (combat-pile-detail-meta|text) "(Draw|Discard|ACTIVE)/],
 };
 
 for (const viewport of viewports) {

@@ -48,7 +48,8 @@ export function renderProfileDashboard(scene: Phaser.Scene, view: ProfileDashboa
   ];
   tabs.forEach((tab, index) => {
     const x = 475 + index * 157;
-    quietButton(scene, { x, y: 240, width: 149, label: tab.label, name: `profile-${tab.id}-tab-hit`,
+    // y 235: leaves the Folios commands below the row 8 units clear.
+    quietButton(scene, { x, y: 235, width: 149, label: tab.label, name: `profile-${tab.id}-tab-hit`,
       kind: 'utility', selected: view.tab === tab.id, focused: view.focus === tab.id,
       onActivate: () => view.onTab(tab.id) });
   });

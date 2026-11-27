@@ -617,7 +617,7 @@ test('deck review overlays retain authored art with quiet readable controls', as
   expect(result.battleFlourish).toBe(0);
   expect(result.battleRowFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.battleRowFrames).toBe(0);
-  expect(result.battleReadableRows).toHaveLength(7);
+  expect(result.battleReadableRows).toHaveLength(6); // six rows per page, spaced so touch areas never meet
   expect(result.battleReadableRows.every((row: { size: string; resolution: number }) => row.size === '18px' && row.resolution === 2)).toBe(true);
   expect(result.battleReadControl).toBe(true);
   expect(result.battleQuietFrame).toBe(0);
@@ -920,7 +920,7 @@ test('combat pile inspector supports keyboard and controller navigation accessib
     index: 0,
     count: 12,
     visibleStart: 1,
-    visibleEnd: 7,
+    visibleEnd: 6,
     zoneCounts: { deck: expect.any(Number), draw: 12, discard: 2, cleared: 1 },
     bindings: { select: 'Up / Down', previousZone: 'Left', nextZone: 'Right', back: 'Esc' },
     controller: { choose: 'D-pad Up / Down', zone: 'D-pad Left / Right', page: 'LB / RB', back: 'B' },
@@ -968,18 +968,18 @@ test('combat pile inspector supports keyboard and controller navigation accessib
   });
   await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus))
     .toMatchObject({
-      instanceId: 'accessible-inspect-09',
-      index: 9,
+      instanceId: 'accessible-inspect-08',
+      index: 8,
       visibleStart: 4,
-      visibleEnd: 10,
+      visibleEnd: 9,
     });
   await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
     battle.input.gamepad.emit('down', {}, { index: 12 });
   });
   await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus?.instanceId))
-    .toBe('accessible-inspect-08');
-  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Selected 9 of 12'));
+    .toBe('accessible-inspect-07');
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Selected 8 of 12'));
   await page.screenshot({ path: '.artifacts/test-results/combat-pile-accessibility/minimum-landscape-controller-page.png' });
 
   const navigated = await page.evaluate(() => {
@@ -1019,16 +1019,16 @@ test('combat pile inspector supports keyboard and controller navigation accessib
     };
   });
   expect(navigated.state.cardInspectFocus).toMatchObject({
-    instanceId: 'accessible-inspect-08',
-    index: 8,
+    instanceId: 'accessible-inspect-07',
+    index: 7,
     count: 12,
     visibleStart: 4,
-    visibleEnd: 10,
+    visibleEnd: 9,
   });
   expect(navigated.state.inspectedCard.id).toBe(initial.inspectedCard.id);
-  expect(navigated.rows).toHaveLength(7);
+  expect(navigated.rows).toHaveLength(6);
   expect(navigated.rows.filter((row: any) => row.selected)).toEqual([
-    expect.objectContaining({ instanceId: 'accessible-inspect-08' }),
+    expect.objectContaining({ instanceId: 'accessible-inspect-07' }),
   ]);
   expect(navigated.rows.every((row: any) => row.width === 312 && row.height === 58)).toBe(true);
   expect(navigated.rows.every((row: any) => row.cssWidth >= 44 && row.cssHeight >= 44)).toBe(true);
@@ -1040,12 +1040,12 @@ test('combat pile inspector supports keyboard and controller navigation accessib
   expect(navigated.zoneTargets.every((target: any) => target.width === 236 && target.height === 58)).toBe(true);
   expect(navigated.zoneTargets.every((target: any) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(navigated.focusRings).toEqual([
-    expect.objectContaining({ instanceId: 'accessible-inspect-08', width: 326, height: 58 }),
+    expect.objectContaining({ instanceId: 'accessible-inspect-07', width: 326, height: 58 }),
   ]);
   expect(navigated.hint).toContain('D-pad: card / pile');
   expect(navigated.hint).toContain('LB / RB: page');
   expect(navigated.announcement).toContain('draw pile');
-  expect(navigated.announcement).toContain('Selected 9 of 12');
+  expect(navigated.announcement).toContain('Selected 8 of 12');
   expect(navigated.announcement).toContain('Draw 12, Discard 2, Cleared 1');
   expect(navigated.announcement).toContain('switch zones');
   expect(navigated.announcement).toContain('controller shoulders to page');
