@@ -11,7 +11,7 @@ export async function targetGeometry(page: Page, scene: string) {
       return [...document.querySelectorAll('[data-folio-editor],#folio-editor-actions button')].map(o=>{
         const b=o.getBoundingClientRect();
         return {name:o.id||o.getAttribute('aria-label')||'Folio text field',type:o.tagName,owner:'native-editor',
-          label:o.textContent,enemyId:'',backdrop:false,reachable:true,coveredBy:undefined,circular:false,
+          label:o.textContent,enemyId:'',backdrop:false,blockedBy:undefined,kind:undefined,reachable:true,coveredBy:undefined,circular:false,
           left:(b.left-canvas.left)/scale,right:(b.right-canvas.left)/scale,top:(b.top-canvas.top)/scale,bottom:(b.bottom-canvas.top)/scale,
           width:b.width,height:b.height};
       });
@@ -36,8 +36,21 @@ export async function targetGeometry(page: Page, scene: string) {
         const label=o.getData('fullLabel')??o.getData('label')??o.getData('focus')??o.text;
         // Optional click-outside margins duplicate an explicit large Back/Close
         // action. They are dismissal space, not undersized command buttons.
-        const backdrop=/scrim|blocker/.test(o.name)||(!o.name&&!label&&b.right-b.left>=1279);
-        return {name:o.name,type:o.type,owner,label,enemyId,backdrop,
+        const isBackdrop=(n:any,l:any,w:number)=>/scrim|blocker/.test(n.name)||(!n.name&&!l&&w>=1279);
+        const backdrop=isBackdrop(o,label,b.right-b.left);
+        // The receiver that takes this control's centre, when it is another
+        // command rather than a modal backdrop (used by the geometry sweep).
+        // Only labelled command buttons in the same layer (top-level container)
+        // count: a separate overlay layer gates the one beneath it in code, and
+        // a modal backdrop owns the pointer events behind it by design.
+        const top=receivers[0],own=receivers.indexOf(o);
+        const layer=(n:any)=>{let p=n;while(p.parentContainer)p=p.parentContainer;return p===n?s.children:p;};
+        const behindBackdrop=own<0||receivers.slice(0,own).some((r:any)=>isBackdrop(r,r.getData?.('label')??r.text,r.getBounds().width));
+        const tb=top&&top!==o&&o.getData('controlKind')&&!behindBackdrop&&layer(top)===layer(o)?top.getBounds():undefined;
+        const blockedBy=tb&&(top.listenerCount('pointerdown')||top.listenerCount('pointerup'))&&
+          !isBackdrop(top,top.getData?.('label')??top.text,tb.right-tb.left)?
+          {name:top.name,left:tb.left,right:tb.right,top:tb.top,bottom:tb.bottom}:undefined;
+        return {name:o.name,type:o.type,owner,label,enemyId,backdrop,blockedBy,kind:o.getData('controlKind') as string|undefined,
           reachable:pointer.x>=0&&pointer.x<=1280&&pointer.y>=0&&pointer.y<=720&&receivers[0]===o,
           coveredBy:receivers[0]?.name,circular:!!radius,left:b.left,right:b.right,top:b.top,bottom:b.bottom,
           width:(b.right-b.left)*scale,height:(b.bottom-b.top)*scale};
@@ -45,13 +58,44 @@ export async function targetGeometry(page: Page, scene: string) {
   },scene);
 }
 
-export function checkTargetGeometry(targets:Awaited<ReturnType<typeof targetGeometry>>, context:string) {
-  const controls=targets.filter(t=>t.reachable&&!t.backdrop);
-  expect(controls.length,context+': actual reachable actions').toBeGreaterThan(0);
-  expect(controls.filter(t=>(t.width<43.99||t.height<43.99)&&
+type Targets=Awaited<ReturnType<typeof targetGeometry>>;
+
+function undersized(controls:Targets) {
+  return controls.filter(t=>(t.width<43.99||t.height<43.99)&&
     // A status strip repeats its own enemy's large selection action; it does
     // not introduce a separate command that needs an independent touch slot.
-    !(t.enemyId&&controls.some(a=>a.enemyId===t.enemyId&&a.width>=44&&a.height>=44))),context+': 44 CSS px floor').toEqual([]);
+    !(t.enemyId&&controls.some(a=>a.enemyId===t.enemyId&&a.width>=44&&a.height>=44)));
+}
+
+export function checkTargetGeometry(targets:Targets, context:string) {
+  const controls=targets.filter(t=>t.reachable&&!t.backdrop);
+  expect(controls.length,context+': actual reachable actions').toBeGreaterThan(0);
+  expect(undersized(controls),context+': 44 CSS px floor').toEqual([]);
+  expect(separationConflicts(controls),context+': shared 8px game-space separation').toEqual([]);
+}
+
+/** The same rules as checkTargetGeometry plus two more, returned as readable
+ * strings so a sweep can report every surface at once: no command may hide
+ * another command's centre (a modal backdrop may), and no reachable command
+ * may straddle the stage edge. */
+export function targetGeometryIssues(targets:Targets) {
+  const controls=targets.filter(t=>t.reachable&&!t.backdrop);
+  const issues:string[]=[];
+  if(!controls.length)issues.push('no reachable actions');
+  for(const t of undersized(controls))issues.push(`44 CSS px floor: ${t.name||t.owner} ${t.width.toFixed(1)}x${t.height.toFixed(1)}`);
+  for(const c of separationConflicts(controls))issues.push(`8px separation: ${c.a} / ${c.b} gap ${c.gap.toFixed(1)}`);
+  for(const t of targets){
+    const b=t.blockedBy;
+    if(t.backdrop||!b||t.enemyId)continue;
+    // A nested action (in-card inspect, slider thumb) may sit on its row.
+    if(b.left>=t.left-1&&b.right<=t.right+1&&b.top>=t.top-1&&b.bottom<=t.bottom+1)continue;
+    issues.push(`command hidden: ${t.name||t.owner} is covered by ${b.name||'unnamed command'}`);
+  }
+  for(const t of controls)if(t.kind&&(t.left<-1||t.right>1281||t.top<-1||t.bottom>721))issues.push(`command off stage: ${t.name||t.owner}`);
+  return issues;
+}
+
+function separationConflicts(controls:Targets) {
   const conflicts:any[]=[];
   for(let i=0;i<controls.length;i++)for(let j=i+1;j<controls.length;j++){
     const a=controls[i],b=controls[j];
@@ -69,5 +113,5 @@ export function checkTargetGeometry(targets:Awaited<ReturnType<typeof targetGeom
       a.circular?circleRect(a,b):b.circular?circleRect(b,a):Math.max(a.left-b.right,b.left-a.right,a.top-b.bottom,b.top-a.bottom);
     if(gap<7.9)conflicts.push({a:a.name||a.owner,b:b.name||b.owner,gap});
   }
-  expect(conflicts,context+': shared 8px game-space separation').toEqual([]);
+  return conflicts;
 }

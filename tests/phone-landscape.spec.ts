@@ -8,7 +8,7 @@ import { test, expect, type Page } from '@playwright/test';
 // the camera, and DOM rail controls.
 
 const PHONE = { width: 844, height: 390 };
-// Same primary set as compact-type-inventory, read at phone scale.
+// Same primary set as tests/helpers/screen-surfaces.ts, read at phone scale.
 const PRIMARY = new Set(['codex-card-title', 'codex-entry-title', 'codex-tab-label', 'codex-card-cost-label', 'codex-card-detail-title',
   'codex-card-detail-paragraph', 'combat-tooltip-title', 'run-flight-details-section-body', 'run-flight-details-section-title',
   'run-defeat-review-headline', 'route-collection-goal-hit-label', 'hud-value-Cohesion', 'hud-value-Scrap', 'hud-value-Deck',
