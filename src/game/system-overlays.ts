@@ -573,7 +573,9 @@ function renderSettingsVolumeSlider(
     .setStrokeStyle(2, accent, 0.96));
   const glint = addUi(addTo, scene.add.circle(knobX, cy, 4, 0x0b1723, 0.86));
   const applyPointer = (pointer: Phaser.Input.Pointer) => {
-    const next = clamp((pointer.x - trackX) / trackWidth, 0, 1);
+    // The phone-landscape lens zooms the camera; read the slider in world space there.
+    const px = document.documentElement.dataset.layout === 'compact' ? pointer.worldX : pointer.x;
+    const next = clamp((px - trackX) / trackWidth, 0, 1);
     onChange(Math.round(next * 20) / 20);
   };
   hit.on('pointerdown', applyPointer);

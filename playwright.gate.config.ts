@@ -10,7 +10,7 @@ const featureSpecs = [
   'card-objects', 'combat-life', 'retained-actors', 'scene-life', 'presentation-polish', 'platform-features',
   'collection-ceremony', 'daily-flight', 'run-recap', 'narrative-threads', 'enemy-cluster-layout', 'clear-choices',
   'hand-readability', 'reward-checkpoint', 'compact-type-inventory', 'checkpoint-interruption-journey',
-  'finished-run-recovery', 'opening-district',
+  'finished-run-recovery', 'opening-district', 'phone-landscape',
 ].map((name) => `**/${name}.spec.ts`);
 const chromium = base.projects![0];
 

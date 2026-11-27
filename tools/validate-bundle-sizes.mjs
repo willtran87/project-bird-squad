@@ -69,6 +69,8 @@ const budgets = [
   { label: 'combat barks lazy module', pattern: /^barks-.*\.js$/, maxKb: 17, hard: true },
   { label: 'world glyphs and tarot marks lazy module', pattern: /^world-glyphs-.*\.js$/, maxKb: 7.5, hard: true },
   { label: 'shared overlay panel lazy module', pattern: /^ui-panel-.*\.js$/, maxKb: 3, hard: true },
+  // Phone landscape lens, framing and rails; the platform gate requests it only below 1000x560 (8.9 KB).
+  { label: 'compact lens lazy module', pattern: /^compact-lens-.*\.js$/, maxKb: 10, hard: true },
   // Daily Flight, run recap/photo card and Collection ceremony scenes; the title
   // requests this after its first frame. Narrative copy rides with the arrival card.
   { label: 'engagement scenes lazy module', pattern: /^engagement-.*\.js$/, maxKb: 30, hard: true },

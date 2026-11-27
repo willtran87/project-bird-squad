@@ -88,6 +88,8 @@ export default defineConfig(({ command }) => ({
           // Procedural suit sigils, tarot marks and route node signs; shared by reward faces, the route and the Codex.
           if (moduleId.endsWith('/src/game/world-glyphs.ts') || moduleId.endsWith('/src/game/tarot-rules.ts')) return 'world-glyphs';
           if (moduleId.endsWith('/src/game/ui-panel.ts')) return 'ui-panel';
+          // Phone landscape lens and rails: loaded by the platform gate only below 1000x560.
+          if (moduleId.endsWith('/src/game/compact-lens.ts')) return 'compact-lens';
           // Combat barks: rules, runtime and the line content, loaded when a fight opens.
           if (moduleId.includes('/src/game/barks/') || moduleId.endsWith('/data/game/barks.json')) return 'barks';
           if (moduleId.includes('/src/game/spectacle/')) return 'spectacle';
