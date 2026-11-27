@@ -200,6 +200,16 @@ Phaser.GameObjects.GameObjectFactory.prototype.text = function (
 applyVisualContrastPreference();
 
 window.__birdSquadGame = new Phaser.Game(config);
+{
+  // Device-pixel-ratio backing store, shape batching and the Auto quality
+  // step all need the booted WebGL renderer; they load beside boot, not in it.
+  const game = window.__birdSquadGame;
+  const installRendering = () => {
+    import('./game/platform-rendering').then(module => module.installPlatformRendering(game), () => undefined);
+  };
+  if (game.isRunning) installRendering();
+  else game.events.once(Phaser.Core.Events.READY, installRendering);
+}
 setSpectacleReady(import('./game/spectacle/stage').then((m) => m.installSpectacle(window.__birdSquadGame!), () => undefined));
 
 initializeScreenReaderAccessibility();
