@@ -49,7 +49,7 @@ export async function targetGeometry(page: Page, scene: string) {
         const tb=top&&top!==o&&o.getData('controlKind')&&!behindBackdrop&&layer(top)===layer(o)?top.getBounds():undefined;
         const blockedBy=tb&&(top.listenerCount('pointerdown')||top.listenerCount('pointerup'))&&
           !isBackdrop(top,top.getData?.('label')??top.text,tb.right-tb.left)?
-          {name:top.name,left:tb.left,right:tb.right,top:tb.top,bottom:tb.bottom}:undefined;
+          {name:top.name,sameParent:top.parentContainer===o.parentContainer,left:tb.left,right:tb.right,top:tb.top,bottom:tb.bottom}:undefined;
         return {name:o.name,type:o.type,owner,label,enemyId,backdrop,blockedBy,kind:o.getData('controlKind') as string|undefined,
           reachable:pointer.x>=0&&pointer.x<=1280&&pointer.y>=0&&pointer.y<=720&&receivers[0]===o,
           coveredBy:receivers[0]?.name,circular:!!radius,left:b.left,right:b.right,top:b.top,bottom:b.bottom,
@@ -87,8 +87,9 @@ export function targetGeometryIssues(targets:Targets) {
   for(const t of targets){
     const b=t.blockedBy;
     if(t.backdrop||!b||t.enemyId)continue;
-    // A nested action (in-card inspect, slider thumb) may sit on its row.
-    if(b.left>=t.left-1&&b.right<=t.right+1&&b.top>=t.top-1&&b.bottom<=t.bottom+1)continue;
+    // A nested action (in-card inspect, slider thumb) may sit on its own row;
+    // a command from another container may not sit on top of this one.
+    if(b.sameParent&&b.left>=t.left-1&&b.right<=t.right+1&&b.top>=t.top-1&&b.bottom<=t.bottom+1)continue;
     issues.push(`command hidden: ${t.name||t.owner} is covered by ${b.name||'unnamed command'}`);
   }
   for(const t of controls)if(t.kind&&(t.left<-1||t.right>1281||t.top<-1||t.bottom>721))issues.push(`command off stage: ${t.name||t.owner}`);
