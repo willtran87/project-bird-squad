@@ -93,11 +93,15 @@ async function openBattle(page: Page) {
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: node.id, runState });
   }, encounter);
-  await page.waitForFunction(() => {
-    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    return b.battleHandRendererModule && b.hand.length && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued
-      && b.handCardRects.size === b.hand.length;
-  });
+  // Step the intro forward rather than waiting on real frames, which are slow
+  // under software GL at DPR 2 with other tests sharing the runner.
+  await expect.poll(() => page.evaluate(() => {
+    const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
+    const ready = b.battleHandRendererModule && b.hand?.length && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued
+      && b.handCardRects?.size === b.hand.length;
+    if (!ready && w.__birdSquadGame.scene.isActive('BattleScene')) w.advanceTime?.(250);
+    return Boolean(ready);
+  }), { timeout: 90_000, intervals: [100] }).toBe(true);
   await page.evaluate(() => (window as any).advanceTime(900));
 }
 
@@ -232,7 +236,7 @@ async function settledGeometry(one: Page, two: Page, sceneKey: string) {
 }
 
 test('text and control geometry is identical at DPR 1 and DPR 2 on title, route and combat', async ({ browser }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(240_000);
   const one = await openPage(browser, 1);
   const two = await openPage(browser, 2);
   for (const { page } of [one, two]) await page.evaluate(() => (window as any).advanceTime(2000));

@@ -211,9 +211,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { browser: firefox, shard: 1, shards: 1 }
-          - { browser: webkit, shard: 1, shards: 2 }
-          - { browser: webkit, shard: 2, shards: 2 }
+          - { browser: firefox, shard: 1, shards: 1, workers: 2 }
+          # WebKit under software rendering is too slow for two workers a job.
+          - { browser: webkit, shard: 1, shards: 3, workers: 1 }
+          - { browser: webkit, shard: 2, shards: 3, workers: 1 }
+          - { browser: webkit, shard: 3, shards: 3, workers: 1 }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -222,7 +224,7 @@ jobs:
         with:
           browser: ${{ matrix.browser }}
       - name: Browser qualification
-        run: node tools/run-cross-browser-smoke.mjs --project=${{ matrix.browser }} --workers=2 --timeout=90000 --shard=${{ matrix.shard }}/${{ matrix.shards }} --reporter=list,json
+        run: node tools/run-cross-browser-smoke.mjs --project=${{ matrix.browser }} --workers=${{ matrix.workers }} --timeout=90000 --shard=${{ matrix.shard }}/${{ matrix.shards }} --reporter=list,json
         env:
           BIRD_SQUAD_REUSE_BUILD: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/browser-results.json
@@ -311,7 +313,9 @@ jobs:
           path: .artifacts/build
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # always() is needed: without a status check GitHub skips this job whenever
+    # any upstream job was skipped, and the PR-only gate always is on main.
+    if: always() && needs.build.result == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       pages: write
       id-token: write
