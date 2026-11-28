@@ -207,11 +207,15 @@ function sameGeometry(a: string[], b: string[]) {
     const [nameA, numbersA] = [entry.slice(0, entry.lastIndexOf(':')), entry.slice(entry.lastIndexOf(':') + 1).split(',').map(Number)];
     const [nameB, numbersB] = [b[i].slice(0, b[i].lastIndexOf(':')), b[i].slice(b[i].lastIndexOf(':') + 1).split(',').map(Number)];
     if (nameA !== nameB) return false;
-    // Text boxes can grow by a pixel or two at DPR 2 (line-height rounding);
-    // the centre must stay within a game pixel and the size within two.
+    // At DPR 2 each text line can round about a pixel taller, so a box may
+    // grow by up to 2 px plus 5% of its height. It must keep its width and
+    // horizontal place, and either its top (top-anchored text grows down) or
+    // its centre (centred text grows both ways) within a game pixel.
     const [xA, yA, wA, hA] = numbersA, [xB, yB, wB, hB] = numbersB;
-    return Math.abs(xA + wA / 2 - (xB + wB / 2)) <= 1 && Math.abs(yA + hA / 2 - (yB + hB / 2)) <= 1
-      && Math.abs(wA - wB) <= 2 && Math.abs(hA - hB) <= 2;
+    const close = (p: number, q: number) => Math.abs(p - q) <= 1;
+    return close(xA, xB) && close(wA, wB)
+      && Math.abs(hA - hB) <= 2 + 0.05 * Math.max(hA, hB)
+      && (close(yA, yB) || close(yA + hA / 2, yB + hB / 2));
   });
 }
 

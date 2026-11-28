@@ -66,7 +66,7 @@ for (const exit of ['reload', 'Main Menu']) test(`${exit} during a paused live f
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`continue-${width}.png`) });
   }
-  await page.keyboard.press('Enter'); await route(); await settleCanvas(page);
+  await page.keyboard.press('Enter'); await route(); await dismissArrivalCard(page); await settleCanvas(page);
   const resumed = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').runState);
   expect(resumed.districtContracts).toEqual(checkpoint.districtContracts.map((contract: any) => ({
     ...contract, completed: Boolean(contract.completed), celebrated: Boolean(contract.celebrated), rewardClaimed: Boolean(contract.rewardClaimed),
