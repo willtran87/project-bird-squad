@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config';
 import pkg from './package.json' with { type: 'json' };
+import { browserSmokeGlobs, browserSmokeGrep } from './tools/browser-smoke-set.mjs';
 
 // Fast gate (about 15 min at 3 workers): the ordered-sequence smoke set plus
 // the feature and save/resume specs and the 1000x560 geometry sweep most
@@ -24,5 +25,11 @@ export default defineConfig({
     { ...chromium, name: 'gate-features', testMatch: featureSpecs },
     // General layout rules on every main screen at the smallest supported window.
     { ...chromium, name: 'gate-geometry', testMatch: '**/screen-geometry-sweep.spec.ts', grep: /at 1000x560$/ },
+    // CI only (BIRD_SQUAD_GATE_BROWSER_SMOKE=1): the release smoke set that
+    // main runs in Firefox and WebKit, here in Chromium, replacing a separate
+    // Chromium browser job. Files run whole by gate-features are left to it.
+    ...(process.env.BIRD_SQUAD_GATE_BROWSER_SMOKE === '1'
+      ? [{ ...chromium, name: 'gate-browser-smoke', testMatch: browserSmokeGlobs, grep: new RegExp(browserSmokeGrep), testIgnore: featureSpecs }]
+      : []),
   ],
 });
