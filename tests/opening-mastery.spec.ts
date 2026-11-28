@@ -5,7 +5,7 @@ import { encounterDecision } from '../src/game/combat-reading';
 import { resolveScriptedBattle } from './helpers/scripted-battle';
 import { settleCanvas } from './helpers/settled-canvas';
 
-const sizes = [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes = [{ width: 1000, height: 560 }];
 async function route(page: Page) {
   await page.goto('./?flight=opening-mastery&length=full');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);

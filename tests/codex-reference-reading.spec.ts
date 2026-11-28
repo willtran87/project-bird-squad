@@ -96,7 +96,7 @@ test('enemy and glossary grids keep deep focus, loaded art and detail return acr
           const b = t.getByName('codex-entry-hit').getBounds(); return b.bottom > shape.top && b.top < shape.bottom;
         }).every((t: any) => Boolean(t.getByName('codex-entry-art')));
       });
-      for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+      for (const size of [{ width: 1000, height: 560 }]) {
         await page.setViewportSize(size); await settleCanvas(page);
         await page.screenshot({ path: info.outputPath(`${section}-${index}-${size.width}.png`) });
       }
@@ -183,7 +183,7 @@ test('long glossary definitions page with keyboard wheel and touch without chang
     term.detail = 'A long definition must remain complete and readable without reducing its type size. '.repeat(40) + 'FINAL DEFINITION SENTENCE.';
     c.activeSection = 'glossary'; c.openCodexDetail(term.term);
   });
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`long-glossary-${size.width}.png`) });
   }

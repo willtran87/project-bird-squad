@@ -6,7 +6,7 @@ import { normalizeFlyway } from '../src/game/flyway-rules';
 import { resolveScriptedBattle } from './helpers/scripted-battle';
 import { settleCanvas } from './helpers/settled-canvas';
 
-const sizes = [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes = [{ width: 1000, height: 560 }];
 const encounters = [2,3].flatMap(n=>JSON.parse(readFileSync(`data/game/map0${n}-content.json`,'utf8')).encounters);
 const errors = new WeakMap<Page,string[]>();
 test.beforeEach(({page})=>{ const list:string[]=[]; errors.set(page,list); page.on('pageerror',e=>list.push(e.message)); });

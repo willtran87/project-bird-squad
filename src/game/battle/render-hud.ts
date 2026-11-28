@@ -503,16 +503,21 @@ export function renderBattleSelectionPreview(
     const title = container.getByName('combat-selection-card-target') as Phaser.GameObjects.Text | null;
     if (title) fitTextExcerpt(title.setFixedSize(220, 0).setWordWrapWidth(220, true), `${preview.card} → ${preview.target}`, 1);
   }
-  const commandFrame = scene.add.rectangle(commandX, commandY, commandW, 24, 0x102534, 0.98)
+  // Narrow side spots keep the label at the 18px floor by wrapping it onto two
+  // lines in a taller frame; the frame stays inside the 58-unit touch area.
+  const narrow = commandW < 188;
+  const frameH = narrow ? 46 : 24;
+  const commandFrame = scene.add.rectangle(commandX, commandY, commandW, frameH, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame')
     .setData('placement', { spot: spots.indexOf(clearSpot), blockers: blockers.map(b => [b.left, b.top, b.right, b.bottom].map(Math.round)) });
   container.add(commandFrame);
   const commandLabel = scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
     ...textStyle,
-    fontSize: commandW < 160 ? '16px' : commandW < 188 ? '17px' : textStyle.fontSize,
+    fontSize: narrow ? '18px' : textStyle.fontSize,
     fontStyle: boldFontStyle,
     color: '#dffbff',
+    ...(narrow ? { align: 'center', lineSpacing: -2, wordWrap: { width: commandW - 10 } } : {}),
   }).setOrigin(0.5).setName('combat-selection-command');
   container.add(commandLabel);
   const confirm = context.onConfirm;
@@ -521,8 +526,8 @@ export function renderBattleSelectionPreview(
     // the enemy and Roost lanes around it.
     const paint = (on: boolean) => commandFrame.setFillStyle(on ? 0x1b4a5e : 0x102534, 0.98)
       .setStrokeStyle(on ? 2 : 1, on ? 0xffe7a8 : context.gold, on ? 1 : 0.72);
-    const side = commandW < 188 ? 2 : 6;
-    const hitTop = spotY - 12 - pad - (commandY - 12);
+    const side = narrow ? 2 : 6;
+    const hitTop = spotY - 12 - pad - (commandY - frameH / 2);
     commandFrame.setInteractive(new Phaser.Geom.Rectangle(-side, hitTop, commandW + side * 2, 24 + pad * 2), Phaser.Geom.Rectangle.Contains)
       .setData({ controlKind: 'primary', enabled: true, labelObject: commandLabel,
         accessibleLabel: `Confirm to play ${preview.card} (${controlBindingLabel('confirm')})` })

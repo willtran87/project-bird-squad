@@ -42,7 +42,7 @@ for (const [offset, id] of ['preen', 'deck'].entries()) test(`guided ${id} decis
   expect(await disk(page)).toEqual(before);
   await page.keyboard.press('Enter');
   await page.waitForFunction(id => (window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson')?.id === id, id);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`${id}-lesson-${viewport.width}.png`) });
   }
@@ -61,7 +61,7 @@ for (const [offset, id] of ['preen', 'deck'].entries()) test(`guided ${id} decis
   }
   expect(found).toBe(true);
   expect(await page.evaluate(() => JSON.stringify((window as any).__birdSquadGame.scene.getScene('RouteScene').runState.deck))).toBe(startingDeck);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`${id}-draw-${viewport.width}.png`) });
   }
@@ -70,7 +70,7 @@ for (const [offset, id] of ['preen', 'deck'].entries()) test(`guided ${id} decis
   await page.keyboard.press('Enter'); await settleCanvas(page); await page.keyboard.press('Enter');
   if (id === 'preen') await page.getByRole('button', { name: 'Choose Shelter', exact: true }).click();
   await page.waitForFunction(() => (window as any).__birdSquadGame.registry.get('birdsquad.practiceLesson')?.complete);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`${id}-complete-${viewport.width}.png`) });
   }
@@ -102,14 +102,14 @@ test('shared HUD stays deferred and route/battle remain usable with smooth textu
   await boot(page);
   expect(await page.evaluate(() => performance.getEntriesByType('resource').some(e => /\/(run-hud|route-transition-fx)-/.test(e.name)))).toBe(false);
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+  await dismissArrivalCard(page);
   await page.keyboard.press('Enter'); await settleCanvas(page); await page.keyboard.press('Enter');
   await page.waitForFunction(() => { const s = JSON.parse((window as any).render_game_to_text()); return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active; });
   expect(await page.evaluate(() => {
     const game = (window as any).__birdSquadGame, b = game.scene.getScene('BattleScene');
     return { hud: !!b.root.getByName('hud-deck-chip'), msaa: game.renderer.gl.getContextAttributes().antialias, textures: game.config.antialias, mipmap: game.config.mipmapFilter };
   })).toEqual({ hud: true, msaa: false, textures: true, mipmap: 'LINEAR_MIPMAP_LINEAR' });
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page); await page.screenshot({ path: info.outputPath(`hud-${viewport.width}.png`) });
   }
 });

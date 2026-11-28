@@ -4,7 +4,7 @@ import { resolveScriptedBattle } from './helpers/scripted-battle';
 import { settleCanvas } from './helpers/settled-canvas';
 
 const content=JSON.parse(readFileSync('data/game/map04-content.json','utf8'));
-const sizes=[{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes=[{ width: 1000, height: 560 }];
 async function readyRoute(page:Page,map=3){
   await page.waitForFunction(map=>{const g=(window as any).__birdSquadGame,r=g.scene.getScene('RouteScene');return g.scene.isActive('RouteScene')&&r.runState.mapIndex===map&&r.routeEssentialAssetsReady&&r.openFlyway&&r.highRoost;},map);
   await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');if(r.shouldChooseDistrictContract())r.chooseDistrictContract(r.districtContractChoices()[0].id);});

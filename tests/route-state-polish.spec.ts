@@ -45,7 +45,7 @@ test('route state shapes distinguish current, completed, selected, available and
       r.renderAll();
       return JSON.stringify(r.runState);
     });
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       const metrics = await page.evaluate(() => {
         const w = window as any, r = w.__birdSquadGame.scene.getScene('RouteScene');

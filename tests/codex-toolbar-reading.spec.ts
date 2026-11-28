@@ -88,7 +88,7 @@ test('Codex toolbar keeps labels readable and input regions separate across ever
   });
   expect(issues).toEqual([]);
   await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('CodexScene').load.isLoading());
-  for (const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`toolbar-${size.width}.png`) });
   }

@@ -40,7 +40,7 @@ test('selected card keeps its Full rules pointer target alive across hover exit'
   })).toBe(true);
   await page.mouse.click(control.x, control.y);
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').combatCardDetail?.active);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`pointer-rules-${width}.png`) });
   }

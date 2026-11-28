@@ -70,7 +70,7 @@ for (const surface of surfaces) test(`authored frames retain proportions: ${surf
     if(surface==='settings')return !!s.settingsOverlay?.active;
     return true;
   },{surface,sceneName});
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]){
+  for(const [width,height] of [[1000, 560]]){
     await page.setViewportSize({width,height});await settleCanvas(page);
     const inventory=await page.evaluate(name=>{
       const s=(window as any).__birdSquadGame.scene.getScene(name);

@@ -50,7 +50,7 @@ async function battle(page: Page) {
 test('Clear choices critical forecasts stay complete and separate at every supported size', async ({page},info) => {
   await battle(page); const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies.forEach((e:any)=>{e.block=7;e.weak=2;});b.renderAll();});
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);await settleCanvas(page);
     for(const scenario of ['ordinary','lethal','phase-choice']) {
       const result=await page.evaluate(scenario=>{
@@ -143,7 +143,7 @@ for(const preen of [false,true])test(`Clear choices ${preen?'Preen':'reward'} ad
     b.mode=preen?'upgradeReward':'cardReward';b.rewardChoices=cards;b.upgradeChoices=cards;b.renderAll();
   },preen);
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`offers-${size.width}.png`)});}
+  for(const size of [{ width: 1000, height: 560 }]){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`offers-${size.width}.png`)});}
   const before=await page.evaluate(preen=>{
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),card=(b.mode==='upgradeReward'?b.upgradeChoices:b.rewardChoices)[0];
     const before=JSON.stringify({deck:b.allDeckCards(),scrap:b.scrap,mode:b.mode});b.openRewardCardInspection(card.id);

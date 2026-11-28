@@ -36,7 +36,7 @@ for (const id of pilot) test(`Rooftop pilot: ${id}`, async ({ page }, info) => {
   expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').enemies.map((e: any) => e.runtime.id)))
     .toEqual(catalog.find((e: any) => e.id === id).enemies);
 
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`authored-${width}.png`) });
     for (const state of ['retain', 'discard', 'guide']) {

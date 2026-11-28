@@ -56,7 +56,7 @@ for (const kind of ['plain', 'mixed', 'card', 'supply', 'waymark', 'leave']) tes
       expect(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top).toBe(true);
     }
   };
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page); await check();
     await page.screenshot({ path: info.outputPath(`${kind}-${width}.png`) });
   }

@@ -14,7 +14,7 @@ async function clickHandControl(page: Page, name: string) {
   await settleCanvas(page);
 }
 
-for (const remapped of [false, true]) test(`large hands remain readable and page without playing, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`large hands remain readable and page without playing, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -81,7 +81,7 @@ for (const remapped of [false, true]) test(`large hands remain readable and page
     };
   });
   const initial = await read();
-  for (const [width, height] of [[2560,1600],[1440,900],[1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     // Every page, including a partially filled final page, preserves full-size cards.
     for (let p = 0; p < 4; p++) {

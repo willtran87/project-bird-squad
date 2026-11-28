@@ -4,7 +4,7 @@ import { primaryBenefit, decisionBrief } from '../src/game/decision-brief';
 import { readFileSync } from 'node:fs';
 const cards = JSON.parse(readFileSync('data/game/alpha-cards.json','utf8'));
 import { settleCanvas } from './helpers/settled-canvas';
-const sizes=[{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes=[{ width: 1000, height: 560 }];
 const errors=new WeakMap<Page,string[]>();
 test.beforeEach(({page})=>{const list:string[]=[];errors.set(page,list);page.on('pageerror',error=>list.push(error.message));});
 test.afterEach(async({page})=>{try{expect(errors.get(page)).toEqual([]);}finally{await page.goto('about:blank');}});

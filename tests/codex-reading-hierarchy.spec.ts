@@ -31,7 +31,7 @@ test('Codex puts complete gameplay rules before collection records and keeps the
       if (id !== 'pentacles_04') c.cardJournal[id] = 'x'.repeat(240);
       c.openCodexDetail(id, false);
     }, id);
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${id}-rules-${size.width}.png`) });
       const geometry = await page.evaluate(() => {

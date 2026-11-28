@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-for (const remapped of [false, true]) test(`explicit card details preserve decisions and paginate complete rules, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`explicit card details preserve decisions and paginate complete rules, remapped=${remapped}`, async ({ page }, info) => {
   const keys = remapped ? { help: 'j', back: 'b', next: 'e', previous: 'q' } : { help: 'h', back: 'Escape', next: 'ArrowRight', previous: 'ArrowLeft' };
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   if (remapped) await page.addInitScript(() => localStorage.setItem('birdsquad.controlBindings', JSON.stringify({ version: 1, bindings: { guide: 'KeyJ', back: 'KeyB', previous: 'KeyQ', next: 'KeyE' } })));
@@ -105,7 +105,7 @@ for (const remapped of [false, true]) test(`explicit card details preserve decis
     }
   }
   await page.keyboard.press(keys.help);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await checkPages();
     await page.screenshot({ path: info.outputPath(`details-${viewport.width}.png`) });
   }

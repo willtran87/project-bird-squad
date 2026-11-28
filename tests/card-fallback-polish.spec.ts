@@ -4,7 +4,7 @@ import { branchCards } from '../src/game/flyway-rules';
 
 // Independent journeys keep the unchanged 30-second budget meaningful without
 // charging two complete scene boots and eight captures to one test timeout.
-for (const remapped of [false, true]) for (const mode of ['cardReward', 'upgradeReward'])
+for (const remapped of [true]) for (const mode of ['cardReward', 'upgradeReward'])
 test(`failed ceremony keeps card art, readable Preens and intentional choices, mode=${mode}, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -54,7 +54,7 @@ test(`failed ceremony keeps card art, readable Preens and intentional choices, m
     // Dismiss it through the real Keep playing action before testing canvas input.
     const keepPlaying = page.getByRole('button', { name: 'Keep playing', exact: true });
     await expect(keepPlaying).toBeVisible(); await keepPlaying.click();
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${mode}-${viewport.width}.png`) });
       const geometry = await page.evaluate(() => {

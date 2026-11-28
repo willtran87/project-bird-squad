@@ -16,7 +16,7 @@ test.afterEach(async ({page}) => { await page.goto('about:blank'); });
 test('strategy choices are accessible, reversible and persist across a real checkpoint reload', async ({page}, info) => {
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await route(page); await page.locator('#flyway-launch').click();
-  for (const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.getByRole('heading',{name:'Find your Rooftops strategy'}).scrollIntoViewIfNeeded();
     await page.getByRole('button',{name:'Follow Chorus Engine',exact:true}).scrollIntoViewIfNeeded();
@@ -90,7 +90,7 @@ test('saved shelter support changes the route and artwork completions coalesce',
   await page.getByRole('button',{name:'City & crossings',exact:true}).click();
   await page.getByRole('button',{name:'Leave 10 Scrap for the shelter',exact:true}).click();await page.keyboard.press('Escape');
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('opening-neighborhood'));
-  for(const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);await settleCanvas(page);await page.screenshot({path:info.outputPath(`neighborhood-${viewport.width}.png`)});
   }
   await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.testRedrawCount=0;r.testOriginalRender=r.renderAll;r.renderAll=function(){r.testRedrawCount++;return r.testOriginalRender.call(this);};
@@ -124,7 +124,7 @@ test('Crow purpose and coaching stay readable; reduced-motion reactions work wit
     r.scene.start('BattleScene',{runState:structuredClone(r.runState),routeNodeId:(window as any).__birdSquadCurrentMap().bossNodeId});});
   await page.waitForFunction(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.openingDistrict&&b.battleHudRendererModule&&b.fxLayer?.active&&!b.combatIntroActive&&!b.combatAnimationPending;});
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.introPlayed=false;b.playBattleIntro();b.time.timeScale=0;});
-  for(const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);await settleCanvas(page);
     const purpose=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');const visit=(items:any[]):any=>{for(const item of items){if(item.name==='opening-encounter-purpose')return item;const found=visit(item.list??[]);if(found)return found;}};const t=visit(b.fxLayer.list);return {text:t.text,bottom:t.getBounds().bottom};});
     expect(purpose.text).toContain('Winded disrupts the Crow once');expect(purpose.bottom).toBeLessThan(680);

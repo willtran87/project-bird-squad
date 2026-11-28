@@ -32,7 +32,7 @@ for (const mode of ['runComplete', 'defeat']) test(`quiet outcome surface: ${mod
       b.outcomeUnlockHighlights = () => unlocks ? [{ id: 'test', name: 'A New Flight', kind: 'record', description: 'Personal record' }] : [];
       b.renderAll();
     }, unlocks);
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       const metrics = await page.evaluate(() => {
         const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

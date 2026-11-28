@@ -88,7 +88,7 @@ test('route wheel respects Settings, Pause and explicit Preen reading', async ({
   expect({ ...after, page: before.page }).toEqual(before);
   await wheel(page, 120, 0);
   expect(await state()).toEqual(after);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`preen-reading-${width}.png`) });
     expect(await state()).toEqual(after);

@@ -7,7 +7,7 @@ const requested = process.argv.slice(2);
 const tests = requested.length > 0
   ? requested
   : [
-      'tests/smoke.spec.ts',
+      'tests/smoke-',
       '--grep',
       'title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow',
       '--workers=1',

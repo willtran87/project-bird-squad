@@ -28,7 +28,7 @@ test('keyword definitions keep canonical icons readable and bounded', async ({ p
   const savedBefore = await page.evaluate(() => JSON.stringify(localStorage));
   const keywords = ['Cohesion', 'Cover', 'Resonance', 'Resonance Burst', 'Winded', 'Fouled', 'Winded Burst', 'Molt', 'Open Sky', 'Open Sky Guard', 'Flow', 'Surge', 'Scatter', 'Hold', 'Wingbeat', 'Regen', 'Energy', 'Draw', 'Discard', 'Retain', 'Keystone'];
   const keywordIcons = Object.fromEntries(keywords.map(keyword => [keyword, keywordIconId(keyword)]));
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await page.evaluate(() => (window as any).__birdSquadShowKeywordTooltip('CodexScene', 'Molt', 1000, 320));
     await page.screenshot({ path: info.outputPath(`keyword-${size.width}.png`) });

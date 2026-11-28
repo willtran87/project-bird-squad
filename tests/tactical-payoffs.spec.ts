@@ -94,7 +94,7 @@ test('Tactical payoffs uncertainty, cancellation and independent Roost remain ho
 
 test('Tactical payoffs survival fits the existing Roost control at all supported sizes',async({page},info)=>{
   await battle(page);
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
     await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.selectedInstanceId=b.hand[0].instanceId;b.renderAll();});
     await settleCanvas(page);

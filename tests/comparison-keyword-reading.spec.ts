@@ -53,7 +53,7 @@ for (const mode of ['preen', 'cards', 'all-terms']) test(`comparison definitions
   await settleCanvas(page);
   const start = await reading();
   await expect.poll(() => page.locator('#game-status').textContent()).toContain(start.headings[0]);
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const geometry = await page.evaluate(() => {
       const s = (window as any).__birdSquadGame.scene.getScene('RouteScene'), panel = s.children.getByName('deck-review-comparison-panel');

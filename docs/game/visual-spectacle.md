@@ -624,7 +624,7 @@ A phone held sideways (below 1000x560, at least 560x320) now plays instead
 of being gated. Drawing the 1280x720 layout at 844x390 gives 0.54 CSS px per
 game unit: 58-unit targets at 31 CSS px, body text under 9 px. Every screen
 already meets the 44 CSS px target floor and the 14/16 CSS px text floors at
-1000x560 (0.78 CSS px per unit, `compact-type-inventory`), so the phone
+1000x560 (0.78 CSS px per unit, `screen-geometry-sweep`), so the phone
 presentation keeps that reading scale and changes how much of the layout is
 on screen at once.
 

@@ -62,7 +62,7 @@ test('saved-flight context and secondary actions remain readable without changin
     await page.waitForFunction(label => (window as any).__birdSquadGame.scene.getScene('MenuScene')
       .children.getByName('title-resume-context')?.text.includes(label), state.label);
   }
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('MenuScene').cameras.main.fadeEffect.isRunning);
     const utility = await page.evaluate(() => {

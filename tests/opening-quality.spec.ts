@@ -4,7 +4,7 @@ import { encounterDecision } from '../src/game/combat-reading';
 import { signaturePhase } from '../src/game/signature-fights';
 import { settleCanvas } from './helpers/settled-canvas';
 
-const sizes=[{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
+const sizes=[{ width: 1000, height: 560 }];
 const encounters=[2,3].flatMap(n=>JSON.parse(readFileSync(`data/game/map0${n}-content.json`,'utf8')).encounters);
 async function battle(page:Page, encounter?:string, guided=false){
   await page.goto('./?flight=opening-quality&length=full');

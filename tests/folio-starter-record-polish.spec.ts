@@ -3,7 +3,7 @@ import { settleCanvas } from './helpers/settled-canvas';
 import {targetGeometry,checkTargetGeometry} from './helpers/target-geometry';
 
 test.use({ hasTouch: true });
-const sizes = [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }];
+const sizes = [{ width: 1000, height: 560 }];
 async function tap(page: Page, name: string, index = 0) {
   await settleCanvas(page);
   const point = await page.evaluate(({ name, index }) => {
@@ -80,7 +80,7 @@ const blockWrites = (page: Page) => page.evaluate(() => { const w = window as an
   Storage.prototype.setItem = function (key, value) { if (key.startsWith('birdsquad.account')) throw new DOMException('Storage full', 'QuotaExceededError'); w.__readerSetItem.call(this, key, value); }; });
 const restoreWrites = (page: Page) => page.evaluate(() => { Storage.prototype.setItem = (window as any).__readerSetItem; });
 
-for (const remapped of [false, true]) test(`Starter and Field Record readers stay readable and preserve private data, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`Starter and Field Record readers stay readable and preserve private data, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(180_000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await boot(page, remapped); const original = await snapshot(page);

@@ -198,13 +198,34 @@ test('pointer input still maps to game space at DPR 2: route nodes and hand card
   await context.close();
 });
 
+/** Same objects, same text, and every bound within 1 game pixel: font metrics
+ * round line heights differently by a pixel at DPR 2 on some platforms
+ * (Linux measured 23 vs 24), which is not a layout change. */
+function sameGeometry(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  return a.every((entry, i) => {
+    const [nameA, numbersA] = [entry.slice(0, entry.lastIndexOf(':')), entry.slice(entry.lastIndexOf(':') + 1).split(',').map(Number)];
+    const [nameB, numbersB] = [b[i].slice(0, b[i].lastIndexOf(':')), b[i].slice(b[i].lastIndexOf(':') + 1).split(',').map(Number)];
+    if (nameA !== nameB) return false;
+    // At DPR 2 each text line can round about a pixel taller, so a box may
+    // grow by up to 2 px plus 5% of its height. It must keep its width and
+    // horizontal place, and either its top (top-anchored text grows down) or
+    // its centre (centred text grows both ways) within a game pixel.
+    const [xA, yA, wA, hA] = numbersA, [xB, yB, wB, hB] = numbersB;
+    const close = (p: number, q: number) => Math.abs(p - q) <= 1;
+    return close(xA, xB) && close(wA, wB)
+      && Math.abs(hA - hB) <= 2 + 0.05 * Math.max(hA, hB)
+      && (close(yA, yB) || close(yA + hA / 2, yB + hB / 2));
+  });
+}
+
 /** Geometry of both pages once lazily loaded panels (the collection goal,
  * deferred chunks) have settled the same way on each. */
 async function settledGeometry(one: Page, two: Page, sceneKey: string) {
   let a: string[] = [], b: string[] = [];
   for (let attempt = 0; attempt < 20; attempt += 1) {
     [a, b] = [await geometry(one, sceneKey), await geometry(two, sceneKey)];
-    if (JSON.stringify(a) === JSON.stringify(b)) break;
+    if (sameGeometry(a, b)) break;
     await one.waitForTimeout(250);
   }
   return [a, b];
@@ -217,15 +238,15 @@ test('text and control geometry is identical at DPR 1 and DPR 2 on title, route 
   for (const { page } of [one, two]) await page.evaluate(() => (window as any).advanceTime(2000));
   const [titleOne, titleTwo] = await settledGeometry(one.page, two.page, 'MenuScene');
   expect(titleOne.length).toBeGreaterThan(5);
-  expect(titleTwo).toEqual(titleOne);
+  expect(sameGeometry(titleTwo, titleOne), JSON.stringify({ one: titleOne, two: titleTwo })).toBe(true);
   for (const { page } of [one, two]) await openRoute(page);
   const [routeOne, routeTwo] = await settledGeometry(one.page, two.page, 'RouteScene');
   expect(routeOne.length).toBeGreaterThan(10);
-  expect(routeTwo).toEqual(routeOne);
+  expect(sameGeometry(routeTwo, routeOne), JSON.stringify({ one: routeOne, two: routeTwo })).toBe(true);
   for (const { page } of [one, two]) await openBattle(page);
   const [battleOne, battleTwo] = await settledGeometry(one.page, two.page, 'BattleScene');
   expect(battleOne.length).toBeGreaterThan(10);
-  expect(battleTwo).toEqual(battleOne);
+  expect(sameGeometry(battleTwo, battleOne), JSON.stringify({ one: battleOne, two: battleTwo })).toBe(true);
   expect(one.errors).toEqual([]);
   expect(two.errors).toEqual([]);
   await one.context.close();

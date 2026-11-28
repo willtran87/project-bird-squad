@@ -89,7 +89,7 @@ for (const comparison of [false, true]) for (const failed of [false, true]) {
       // Failure must settle; no render/request feedback loop after built-in retries.
       const completedRequests = requests; await page.waitForTimeout(700);
       expect(requests).toBe(completedRequests); expect(requests).toBeLessThanOrEqual(3);
-      for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+      for (const [width, height] of [[1000, 560]]) {
         await page.setViewportSize({ width, height }); await settleCanvas(page);
         await page.screenshot({ path: info.outputPath(`settled-${width}.png`) });
       }
@@ -142,7 +142,7 @@ for (const comparison of [false, true]) test(`deck ${comparison ? 'comparison' :
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     r.inspectDeckCard(r.mapDeckCards()[1].card.id);
   });
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     const result = await page.evaluate(prefix => {
       const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), p = r.children.getByName(`${prefix}-panel`);

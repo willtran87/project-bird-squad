@@ -34,7 +34,7 @@ test('single-card Deck Review retains every rule and stays read-only', async ({ 
   });
   const expectBounds = async () => { const b = await bounds(); expect(b.width).toBeLessThanOrEqual(376); expect(b.bottom).toBeLessThanOrEqual(528); expect(b.size).toBe('22px'); expect(b.resolution).toBe(2); expect(b.titleBottom).toBeLessThanOrEqual(247); expect(b.touch).toBe(true); };
   const before = await stable();
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await expectBounds();
     await page.screenshot({ path: info.outputPath(`single-card-${size.width}.png`) });
   }

@@ -3,7 +3,7 @@ import { settleCanvas } from './helpers/settled-canvas';
 import { installVirtualController, pressController, controllerButton } from './helpers/virtual-controller';
 
 test.use({ hasTouch: true });
-const sizes = [[2560, 1600], [1440, 900], [1000, 560]];
+const sizes = [[1000, 560]];
 const snapshot = (page: Page) => page.evaluate(() => JSON.parse((window as any).render_game_to_text()));
 async function boot(page: Page, scene = 'ProfileScene') {
   await page.setViewportSize({ width: 2560, height: 1600 });

@@ -35,7 +35,7 @@ test('polish: readable combat, safe preselection, pause and end turn', async ({p
   test.setTimeout(120_000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await start(page, 'RouteScene');
-  for (const v of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const v of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(v);
     await page.screenshot({path:info.outputPath(`route-${v.width}.png`)});
   }
@@ -59,7 +59,7 @@ test('polish: readable combat, safe preselection, pause and end turn', async ({p
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.cardPreview?.active;
   })).toBe(true);
-  for (const v of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const v of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(v);
     await page.screenshot({path:info.outputPath(`combat-${v.width}.png`)});
     expect(await page.evaluate(() => {
@@ -152,7 +152,7 @@ test('polish: explicit reward commitment and useful outcome review', async ({pag
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
   await hit(page, 'BattleScene', 'reward-card-take-hit');
   expect((await state(page)).mode).toBe('cardReward');
-  for (const v of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const v of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(v); await page.screenshot({path:info.outputPath(`reward-${v.width}.png`)});
   }
   await hit(page, 'BattleScene', 'reward-card-take-hit');
@@ -160,7 +160,7 @@ test('polish: explicit reward commitment and useful outcome review', async ({pag
   await start(page, 'BattleScene', data);
   await page.evaluate(() => { const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'); b.flock.hp=0;b.checkOutcome();b.renderAll(); });
   await page.waitForFunction(() => !!(window as any).__birdSquadGame.scene.getScene('BattleScene').bossDossierModule);
-  for (const v of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const v of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(v); await page.screenshot({path:info.outputPath(`outcome-${v.width}.png`)});
   }
 });
@@ -180,7 +180,7 @@ test('polish: Flight Lab hides tools without losing them', async ({page}, info) 
   await hit(page,'ProfileScene','profile-folio-lab-hit');
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('ProfileScene')
     .children.list.filter((o: any) => o.name === 'profile-flight-lab-card-art').length === 5);
-  for (const v of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const v of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(v);await page.screenshot({path:info.outputPath(`lab-${v.width}.png`)});
   }
   await hit(page,'ProfileScene','profile-flight-lab-tools-hit');

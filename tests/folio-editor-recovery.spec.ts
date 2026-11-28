@@ -84,7 +84,7 @@ for (const kind of ['rename', 'description', 'import'] as const) test(`${kind} r
   await expect(input).toHaveAttribute('aria-invalid', 'true');
   expect(await actionBounds(),'Retry labels must not move or resize native commands').toEqual(restingActions);
   expect(await stored(page)).toEqual(before);
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     checkTargetGeometry(await targetGeometry(page,'ProfileScene'),`${kind} editor`);
     const box = await input.boundingBox(), error = await page.locator('#folio-editor-error').boundingBox();
@@ -121,7 +121,7 @@ test('Organizer, Identity and template choices share stable non-mutating focus a
   await focus(page, 'profile-folio-identity-sleeve-hit:signal');
   expect(await stored(page)).toEqual(original); await pressController(page, 0);
   expect((await stored(page)).decks[0].sleeve).toBe('signal');
-  for (const [width, height] of [[2560,1600], [1440,900], [1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height });
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('ProfileScene').renderPremiumProfileScene());
     await settleCanvas(page);

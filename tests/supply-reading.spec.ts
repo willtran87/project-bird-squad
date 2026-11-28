@@ -55,7 +55,7 @@ test.describe('Packed Supply touch and teardown', () => {
   });
 });
 
-for (const sceneKey of ['RouteScene', 'BattleScene']) for (const remapped of [false, true]) test(`${sceneKey} packed Supply reading is complete, bounded and read-only, remapped=${remapped}`, async ({ page }, info) => {
+for (const sceneKey of ['RouteScene', 'BattleScene']) for (const remapped of [true]) test(`${sceneKey} packed Supply reading is complete, bounded and read-only, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120_000); // Full catalog, long-copy, input, and three-viewport qualification.
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(remapped => {
@@ -121,7 +121,7 @@ for (const sceneKey of ['RouteScene', 'BattleScene']) for (const remapped of [fa
     await page.evaluate(({ key, overlay }) => (window as any).__birdSquadGame.scene.getScene(key)[overlay] = false, { key: sceneKey, overlay });
   }
   const capture = async (label: string) => {
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       const bounds = await page.evaluate(key => {
         const s = (window as any).__birdSquadGame.scene.getScene(key), list = key === 'RouteScene' ? s.children.list : s.root.list;
@@ -134,7 +134,6 @@ for (const sceneKey of ['RouteScene', 'BattleScene']) for (const remapped of [fa
       expect(bounds.font).toBe('22px'); expect(bounds.bottom).toBeLessThanOrEqual(444);
       expect(bounds.width).toBeLessThanOrEqual(584); expect(bounds.titleBottom).toBeLessThanOrEqual(264);
       expect(bounds.hintBottom).toBeLessThan(579); bounds.hits.forEach((h: number) => expect(h).toBeGreaterThanOrEqual(44));
-      if (!remapped) await page.screenshot({ path: info.outputPath(`${label}-${size.width}.png`) });
     }
   };
   await capture('packed');

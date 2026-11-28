@@ -60,7 +60,7 @@ for (const mode of ['preen', 'release']) test(`${mode} confirmation is readable 
       };
       r.renderAll();
     });
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       const metrics = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');

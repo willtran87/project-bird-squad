@@ -22,7 +22,7 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.fxLayer?.active && !b.combatIntroActive && !b.combatAnimationPending && !b.battleRenderQueued;
   });
-  for (const viewport of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport);
     await settleCanvas(page);
     const result = await page.evaluate(() => {

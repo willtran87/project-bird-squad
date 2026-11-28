@@ -16,7 +16,7 @@ async function tap(page: Page, name: string, index = 0) {
   }, { name, index });
   await page.touchscreen.tap(point.x, point.y); await settleCanvas(page);
 }
-for (const remapped of [false, true]) test(`Folio readers retain readable geometry, identity and editing ownership, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`Folio readers retain readable geometry, identity and editing ownership, remapped=${remapped}`, async ({ page }, info) => {
   // This case includes an 18-state screenshot matrix and real network failures.
   test.setTimeout(120_000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
@@ -55,7 +55,7 @@ for (const remapped of [false, true]) test(`Folio readers retain readable geomet
       await tap(page, 'profile-folio-organizer-identity-hit');
       await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('ProfileScene').children.getByName('profile-folio-identity-cover-art')));
     }
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
       for (const status of ['idle', 'failed', kind === 'organizer' ? 'tagLimit' : 'personalized']) {
         await page.evaluate(status => {

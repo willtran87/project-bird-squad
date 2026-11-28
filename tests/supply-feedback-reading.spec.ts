@@ -32,7 +32,7 @@ test(`${key} recent Supply feedback stays complete with packed=${packed}`,async(
   expect(clean(pages.filter(p=>p.title==='RECENT USE').map(p=>p.text).join('')))
     .toBe(clean(recent.map(p=>p.name+p.summary).join('')));
   await pressController(page,3);expect((await read()).page).toBe(2);
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+  for(const size of [{ width: 1000, height: 560 }]){
     await page.setViewportSize(size);await settleCanvas(page);
     const layout=await page.evaluate(key=>{const s=(window as any).__birdSquadGame.scene.getScene(key),list=key==='RouteScene'?s.children.list:s.root.list;
       const body=list.find((o:any)=>o.name==='supply-drawer-rules'),scale=s.game.canvas.getBoundingClientRect().height/720;

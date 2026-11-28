@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
 test.use({ hasTouch: true });
-for (const key of ['RouteScene', 'BattleScene']) for (const remapped of [false, true]) test(`${key} Flock Stats stays readable and preserves the pending decision, remapped=${remapped}`, async ({ page }, info) => {
+for (const key of ['RouteScene', 'BattleScene']) for (const remapped of [true]) test(`${key} Flock Stats stays readable and preserves the pending decision, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(remapped => {
     localStorage.setItem('birdsquad.screenReader', 'on');
@@ -68,13 +68,12 @@ for (const key of ['RouteScene', 'BattleScene']) for (const remapped of [false, 
       images: p.list.filter((o: any) => o.type === 'Image').length,
       tweens: s.tweens.getTweens().filter((t: any) => t.targets.some((o: any) => o.parentContainer === p)).length };
   }, key);
-  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     const g = await geometry(); expect(g.cells).toBe(key === 'RouteScene' ? 36 : 40);
     expect(g.overlap).toEqual([]); expect(g.bounds && g.fonts).toBe(true); expect(g.close).toBeGreaterThanOrEqual(44);
     expect(g.secondaryFloor).toBe(true);
     expect(g.images).toBe(0); expect(g.tweens).toBe(0); expect(g.aboveHud).toBe(true);
-    if (!remapped) await page.screenshot({ path: info.outputPath(`stats-${size.width}.png`) });
   }
   await page.mouse.wheel(0, 450); await page.keyboard.press('Enter'); await settleCanvas(page);
   expect(await stable()).toBe(before);

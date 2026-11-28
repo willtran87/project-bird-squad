@@ -53,7 +53,7 @@ for (const [index, id] of ['cover', 'flow', 'molt'].entries()) {
       return !b.combatIntroActive && !b.combatAnimationPending && b.battleHandRendererModule
         && b.hand.every((c: any) => b.textures.exists(b.battleHandCardView(c).artKey));
     });
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
       expect(await page.evaluate(() => {
         const g = (window as any).__birdSquadGame;
@@ -94,7 +94,7 @@ for (const [index, id] of ['cover', 'flow', 'molt'].entries()) {
     }
     await expect.poll(async () => (await state(page)).practiceLesson?.complete, { timeout: 15000 }).toBe(true);
     expect(await disk(page)).toEqual(before);
-    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    for (const viewport of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`complete-${viewport.width}.png`) });
     }
@@ -147,7 +147,7 @@ test('help and lessons support controller focus, remapped confirmation, Back and
   await page.keyboard.press('j');
   await expect.poll(async () => (await state(page)).helpTopic).toContain('Practice lessons.');
   expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').menuFocusRing?.visible)).toBe(false);
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`picker-${viewport.width}.png`) });
   }

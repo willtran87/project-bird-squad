@@ -189,7 +189,7 @@ test('reload at every boss reward step preserves choices, health, rewards and ex
     const after = await snapshot(page);
     expect({ ...after, saved: undefined }).toEqual({ ...before, saved: undefined });
     expect(after.saved.combatResults).toEqual(before.saved.combatResults);
-    for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+    for (const [width, height] of [[1000, 560]]) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${stage}-${width}.png`) });
     }

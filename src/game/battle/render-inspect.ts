@@ -257,9 +257,9 @@ function renderDetail(context: BattleInspectRenderContext, card: BattleInspectCa
   const title = text(184, card.name, 24, context.goldColor, 'combat-pile-detail-title').setFontStyle(context.boldFontStyle);
   excerpt(title, 248);
   const meta = text(258, card.zone + ' · ' + card.cost + ' Wingbeat' + (card.cost === 1 ? '' : 's')
-    + (card.upgraded ? ' · Preened' : ''), 16, '#abc0cd', 'combat-pile-detail-meta');
+    + (card.upgraded ? ' · Preened' : ''), 18, '#abc0cd', 'combat-pile-detail-meta');
   excerpt(meta, 308);
-  text(318, card.usesMolt ? 'ACTIVE · MOLT' : 'ACTIVE · NOW', 16, '#ffe7b0').setFontStyle(context.boldFontStyle);
+  text(318, card.usesMolt ? 'ACTIVE · MOLT' : 'ACTIVE · NOW', 18, '#ffe7b0').setFontStyle(context.boldFontStyle);
   const body = text(349, card.currentText, 18, '#edf3f6', 'combat-pile-detail-excerpt');
   excerpt(body, 485);
   const hit = context.scene.add.rectangle(DETAIL.textX + DETAIL.textW / 2, 548, DETAIL.textW, MIN_SUPPORTED_TOUCH_TARGET, 0x19313c, 1)

@@ -31,7 +31,7 @@ test('quiet profile separates records, retains navigation, and fits supported si
   test.setTimeout(120000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await start(page, 'ProfileScene');
-  for (const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await click(page, 'ProfileScene', 'profile-leaders-tab-hit');
     const leaders = await page.evaluate(() => {
@@ -106,7 +106,7 @@ test('Marn resident uses the avian replacement and stays clear of the cache choi
   });
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.list
     .some((o:any)=>o.texture?.key==='route-event-resident-marn-valeclip'));
-  for (const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for (const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     const art = await page.evaluate(() => {
       const s=(window as any).__birdSquadGame.scene.getScene('RouteScene');
@@ -135,7 +135,7 @@ for (const [type, name] of [['signal', 'ivo-tallymast'], ['nest', 'oren-shearbri
     },type);
     await page.waitForFunction(name => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.list
       .some((o:any)=>o.texture?.key===`route-event-resident-${name}`), name);
-    for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+    for(const size of [{ width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
       expect(responses.length).toBeGreaterThan(0);
       expect(await page.evaluate(name=>{
@@ -163,7 +163,7 @@ test('Market sections jump directly without spending and keep costs visible', as
     return r.children.getByName('market-vendor-shopkeeper') && r.textures.exists('market-kit-background');
   });
   const before = await page.evaluate(() => JSON.stringify((window as any).__birdSquadGame.scene.getScene('RouteScene').runState));
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);await settleCanvas(page);
     for(const category of [2,1,0]) {
       await click(page,'RouteScene',`market-reader-category-${category}`);
@@ -208,7 +208,7 @@ test('populated Flock views preserve records and offer separated readable comman
     const raw=JSON.stringify(account); localStorage.setItem('birdsquad.account',raw);localStorage.setItem('birdsquad.account.backup',raw);
   });
   await start(page,'ProfileScene');
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);await settleCanvas(page);
     for(const tab of ['leaders','showcase','folios']) {
       await click(page,'ProfileScene',`profile-${tab}-tab-hit`);
@@ -242,7 +242,7 @@ for (const unlocked of [false, true]) test(`setup portraits and playstyles prese
   await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').setSetupOpen(true));
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').children.list
     .filter((o:any)=>o.name.startsWith('title-leader-portrait-')).length===5);
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);await settleCanvas(page);
     expect(await page.evaluate(()=>{
       const s=(window as any).__birdSquadGame.scene.getScene('MenuScene');
@@ -362,7 +362,7 @@ test('map direction and completed markers survive compact layouts without commit
     r.selectedNodeId=[...r.selectableNodeIds][0];r.renderAll();
   });
   const before=await page.evaluate(()=>JSON.stringify((window as any).__birdSquadGame.scene.getScene('RouteScene').runState));
-  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
+  for(const size of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(size);await settleCanvas(page);
     expect(await page.evaluate(()=>{
       const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');

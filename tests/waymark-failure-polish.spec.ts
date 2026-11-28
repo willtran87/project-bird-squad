@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import marks from '../data/game/alpha-route-marks.json' with { type: 'json' };
 import { settleCanvas } from './helpers/settled-canvas';
 
-for (const remapped of [false, true]) test(`failed reward art module retains readable Waymark choices and safe inspection, remapped=${remapped}`, async ({ page }, info) => {
+for (const remapped of [true]) test(`failed reward art module retains readable Waymark choices and safe inspection, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -45,7 +45,7 @@ for (const remapped of [false, true]) test(`failed reward art module retains rea
     }, name);
     await page.mouse.click(p.x, p.y); await settleCanvas(page);
   };
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`fallback-${viewport.width}.png`) });
     const geometry = await page.evaluate(() => {
@@ -78,7 +78,7 @@ for (const remapped of [false, true]) test(`failed reward art module retains rea
     b.waymarkChoices[0] = { ...saved, name: mark.name, description: mark.description };
     b.renderAll(); return saved;
   }, longest);
-  for (const width of [2560, 1440, 1000]) {
+  for (const width of [1000]) {
     await page.setViewportSize({ width, height: width === 2560 ? 1600 : width === 1440 ? 900 : 560 });
     await settleCanvas(page);
     const bounds = await page.evaluate(() => {

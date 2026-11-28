@@ -3,11 +3,11 @@ import { readFileSync } from 'node:fs';
 const marks = JSON.parse(readFileSync(new URL('../data/game/alpha-route-marks.json', import.meta.url), 'utf8')).routeMarks;
 
 // Full-content reading and transaction ownership each retain the unchanged
-// 30s limit. Both run independently at every viewport, with no assertions lost.
+// 30s limit. Layout is authored in a fixed 1280x720 stage, so the smallest
+// supported window (where the CSS floors are strictest) stands for all sizes;
+// tests/screen-geometry-sweep.spec.ts covers the general rules at 1280x720.
 for (const kind of ['supply', 'waymark']) for (const remapped of [false, true])
-for (const size of remapped ? [{ width: 1000, height: 560 }] : [
-  { width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 },
-]) for (const check of ['complete reading', 'transaction ownership'])
+for (const size of [{ width: 1000, height: 560 }]) for (const check of ['complete reading', 'transaction ownership'])
 test(`${kind} outcome reader ${check}, remapped=${remapped}, width=${size.width}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

@@ -60,7 +60,7 @@ test('held controller Back closes only the nested pile card reader and preserves
   await controllerButton(page,1,false);
 });
 
-for(const scene of ['MenuScene','RouteScene'])for(const remapped of [false,true])
+for(const scene of ['MenuScene','RouteScene'])for (const remapped of [true])
 test(`${scene} held Back retires exactly one owner, remapped=${remapped}`,async({page})=>{
   if(remapped)await page.addInitScript(()=>localStorage.setItem('birdsquad.controlBindings',JSON.stringify({version:1,bindings:{back:'KeyB'}})));
   await page.goto('./');

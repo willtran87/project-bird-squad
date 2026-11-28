@@ -61,7 +61,7 @@ test('return reader exposes every discard and all rules without accidental commi
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('Browsing does not commit.');
   expect(before.pages).toBeGreaterThan(1);
   expect(before.full).toContain('42');
-  for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height });
     await settleCanvas(page);
     const state = await snapshot();

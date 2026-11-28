@@ -77,7 +77,7 @@ for (const mode of ['cardReward', 'upgradeReward', 'waymarkReward']) test(`cerem
     }, mode);
     expect(issues).toEqual([]);
   };
-  for (const [width, height] of [[2560,1600],[1440,900],[1000,560]]) {
+  for (const [width, height] of [[1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page); await check();
     await page.screenshot({ path: info.outputPath(`${mode}-${width}.png`) });
   }

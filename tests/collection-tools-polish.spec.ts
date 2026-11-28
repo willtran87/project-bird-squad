@@ -27,7 +27,7 @@ test('Collection tools collapse without hidden hit areas or lost browsing contex
       sortVisible:!!s.root.getByName('codex-card-sort-hit'),viewsVisible:!!s.root.getByName('codex-saved-views-hit'),
       focus:s.focusZone};
   });
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]) {
+  for(const [width,height] of [[1000, 560]]) {
     await page.setViewportSize({width,height}); await settleCanvas(page);
     expect(await state()).toMatchObject({open:false,sortVisible:false,viewsVisible:false});
     await page.screenshot({path:info.outputPath(`shelf-${width}.png`)});

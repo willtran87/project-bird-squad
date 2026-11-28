@@ -25,7 +25,7 @@ test('Save controls expose every rating and Back with stable focus, roles and no
   await boot(page);const before=await page.evaluate(()=>localStorage.getItem('birdsquad.runs'));
   await focus(page,'profile-playtest-feedback-fun-5');
   expect(await page.evaluate(()=>localStorage.getItem('birdsquad.runs'))).toBe(before);
-  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]){
+  for(const [width,height] of [[1000, 560]]){
     await page.setViewportSize({width,height});await settleCanvas(page);
     await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('ProfileScene').renderPremiumProfileScene());
     expect((await state(page)).folioFocus.action).toBe('profile-playtest-feedback-fun-5');

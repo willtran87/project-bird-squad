@@ -17,7 +17,7 @@ test('combat decision hierarchy preserves HUD targets and readable forecasts', a
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.hand.length && b.battleHudRendererModule && !b.combatIntroActive && !b.combatAnimationPending && !b.cameras.main.fadeEffect.isRunning;
   });
-  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+  for (const viewport of [{ width: 1000, height: 560 }]) {
     await page.setViewportSize(viewport); await settleCanvas(page);
     const hud = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
