@@ -90,8 +90,10 @@ jobs:
             test-results
           retention-days: 14
 
+  # The regression's heavy UI specs time out at two workers per job under
+  # software GL, so it keeps one worker across 16 shards.
   regression:
-    name: Production regression (${{ matrix.shard }}/8)
+    name: Production regression (${{ matrix.shard }}/16)
     needs: prepare
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-24.04
@@ -102,7 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,7 +113,7 @@ jobs:
         with:
           browser: chromium
       - name: Production regression
-        run: npx playwright test --fully-parallel --workers=2 --timeout=90000 --grep-invert="reference flight|seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/8 --reporter=list,json
+        run: npx playwright test --fully-parallel --workers=1 --timeout=90000 --grep-invert="reference flight|seeded run progression|strategy audit:|starter combat control journey:" --shard=${{ matrix.shard }}/16 --reporter=list,json
         env:
           BIRD_SQUAD_REUSE_BUILD: '1'
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/release-results.json

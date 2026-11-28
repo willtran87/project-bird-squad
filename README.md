@@ -95,7 +95,7 @@ with two workers per job:
 | When | What runs |
 | --- | --- |
 | Pull request | The gate (4 shards), including the release smoke set in Chromium, and the Pages build check: about 10-12 min |
-| Push to `main` | The full Chromium regression (8 shards), campaign journeys (3), and the release smoke set in Firefox and WebKit; GitHub Pages deploys only when all of it passes |
+| Push to `main` | The full Chromium regression (16 single-worker shards), campaign journeys (3), and the release smoke set in Firefox and WebKit; GitHub Pages deploys only when all of it passes |
 | Nightly, manual runs, PRs labelled `full-ci` | Everything above plus the long live-control reference flights |
 
 The release smoke set lives in `tools/browser-smoke-set.mjs`;
