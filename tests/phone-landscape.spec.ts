@@ -260,7 +260,7 @@ test.describe('phone landscape', () => {
   }
 
   test('a short flight is played start to finish with touch taps at 844x390', async ({ page }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(300_000);
     const errors = await boot(page);
     // Title -> setup (first flight) -> start.
     await tapControl(page, 'MenuScene', { name: 'title-run-action', label: 'Start' });
@@ -280,7 +280,10 @@ test.describe('phone landscape', () => {
     await waitForBattle(page);
 
     const played: string[] = [];
-    for (let step = 0; step < 120; step++) {
+    // Play until the fight ends; slow software-GL runners need a time bound,
+    // not a step count.
+    const fightEnds = Date.now() + 150_000;
+    while (Date.now() < fightEnds) {
       const st = await page.evaluate(() => {
         const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
         const busy = b.combatAnimationPending || b.combatIntroActive || b.combatInteractionLocked?.() || b.battleRenderQueued;
@@ -306,11 +309,12 @@ test.describe('phone landscape', () => {
       await page.waitForTimeout(250);
     }
     expect(played.length).toBeGreaterThan(2);
-    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').mode === 'cardReward', undefined, { timeout: 30_000 });
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').mode === 'cardReward', undefined, { timeout: 60_000 });
     await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('reward-card-take-hit'));
     // Reward: the in-view Select, confirmed if it asks.
-    for (let i = 0; i < 4 && await page.evaluate(() => (window as any).__birdSquadGame.scene.isActive('BattleScene')); i++) {
-      await tapControl(page, 'BattleScene', { name: 'reward-card-take-hit' });
+    const rewardEnds = Date.now() + 45_000;
+    while (Date.now() < rewardEnds && await page.evaluate(() => (window as any).__birdSquadGame.scene.isActive('BattleScene'))) {
+      if (await pointOf(page, 'BattleScene', { name: 'reward-card-take-hit' })) await tapControl(page, 'BattleScene', { name: 'reward-card-take-hit' });
       await page.waitForTimeout(700);
     }
     await page.waitForFunction(() => {
